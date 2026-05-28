@@ -1,0 +1,27 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build outputs
+dist/
+.output/
+.vinxi/
+
+# Go
+packages/server/tmp/
+packages/server/db/*.db
+packages/server/server/logs/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp

@@ -1,0 +1,17 @@
+{
+  "name": "orinforum",
+  "private": true,
+  "scripts": {
+    "dev:web": "pnpm --filter @orinforum/web dev",
+    "dev:server": "pnpm --filter @orinforum/server dev",
+    "build:web": "pnpm --filter @orinforum/web build",
+    "lint": "pnpm --filter @orinforum/web lint",
+    "format": "pnpm --filter @orinforum/web format"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.3.7",
+    "@commitlint/cli": "^19.0.0",
+    "@commitlint/config-conventional": "^19.0.0",
+    "lefthook": "^1.10.0"
+  }
+}
