@@ -9,10 +9,13 @@ dist/
 
 # Go
 packages/server/tmp/
-packages/server/db/*.db
-packages/server/db/*.db-shm
-packages/server/db/*.db-wal
 packages/server/server/logs/
+packages/server/orinforum
+
+# Database
+*.db
+*.db-shm
+*.db-wal
 
 # env
 .env
@@ -29,8 +32,10 @@ Thumbs.db
 *.swp
 
 # Test logs
-# agent_test_logs/
+agent_test_logs/
+
+# Nested git repos
+packages/server/.git
 
 # File uploads
 uploads/
-packages/server/server/orinforum
