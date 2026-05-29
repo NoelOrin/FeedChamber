@@ -10,18 +10,18 @@ export default function FloatNavigator(props: FloatNavigatorProps) {
   const [isShow, setIsShow] = createSignal(true)
 
   let rafId: number | null = null
-
-  const TRIGGER_TOP = window.innerHeight * 0.1
-  const TRIGGER_BOTTOM = window.innerHeight * 1.1
+  let triggerTop = 0
+  let triggerBottom = 0
 
   const updateActiveSection = () => {
+    if (typeof window === 'undefined') return
     let currentActive = ''
     for (const id of props.sectionIds) {
       const el = document.getElementById(id)
       if (!el) continue
       const rect = el.getBoundingClientRect()
       const elementCenter = rect.top + rect.height / 2
-      if (elementCenter >= TRIGGER_TOP && elementCenter <= TRIGGER_BOTTOM) {
+      if (elementCenter >= triggerTop && elementCenter <= triggerBottom) {
         setIsShow(!props.excludeId.includes(id))
         currentActive = id
         break
@@ -34,6 +34,8 @@ export default function FloatNavigator(props: FloatNavigatorProps) {
   }
 
   onMount(() => {
+    triggerTop = window.innerHeight * 0.1
+    triggerBottom = window.innerHeight * 1.1
     rafId = requestAnimationFrame(updateActiveSection)
   })
 

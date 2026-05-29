@@ -17,6 +17,7 @@ function getInitialTheme(): ThemeMode {
 const [themeMode, setThemeMode] = createSignal<ThemeMode>(getInitialTheme())
 
 function applyTheme(mode: ThemeMode) {
+  if (typeof document === 'undefined') return
   document.documentElement.classList.toggle('dark', mode === 'dark')
 }
 
