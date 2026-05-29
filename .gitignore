@@ -25,3 +25,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Test logs
+agent_test_logs/
