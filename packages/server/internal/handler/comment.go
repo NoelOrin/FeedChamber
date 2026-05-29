@@ -61,7 +61,7 @@ func (h *commentHandler) Create(ctx iris.Context) {
 		ctx.StopWithError(iris.StatusBadRequest, err)
 		return
 	}
-	userID := ctx.Values().GetString("user_id")
+	userID := ctx.Values().GetString("user_uuid")
 	c, err := h.svc.Create(ctx.Request().Context(), ctx.Params().Get("postId"), userID, body.Content, body.ParentID)
 	if err != nil {
 		ctx.StopWithJSON(iris.StatusInternalServerError, iris.Map{"error": err.Error()})

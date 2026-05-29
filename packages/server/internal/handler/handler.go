@@ -35,13 +35,12 @@ func Health(ctx iris.Context) {
 	ctx.JSON(iris.Map{"status": "ok"})
 }
 
-func New(store db.Store, cfg config.Config) *Handler {
+func New(store db.Store, cfg config.Config, permSvc service.PermissionService) *Handler {
 	userRepo := repository.NewUserRepository(store)
 	roleRepo := repository.NewRoleRepository(store)
 	postRepo := repository.NewPostRepository(store)
 	catRepo := repository.NewCategoryRepository(store)
 	commentRepo := repository.NewCommentRepository(store)
-	permRepo := repository.NewPermissionRepository(store)
 	tagRepo := repository.NewTagRepository(store)
 	likeRepo := repository.NewLikeRepository(store)
 	favRepo := repository.NewFavoriteRepository(store)
@@ -52,7 +51,6 @@ func New(store db.Store, cfg config.Config) *Handler {
 	postSvc := service.NewPostService(postRepo)
 	catSvc := service.NewCategoryService(catRepo)
 	commentSvc := service.NewCommentService(commentRepo)
-	permSvc := service.NewPermissionService(permRepo)
 	tagSvc := service.NewTagService(tagRepo)
 	likeSvc := service.NewLikeService(likeRepo)
 	favSvc := service.NewFavoriteService(favRepo)

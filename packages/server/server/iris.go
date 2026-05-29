@@ -62,7 +62,7 @@ func Start(env Env) {
 
 	seedRoles(store)
 	seedAdmin(store)
-	seedPermissions(store)
+	permSvc := seedPermissions(store)
 
 	app := iris.New()
 
@@ -81,7 +81,7 @@ func Start(env Env) {
 	)
 	app.Get("/swagger/{any:path}", swaggerUI)
 
-	h := handler.New(store, cfg)
+	h := handler.New(store, cfg, permSvc)
 	router.Register(app, h)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)
@@ -143,7 +143,7 @@ func seedAdmin(store db.Store) {
 	logrus.Info("default admin created (admin / admin123)")
 }
 
-func seedPermissions(store db.Store) {
+func seedPermissions(store db.Store) service.PermissionService {
 	permRepo := repository.NewPermissionRepository(store)
 	ctx := context.Background()
 
@@ -171,4 +171,6 @@ func seedPermissions(store db.Store) {
 
 	// Inject permission checker into middleware
 	middleware.SetPermissionChecker(permSvc)
+
+	return permSvc
 }

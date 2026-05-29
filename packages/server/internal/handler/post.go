@@ -96,7 +96,7 @@ func (h *postHandler) Create(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	userID := ctx.Values().GetString("user_id")
+	userID := ctx.Values().GetString("user_uuid")
 	post, err := h.svc.Create(ctx.Request().Context(), userID, body.Title, body.Content, body.CategoryID)
 	if err != nil {
 		pkg.HandleError(ctx, err)
