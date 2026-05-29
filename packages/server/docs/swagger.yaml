@@ -28,6 +28,30 @@ definitions:
       updatedAt:
         type: string
     type: object
+  model.Notification:
+    properties:
+      content:
+        description: display text
+        type: string
+      createdAt:
+        type: string
+      id:
+        type: string
+      isRead:
+        type: boolean
+      referenceID:
+        description: post_id, comment_id, or user_id depending on type
+        type: string
+      senderID:
+        description: who triggered the notification
+        type: string
+      type:
+        description: '"comment", "like", "follow", "mention"'
+        type: string
+      userID:
+        description: recipient
+        type: string
+    type: object
   model.Permission:
     properties:
       code:
@@ -95,6 +119,27 @@ definitions:
       viewCount:
         type: integer
     type: object
+  model.Report:
+    properties:
+      createdAt:
+        type: string
+      id:
+        type: string
+      reason:
+        type: string
+      reporterID:
+        type: string
+      status:
+        description: '"pending", "resolved", "dismissed"'
+        type: string
+      targetID:
+        type: string
+      targetType:
+        description: '"post" or "comment"'
+        type: string
+      updatedAt:
+        type: string
+    type: object
   model.Role:
     properties:
       createdAt:
@@ -111,6 +156,30 @@ definitions:
       id:
         type: string
       name:
+        type: string
+    type: object
+  model.Upload:
+    properties:
+      createdAt:
+        type: string
+      fileName:
+        description: original filename
+        type: string
+      id:
+        type: string
+      mimeType:
+        description: e.g. "image/png"
+        type: string
+      path:
+        description: relative path
+        type: string
+      size:
+        description: bytes
+        type: integer
+      storedName:
+        description: uuid-based name on disk
+        type: string
+      uploaderID:
         type: string
     type: object
   model.User:
@@ -176,6 +245,23 @@ definitions:
       msg:
         type: string
     type: object
+  service.AdminStats:
+    properties:
+      todayNewComments:
+        type: integer
+      todayNewPosts:
+        type: integer
+      todayNewUsers:
+        type: integer
+      totalCategories:
+        type: integer
+      totalComments:
+        type: integer
+      totalPosts:
+        type: integer
+      totalUsers:
+        type: integer
+    type: object
   service.AuthResponse:
     properties:
       access_token:
@@ -209,6 +295,181 @@ info:
   title: OrinForum API
   version: "1.0"
 paths:
+  /admin/settings:
+    get:
+      consumes:
+      - application/json
+      description: 获取全部系统设置键值对
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: string
+                  type: object
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取所有系统设置
+      tags:
+      - 系统设置
+  /admin/settings/{key}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定 key 的系统设置
+      parameters:
+      - description: 设置键名
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除系统设置
+      tags:
+      - 系统设置
+    get:
+      consumes:
+      - application/json
+      description: 根据 key 获取系统设置值
+      parameters:
+      - description: 设置键名
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  type: string
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取单个系统设置
+      tags:
+      - 系统设置
+    put:
+      consumes:
+      - application/json
+      description: 创建或更新指定 key 的系统设置
+      parameters:
+      - description: 设置键名
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: 设置值
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            value:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 设置系统设置
+      tags:
+      - 系统设置
+  /admin/stats:
+    get:
+      consumes:
+      - application/json
+      description: 获取用户、帖子、评论、分类的总数及今日新增数量
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/service.AdminStats'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取论坛统计数据
+      tags:
+      - 管理后台
   /auth/change_password:
     post:
       consumes:
@@ -724,6 +985,130 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /notifications:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取当前用户的通知列表
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  properties:
+                    list:
+                      items:
+                        $ref: '#/definitions/model.Notification'
+                      type: array
+                  type: object
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取通知列表
+      tags:
+      - 通知
+  /notifications/{id}/read:
+    put:
+      consumes:
+      - application/json
+      description: 标记指定通知为已读
+      parameters:
+      - description: 通知 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 标记通知已读
+      tags:
+      - 通知
+  /notifications/read_all:
+    put:
+      consumes:
+      - application/json
+      description: 标记当前用户的所有通知为已读
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 标记所有通知已读
+      tags:
+      - 通知
+  /notifications/unread_count:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户的未读通知数量
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  properties:
+                    count:
+                      format: int64
+                      type: integer
+                  type: object
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取未读通知数量
+      tags:
+      - 通知
   /permission/list:
     get:
       consumes:
@@ -1068,6 +1453,86 @@ paths:
       summary: 更新帖子
       tags:
       - 帖子
+  /posts/{id}/lock:
+    put:
+      consumes:
+      - application/json
+      description: 切换指定帖子的锁定状态
+      parameters:
+      - description: 帖子 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Post'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 切换帖子锁定
+      tags:
+      - 帖子
+  /posts/{id}/pin:
+    put:
+      consumes:
+      - application/json
+      description: 切换指定帖子的置顶状态
+      parameters:
+      - description: 帖子 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Post'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 切换帖子置顶
+      tags:
+      - 帖子
   /posts/{postId}/comments/:
     get:
       consumes:
@@ -1199,6 +1664,59 @@ paths:
       security:
       - BearerAuth: []
       summary: 删除评论
+      tags:
+      - 评论
+    put:
+      consumes:
+      - application/json
+      description: 编辑指定评论的内容
+      parameters:
+      - description: 帖子 ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: 评论 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 评论内容
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            content:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Comment'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 编辑评论
       tags:
       - 评论
   /posts/{postId}/favorite:
@@ -1477,6 +1995,187 @@ paths:
       summary: 搜索帖子
       tags:
       - 帖子
+  /reports/:
+    get:
+      consumes:
+      - application/json
+      description: 分页获取举报列表，可按状态筛选
+      parameters:
+      - description: 举报状态
+        enum:
+        - pending
+        - resolved
+        - dismissed
+        in: query
+        name: status
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Report'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 举报列表
+      tags:
+      - 举报
+    post:
+      consumes:
+      - application/json
+      description: 举报帖子或评论
+      parameters:
+      - description: 举报信息
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            reason:
+              type: string
+            targetId:
+              type: string
+            targetType:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Report'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 举报内容
+      tags:
+      - 举报
+  /reports/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定举报
+      parameters:
+      - description: 举报 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除举报
+      tags:
+      - 举报
+  /reports/{id}/status:
+    put:
+      consumes:
+      - application/json
+      description: 更新指定举报的状态
+      parameters:
+      - description: 举报 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 状态信息
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            status:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新举报状态
+      tags:
+      - 举报
   /role/{id}:
     delete:
       consumes:
@@ -1707,6 +2406,148 @@ paths:
       summary: 删除标签
       tags:
       - 标签
+  /upload/:
+    get:
+      consumes:
+      - application/json
+      description: 获取当前用户的上传文件列表
+      parameters:
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Upload'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 上传列表
+      tags:
+      - 文件上传
+    post:
+      consumes:
+      - multipart/form-data
+      description: 上传图片文件（jpg/png/gif/webp），最大 10MB
+      parameters:
+      - description: 上传的文件
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  properties:
+                    fileName:
+                      type: string
+                    id:
+                      type: string
+                    size:
+                      type: integer
+                    url:
+                      type: string
+                  type: object
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 上传文件
+      tags:
+      - 文件上传
+  /upload/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 根据 ID 删除上传的文件
+      parameters:
+      - description: 文件 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除文件
+      tags:
+      - 文件上传
+    get:
+      description: 根据 ID 获取上传的文件
+      parameters:
+      - description: 文件 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 获取文件
+      tags:
+      - 文件上传
   /user/{id}:
     delete:
       consumes:
@@ -1929,6 +2770,60 @@ paths:
       security:
       - BearerAuth: []
       summary: 更新当前用户信息
+      tags:
+      - 用户
+  /user/search:
+    get:
+      consumes:
+      - application/json
+      description: 根据关键词和角色筛选用户
+      parameters:
+      - description: 搜索关键词（用户名或邮箱）
+        in: query
+        name: q
+        type: string
+      - description: 角色筛选
+        in: query
+        name: role
+        type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: pageSize
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  properties:
+                    list:
+                      items:
+                        $ref: '#/definitions/model.User'
+                      type: array
+                  type: object
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 搜索用户
       tags:
       - 用户
   /users/{userId}/counts:

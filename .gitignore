@@ -30,3 +30,6 @@ Thumbs.db
 
 # Test logs
 agent_test_logs/
+
+# File uploads
+uploads/

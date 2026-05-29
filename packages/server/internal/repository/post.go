@@ -363,7 +363,9 @@ func (r *mongoCategoryRepo) Delete(ctx context.Context, id string) error {
 
 type CommentRepository interface {
 	ListByPost(ctx context.Context, postID string) ([]model.Comment, error)
+	FindByID(ctx context.Context, id string) (*model.Comment, error)
 	Create(ctx context.Context, c *model.Comment) error
+	Update(ctx context.Context, c *model.Comment) error
 	Delete(ctx context.Context, id string) error
 }
 
@@ -386,6 +388,16 @@ func (r *sqlCommentRepo) Create(ctx context.Context, c *model.Comment) error {
 	return r.db.DB().WithContext(ctx).Create(c).Error
 }
 
+func (r *sqlCommentRepo) FindByID(ctx context.Context, id string) (*model.Comment, error) {
+	var c model.Comment
+	err := r.db.DB().WithContext(ctx).First(&c, "id = ?", id).Error
+	return &c, err
+}
+
+func (r *sqlCommentRepo) Update(ctx context.Context, c *model.Comment) error {
+	return r.db.DB().WithContext(ctx).Save(c).Error
+}
+
 func (r *sqlCommentRepo) Delete(ctx context.Context, id string) error {
 	return r.db.DB().WithContext(ctx).Delete(&model.Comment{}, "id = ?", id).Error
 }
@@ -404,6 +416,17 @@ func (r *mongoCommentRepo) ListByPost(ctx context.Context, postID string) ([]mod
 
 func (r *mongoCommentRepo) Create(ctx context.Context, c *model.Comment) error {
 	_, err := r.store.Collection("comments").InsertOne(ctx, c)
+	return err
+}
+
+func (r *mongoCommentRepo) FindByID(ctx context.Context, id string) (*model.Comment, error) {
+	var c model.Comment
+	err := r.store.Collection("comments").FindOne(ctx, bson.M{"_id": id}).Decode(&c)
+	return &c, err
+}
+
+func (r *mongoCommentRepo) Update(ctx context.Context, c *model.Comment) error {
+	_, err := r.store.Collection("comments").ReplaceOne(ctx, bson.M{"_id": c.ID}, c)
 	return err
 }
 

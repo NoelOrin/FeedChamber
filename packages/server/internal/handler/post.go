@@ -15,6 +15,8 @@ type PostHandler interface {
 	Update(ctx iris.Context)
 	Delete(ctx iris.Context)
 	Search(ctx iris.Context)
+	TogglePin(ctx iris.Context)
+	ToggleLock(ctx iris.Context)
 }
 
 type postHandler struct{ svc service.PostService }
@@ -193,4 +195,48 @@ func (h *postHandler) Search(ctx iris.Context) {
 		return
 	}
 	pkg.Success(ctx, posts)
+}
+
+// TogglePin 切换帖子置顶
+// @Summary      切换帖子置顶
+// @Description  切换指定帖子的置顶状态
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      string  true  "帖子 ID"
+// @Success      200  {object}  pkg.Response{data=model.Post}
+// @Failure      401  {object}  pkg.Response
+// @Failure      403  {object}  pkg.Response
+// @Failure      404  {object}  pkg.Response
+// @Router       /posts/{id}/pin [put]
+func (h *postHandler) TogglePin(ctx iris.Context) {
+	post, err := h.svc.TogglePin(ctx.Request().Context(), ctx.Params().Get("id"))
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, post)
+}
+
+// ToggleLock 切换帖子锁定
+// @Summary      切换帖子锁定
+// @Description  切换指定帖子的锁定状态
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      string  true  "帖子 ID"
+// @Success      200  {object}  pkg.Response{data=model.Post}
+// @Failure      401  {object}  pkg.Response
+// @Failure      403  {object}  pkg.Response
+// @Failure      404  {object}  pkg.Response
+// @Router       /posts/{id}/lock [put]
+func (h *postHandler) ToggleLock(ctx iris.Context) {
+	post, err := h.svc.ToggleLock(ctx.Request().Context(), ctx.Params().Get("id"))
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, post)
 }

@@ -3,6 +3,7 @@ package handler
 import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/service"
+	"strconv"
 
 	"github.com/kataras/iris/v12"
 )
@@ -11,6 +12,7 @@ type UserHandler interface {
 	GetProfile(ctx iris.Context)
 	GetByID(ctx iris.Context)
 	List(ctx iris.Context)
+	Search(ctx iris.Context)
 	UpdateProfile(ctx iris.Context)
 	UpdateRole(ctx iris.Context)
 	Delete(ctx iris.Context)
@@ -86,6 +88,40 @@ func (h *userHandler) List(ctx iris.Context) {
 	page := ctx.URLParamIntDefault("page", 1)
 	pageSize := ctx.URLParamIntDefault("pageSize", 20)
 	users, err := h.svc.List(ctx.Request().Context(), page, pageSize)
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, iris.Map{"list": users})
+}
+
+// Search 搜索用户
+// @Summary      搜索用户
+// @Description  根据关键词和角色筛选用户
+// @Tags         用户
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        q        query  string  false  "搜索关键词（用户名或邮箱）"
+// @Param        role     query  string  false  "角色筛选"
+// @Param        page     query  int     false  "页码"  default(1)
+// @Param        pageSize query  int     false  "每页数量"  default(20)
+// @Success      200  {object}  pkg.Response{data=object{list=[]model.User}}
+// @Failure      401  {object}  pkg.Response
+// @Failure      403  {object}  pkg.Response
+// @Router       /user/search [get]
+func (h *userHandler) Search(ctx iris.Context) {
+	keyword := ctx.URLParam("q")
+	role := ctx.URLParam("role")
+	page, _ := strconv.Atoi(ctx.URLParamDefault("page", "1"))
+	pageSize, _ := strconv.Atoi(ctx.URLParamDefault("pageSize", "20"))
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+	users, err := h.svc.Search(ctx.Request().Context(), keyword, role, page, pageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

@@ -56,6 +56,10 @@ func Start(env Env) {
 		&model.CommentLike{},
 		&model.PostFavorite{},
 		&model.UserFollow{},
+		&model.Upload{},
+		&model.Notification{},
+		&model.Report{},
+		&model.Setting{},
 	); err != nil {
 		logrus.Warnf("AutoMigrate: %v", err)
 	}
@@ -63,6 +67,7 @@ func Start(env Env) {
 	seedRoles(store)
 	seedAdmin(store)
 	permSvc := seedPermissions(store)
+	seedSettings(store)
 
 	app := iris.New()
 
@@ -173,4 +178,16 @@ func seedPermissions(store db.Store) service.PermissionService {
 	middleware.SetPermissionChecker(permSvc)
 
 	return permSvc
+}
+
+func seedSettings(store db.Store) {
+	settingRepo := repository.NewSettingRepository(store)
+	ctx := context.Background()
+
+	for key, value := range model.DefaultSettings {
+		if err := settingRepo.Set(ctx, key, value); err != nil {
+			logrus.Warnf("seed setting %s: %v", key, err)
+		}
+	}
+	logrus.Info("seeded default settings")
 }

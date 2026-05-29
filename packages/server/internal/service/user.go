@@ -16,6 +16,7 @@ type UserService interface {
 	GetByUUID(ctx context.Context, uuid string) (*model.User, error)
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
 	List(ctx context.Context, page, pageSize int) ([]model.User, error)
+	Search(ctx context.Context, keyword, role string, page, pageSize int) ([]model.User, error)
 	UpdateProfile(ctx context.Context, uuid string, username, avatar, bio *string) error
 	UpdateRole(ctx context.Context, id, role string) error
 	Delete(ctx context.Context, id string) error
@@ -73,6 +74,23 @@ func (s *userService) List(ctx context.Context, page, pageSize int) ([]model.Use
 		pageSize = 20
 	}
 	users, err := s.userRepo.List(ctx, (page-1)*pageSize, pageSize)
+	if err != nil {
+		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	for i := range users {
+		users[i].Password = ""
+	}
+	return users, nil
+}
+
+func (s *userService) Search(ctx context.Context, keyword, role string, page, pageSize int) ([]model.User, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+	users, err := s.userRepo.Search(ctx, keyword, role, (page-1)*pageSize, pageSize)
 	if err != nil {
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}

@@ -30,6 +30,12 @@ const (
 	PermUserUpdate = "user:update"
 	PermUserDelete = "user:delete"
 
+	PermPostPin  = "post:pin"
+	PermPostLock = "post:lock"
+
+	PermReportCreate = "report:create"
+	PermReportManage = "report:manage"
+
 	PermRoleRead   = "role:read"
 	PermRoleManage = "role:manage"
 )
@@ -53,6 +59,12 @@ var DefaultPermissions = []Permission{
 
 	{Code: PermRoleRead, Name: "查看角色", Description: "查看角色列表"},
 	{Code: PermRoleManage, Name: "管理角色", Description: "创建、删除角色和分配权限"},
+
+	{Code: PermPostPin, Name: "置顶帖子", Description: "置顶或取消置顶帖子"},
+	{Code: PermPostLock, Name: "锁定帖子", Description: "锁定或取消锁定帖子"},
+
+	{Code: PermReportCreate, Name: "举报内容", Description: "举报帖子或评论"},
+	{Code: PermReportManage, Name: "管理举报", Description: "查看、处理和删除举报"},
 }
 
 // RolePermission 角色-权限关联表
@@ -68,16 +80,19 @@ func (RolePermission) TableName() string { return "role_permissions" }
 var DefaultRolePermissions = map[string][]string{
 	"admin": {
 		PermPostCreate, PermPostRead, PermPostUpdate, PermPostDelete,
+		PermPostPin, PermPostLock,
 		PermCommentCreate, PermCommentDelete,
 		PermCategoryCreate, PermCategoryDelete,
 		PermUserRead, PermUserUpdate, PermUserDelete,
 		PermRoleRead, PermRoleManage,
+		PermReportCreate, PermReportManage,
 	},
 	"user": {
 		PermPostCreate, PermPostRead,
 		PermCommentCreate,
 		PermUserRead,
 		PermRoleRead,
+		PermReportCreate,
 	},
 	"ban": {},
 }

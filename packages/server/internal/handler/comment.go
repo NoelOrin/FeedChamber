@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"orinforum/internal/pkg"
 	"orinforum/internal/service"
 
 	"github.com/kataras/iris/v12"
@@ -9,6 +10,7 @@ import (
 type CommentHandler interface {
 	ListByPost(ctx iris.Context)
 	Create(ctx iris.Context)
+	Update(ctx iris.Context)
 	Delete(ctx iris.Context)
 }
 
@@ -69,6 +71,37 @@ func (h *commentHandler) Create(ctx iris.Context) {
 	}
 	ctx.StatusCode(iris.StatusCreated)
 	ctx.JSON(c)
+}
+
+// Update 编辑评论
+// @Summary      编辑评论
+// @Description  编辑指定评论的内容
+// @Tags         评论
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        postId path      string  true  "帖子 ID"
+// @Param        id     path      string  true  "评论 ID"
+// @Param        body   body      object{content=string}  true  "评论内容"
+// @Success      200    {object}  pkg.Response{data=model.Comment}
+// @Failure      400    {object}  pkg.Response
+// @Failure      401    {object}  pkg.Response
+// @Failure      404    {object}  pkg.Response
+// @Router       /posts/{postId}/comments/{id} [put]
+func (h *commentHandler) Update(ctx iris.Context) {
+	var body struct {
+		Content string `json:"content"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
+		return
+	}
+	c, err := h.svc.Update(ctx.Request().Context(), ctx.Params().Get("id"), body.Content)
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, c)
 }
 
 // Delete 删除评论

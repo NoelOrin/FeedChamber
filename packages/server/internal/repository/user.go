@@ -6,6 +6,7 @@ import (
 	"orinforum/internal/model"
 
 	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
 
 type UserRepository interface {
@@ -14,6 +15,7 @@ type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (*model.User, error)
 	FindByUsername(ctx context.Context, username string) (*model.User, error)
 	List(ctx context.Context, offset, limit int) ([]model.User, error)
+	Search(ctx context.Context, keyword, role string, offset, limit int) ([]model.User, error)
 	Create(ctx context.Context, user *model.User) error
 	Update(ctx context.Context, user *model.User) error
 	Delete(ctx context.Context, id string) error
@@ -53,6 +55,19 @@ func (r *sqlUserRepo) FindByUsername(ctx context.Context, username string) (*mod
 func (r *sqlUserRepo) List(ctx context.Context, offset, limit int) ([]model.User, error) {
 	var users []model.User
 	err := r.db.DB().WithContext(ctx).Order("created_at desc").Offset(offset).Limit(limit).Find(&users).Error
+	return users, err
+}
+
+func (r *sqlUserRepo) Search(ctx context.Context, keyword, role string, offset, limit int) ([]model.User, error) {
+	query := r.db.DB().WithContext(ctx).Model(&model.User{})
+	if keyword != "" {
+		query = query.Where("username LIKE ? OR email LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+	}
+	if role != "" {
+		query = query.Where("role = ?", role)
+	}
+	var users []model.User
+	err := query.Order("created_at desc").Offset(offset).Limit(limit).Find(&users).Error
 	return users, err
 }
 
@@ -98,6 +113,27 @@ func (r *mongoUserRepo) FindByUsername(ctx context.Context, username string) (*m
 
 func (r *mongoUserRepo) List(ctx context.Context, offset, limit int) ([]model.User, error) {
 	cursor, err := r.store.Collection("users").Find(ctx, bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	var users []model.User
+	err = cursor.All(ctx, &users)
+	return users, err
+}
+
+func (r *mongoUserRepo) Search(ctx context.Context, keyword, role string, offset, limit int) ([]model.User, error) {
+	filter := bson.M{}
+	if keyword != "" {
+		filter["$or"] = bson.A{
+			bson.M{"username": bson.M{"$regex": keyword, "$options": "i"}},
+			bson.M{"email": bson.M{"$regex": keyword, "$options": "i"}},
+		}
+	}
+	if role != "" {
+		filter["role"] = role
+	}
+	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
+	cursor, err := r.store.Collection("users").Find(ctx, filter, opts)
 	if err != nil {
 		return nil, err
 	}

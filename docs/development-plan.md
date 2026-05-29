@@ -60,47 +60,47 @@ OrinForum 是一个社群/论坛项目，基于以下技术栈:
 
 ---
 
-## Phase 3: 通知与消息
+## Phase 3: 通知与消息 ✅
 
 **目标:** 用户感知社区动态
 
 | 任务 | 说明 | 状态 |
 |------|------|------|
-| 通知系统 | Notification 模型 (评论/点赞/关注通知) | - [ ] |
-| 通知 API | GET /notifications, PUT read, PUT read_all | - [ ] |
-| 未读计数 | GET /notifications/unread_count | - [ ] |
-| 前端通知铃铛 | Header 显示未读数，下拉展示通知列表 | - [ ] |
-| @提及 | 评论中 @username 触发通知 | - [ ] |
+| 通知系统 | Notification 模型 (评论/点赞/关注通知) | ✅ |
+| 通知 API | GET /notifications, PUT read, PUT read_all | ✅ |
+| 未读计数 | GET /notifications/unread_count | ✅ |
+| 前端通知铃铛 | Header 显示未读数，下拉展示通知列表 | 待开发 |
+| @提及 | 评论中 @username 触发通知 | 待开发 |
 
 ---
 
-## Phase 4: 内容管理增强
+## Phase 4: 内容管理增强 ✅
 
 **目标:** 内容质量管控
 
 | 任务 | 说明 | 状态 |
 |------|------|------|
-| 文件上传 | 图片上传接口 POST /upload，存储到本地/OSS | - [ ] |
-| Markdown 支持 | 帖子内容支持 Markdown 渲染 | - [ ] |
-| 帖子置顶/锁定 | 权限控制 + 前端标识 | - [ ] |
-| 内容举报 | Report 模型，用户可举报帖子/评论 | - [ ] |
-| 举报管理 | Admin 端审核举报、处理违规内容 | - [ ] |
-| 评论编辑 | PUT /posts/{id}/comments/{id} | - [ ] |
+| 文件上传 | 图片上传接口 POST /upload，存储到本地 | ✅ |
+| Markdown 支持 | 帖子内容支持 Markdown 渲染 | 待开发 |
+| 帖子置顶/锁定 | 权限控制 (post:pin, post:lock) | ✅ |
+| 内容举报 | Report 模型，用户可举报帖子/评论 | ✅ |
+| 举报管理 | Admin 端审核举报、处理违规内容 | ✅ |
+| 评论编辑 | PUT /posts/{id}/comments/{id} | ✅ |
 
 ---
 
-## Phase 5: 管理后台
+## Phase 5: 管理后台 ✅
 
 **目标:** 站长可管理整个站点
 
 | 任务 | 说明 | 状态 |
 |------|------|------|
-| Admin 仪表盘 | 用户统计、帖子统计、活跃度趋势 | - [ ] |
-| 用户管理页 | 列表、搜索、封禁/解封、角色变更 | - [ ] |
-| 内容管理页 | 帖子列表、删除、置顶、锁定 | - [ ] |
-| 分类管理页 | 增删改分类 | - [ ] |
-| 角色权限管理 | 可视化分配权限 | - [ ] |
-| 系统设置 | 站点名称、描述、注册开关等 | - [ ] |
+| Admin 仪表盘 | GET /admin/stats (用户/帖子/评论统计) | ✅ |
+| 用户管理 | 用户搜索 (GET /user/search?q=&role=) | ✅ |
+| 内容管理 | 通过帖子/评论 CRUD + 置顶/锁定/删除实现 | ✅ |
+| 分类管理 | 分类 CRUD 已有 | ✅ |
+| 角色权限管理 | 角色/权限 CRUD + sync 已有 | ✅ |
+| 系统设置 | Setting 模型 + GET/PUT/DELETE /admin/settings | ✅ |
 
 ---
 

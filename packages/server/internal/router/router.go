@@ -35,6 +35,7 @@ func Register(app *iris.Application, h *handler.Handler) {
 	protected.PartyFunc("/user", func(u iris.Party) {
 		u.Get("/profile", h.User.GetProfile)
 		u.Put("/profile", h.User.UpdateProfile)
+		u.Get("/search", middleware.RequirePermission(model.PermUserRead), h.User.Search)
 		u.Get("/list", middleware.RequirePermission(model.PermUserRead), h.User.List)
 		u.Get("/{id}", middleware.RequirePermission(model.PermUserRead), h.User.GetByID)
 		u.Delete("/{id}", middleware.RequirePermission(model.PermUserDelete), h.User.Delete)
@@ -79,6 +80,7 @@ func Register(app *iris.Application, h *handler.Handler) {
 		p.PartyFunc("/{postId}/comments", func(c iris.Party) {
 			c.Get("/", h.Comment.ListByPost)
 			c.Post("/", middleware.RequirePermission(model.PermCommentCreate), h.Comment.Create)
+			c.Put("/{id}", middleware.RequirePermission(model.PermCommentCreate), h.Comment.Update)
 			c.Delete("/{id}", middleware.RequirePermission(model.PermCommentDelete), h.Comment.Delete)
 		})
 
@@ -107,5 +109,37 @@ func Register(app *iris.Application, h *handler.Handler) {
 		u.Get("/followers", h.Follow.GetFollowers)
 		u.Get("/following", h.Follow.GetFollowing)
 		u.Get("/counts", h.Follow.GetCounts)
+	})
+
+	protected.PartyFunc("/upload", func(u iris.Party) {
+		u.Post("/", h.Upload.Upload)
+		u.Get("/", h.Upload.List)
+		u.Get("/{id}", h.Upload.GetFile)
+		u.Delete("/{id}", h.Upload.Delete)
+	})
+
+	protected.PartyFunc("/notifications", func(n iris.Party) {
+		n.Get("/", h.Notification.List)
+		n.Get("/unread_count", h.Notification.CountUnread)
+		n.Put("/{id}/read", h.Notification.MarkRead)
+		n.Put("/read_all", h.Notification.MarkAllRead)
+	})
+
+	// ── Reports ────────────────────────────────────────────────
+	protected.PartyFunc("/reports", func(r iris.Party) {
+		r.Post("/", middleware.RequirePermission(model.PermReportCreate), h.Report.Create)
+		r.Get("/", middleware.RequirePermission(model.PermReportManage), h.Report.List)
+		r.Put("/{id}/status", middleware.RequirePermission(model.PermReportManage), h.Report.UpdateStatus)
+		r.Delete("/{id}", middleware.RequirePermission(model.PermReportManage), h.Report.Delete)
+	})
+
+	// ── Admin ───────────────────────────────────────────────────
+	protected.PartyFunc("/admin", func(a iris.Party) {
+		a.Use(middleware.RequirePermission(model.PermRoleManage))
+		a.Get("/stats", h.Admin.GetStats)
+		a.Get("/settings", h.Setting.GetAll)
+		a.Get("/settings/{key}", h.Setting.Get)
+		a.Put("/settings/{key}", h.Setting.Set)
+		a.Delete("/settings/{key}", h.Setting.Delete)
 	})
 }

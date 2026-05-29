@@ -16,6 +16,8 @@ type PostService interface {
 	Update(ctx context.Context, id, title, content string) (*model.Post, error)
 	Delete(ctx context.Context, id string) error
 	Search(ctx context.Context, keyword string, page, pageSize int) ([]model.PostListItem, error)
+	TogglePin(ctx context.Context, id string) (*model.Post, error)
+	ToggleLock(ctx context.Context, id string) (*model.Post, error)
 }
 
 type postService struct {
@@ -72,6 +74,26 @@ func (s *postService) Search(ctx context.Context, keyword string, page, pageSize
 	return s.posts.Search(ctx, keyword, (page-1)*pageSize, pageSize)
 }
 
+func (s *postService) TogglePin(ctx context.Context, id string) (*model.Post, error) {
+	post, err := s.posts.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	post.Pinned = !post.Pinned
+	post.UpdatedAt = time.Now()
+	return post, s.posts.Update(ctx, post)
+}
+
+func (s *postService) ToggleLock(ctx context.Context, id string) (*model.Post, error) {
+	post, err := s.posts.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	post.Locked = !post.Locked
+	post.UpdatedAt = time.Now()
+	return post, s.posts.Update(ctx, post)
+}
+
 type CategoryService interface {
 	List(ctx context.Context) ([]model.Category, error)
 	Create(ctx context.Context, name, description string) (*model.Category, error)
@@ -107,6 +129,7 @@ func (s *categoryService) Delete(ctx context.Context, id string) error {
 type CommentService interface {
 	ListByPost(ctx context.Context, postID string) ([]model.Comment, error)
 	Create(ctx context.Context, postID, authorID, content, parentID string) (*model.Comment, error)
+	Update(ctx context.Context, id, content string) (*model.Comment, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -133,6 +156,16 @@ func (s *commentService) Create(ctx context.Context, postID, authorID, content, 
 		UpdatedAt: time.Now(),
 	}
 	return c, s.repo.Create(ctx, c)
+}
+
+func (s *commentService) Update(ctx context.Context, id, content string) (*model.Comment, error) {
+	c, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	c.Content = content
+	c.UpdatedAt = time.Now()
+	return c, s.repo.Update(ctx, c)
 }
 
 func (s *commentService) Delete(ctx context.Context, id string) error {

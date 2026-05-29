@@ -20,7 +20,12 @@ type Handler struct {
 	User       UserHandler
 	Role       RoleHandler
 	Permission PermissionHandler
-	Tag        TagHandler
+	Tag          TagHandler
+	Upload       UploadHandler
+	Notification NotificationHandler
+	Report       ReportHandler
+	Admin        AdminHandler
+	Setting      SettingHandler
 }
 
 // Health 健康检查
@@ -56,6 +61,21 @@ func New(store db.Store, cfg config.Config, permSvc service.PermissionService) *
 	favSvc := service.NewFavoriteService(favRepo)
 	followSvc := service.NewFollowService(followRepo)
 
+	uploadRepo := repository.NewUploadRepository(store)
+	uploadSvc := service.NewUploadService(uploadRepo)
+
+	notifRepo := repository.NewNotificationRepository(store)
+	notifSvc := service.NewNotificationService(notifRepo)
+
+	adminRepo := repository.NewAdminRepository(store)
+	adminSvc := service.NewAdminService(adminRepo)
+
+	settingRepo := repository.NewSettingRepository(store)
+	settingSvc := service.NewSettingService(settingRepo)
+
+	reportRepo := repository.NewReportRepository(store)
+	reportSvc := service.NewReportService(reportRepo)
+
 	return &Handler{
 		Auth:       newAuthHandler(authSvc),
 		User:       newUserHandler(userSvc),
@@ -67,6 +87,11 @@ func New(store db.Store, cfg config.Config, permSvc service.PermissionService) *
 		Favorite:   newFavoriteHandler(favSvc),
 		Follow:     newFollowHandler(followSvc),
 		Permission: newPermissionHandler(permSvc),
-		Tag:        newTagHandler(tagSvc),
+		Tag:          newTagHandler(tagSvc),
+		Upload:       newUploadHandler(uploadSvc),
+		Notification: newNotificationHandler(notifSvc),
+		Report:       newReportHandler(reportSvc),
+		Admin:        newAdminHandler(adminSvc),
+		Setting:      newSettingHandler(settingSvc),
 	}
 }
