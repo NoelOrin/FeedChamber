@@ -1,4 +1,6 @@
-declare global {
+import 'solid-js'
+
+declare module 'solid-js' {
   namespace JSX {
     interface IntrinsicElements {
       'a-waves': {

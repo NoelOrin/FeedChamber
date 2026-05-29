@@ -1,4 +1,4 @@
-import { createResource } from 'solid-js'
+import { createResource, For } from 'solid-js'
 
 interface TagItem {
 	tagName: string

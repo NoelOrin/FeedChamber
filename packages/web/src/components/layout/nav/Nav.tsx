@@ -3,7 +3,7 @@ import clsx from 'clsx'
 import LinkGroup from './LinkGroup'
 import SiteName from './SiteName'
 
-const Search = lazy(() => import('../../LC/Search'))
+const Search = lazy(() => import('../../lc/Search'))
 
 type ThemeMode = 'light' | 'dark'
 

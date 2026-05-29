@@ -10,6 +10,7 @@ export default function SiteName() {
             NoelOrin's Blog
           </div>
           <div class="absolute flex icon py-1.5">
+            {/** biome-ignore lint/a11y/noSvgWithoutTitle: <explanation> */}
             <svg
               fill="none"
               height="24"
