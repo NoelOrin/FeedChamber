@@ -10,6 +10,8 @@ dist/
 # Go
 packages/server/tmp/
 packages/server/db/*.db
+packages/server/db/*.db-shm
+packages/server/db/*.db-wal
 packages/server/server/logs/
 
 # env
