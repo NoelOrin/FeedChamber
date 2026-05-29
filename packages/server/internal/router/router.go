@@ -3,6 +3,7 @@ package router
 import (
 	"orinforum/internal/handler"
 	"orinforum/internal/middleware"
+	"orinforum/internal/model"
 
 	"github.com/kataras/iris/v12"
 )
@@ -11,9 +12,7 @@ func Register(app *iris.Application, h *handler.Handler) {
 	v1 := app.Party("/api/v1")
 
 	// ── Public ────────────────────────────────────────────────
-	v1.Get("/health", func(ctx iris.Context) {
-		ctx.JSON(iris.Map{"status": "ok"})
-	})
+	v1.Get("/health", handler.Health)
 
 	v1.PartyFunc("/auth", func(auth iris.Party) {
 		auth.Post("/register", h.Auth.Register)
@@ -35,35 +34,78 @@ func Register(app *iris.Application, h *handler.Handler) {
 
 	protected.PartyFunc("/user", func(u iris.Party) {
 		u.Get("/profile", h.User.GetProfile)
-		u.Get("/list", h.User.List)
-		u.Get("/{id}", h.User.GetByID)
-		u.Delete("/{id}", h.User.Delete)
-		u.Put("/{id}/role", middleware.RequireRole("admin"), h.User.UpdateRole)
+		u.Put("/profile", h.User.UpdateProfile)
+		u.Get("/list", middleware.RequirePermission(model.PermUserRead), h.User.List)
+		u.Get("/{id}", middleware.RequirePermission(model.PermUserRead), h.User.GetByID)
+		u.Delete("/{id}", middleware.RequirePermission(model.PermUserDelete), h.User.Delete)
+		u.Put("/{id}/role", middleware.RequirePermission(model.PermUserUpdate), h.User.UpdateRole)
 	})
 
 	protected.PartyFunc("/role", func(r iris.Party) {
-		r.Get("/list", h.Role.List)
-		r.Post("/create", middleware.RequireRole("admin"), h.Role.Create)
-		r.Delete("/{id}", middleware.RequireRole("admin"), h.Role.Delete)
+		r.Get("/list", middleware.RequirePermission(model.PermRoleRead), h.Role.List)
+		r.Post("/create", middleware.RequirePermission(model.PermRoleManage), h.Role.Create)
+		r.Delete("/{id}", middleware.RequirePermission(model.PermRoleManage), h.Role.Delete)
+	})
+
+	protected.PartyFunc("/permission", func(p iris.Party) {
+		p.Get("/list", middleware.RequirePermission(model.PermRoleRead), h.Permission.ListPermissions)
+		p.Get("/role", middleware.RequirePermission(model.PermRoleRead), h.Permission.GetRolePermissions)
+		p.Post("/sync", middleware.RequirePermission(model.PermRoleManage), h.Permission.SyncRolePermissions)
 	})
 
 	protected.PartyFunc("/categories", func(cat iris.Party) {
 		cat.Get("/", h.Category.List)
-		cat.Post("/", h.Category.Create)
-		cat.Delete("/{id}", h.Category.Delete)
+		cat.Post("/", middleware.RequirePermission(model.PermCategoryCreate), h.Category.Create)
+		cat.Delete("/{id}", middleware.RequirePermission(model.PermCategoryDelete), h.Category.Delete)
+	})
+
+	protected.PartyFunc("/tags", func(t iris.Party) {
+		t.Get("/", h.Tag.List)
+		t.Post("/", middleware.RequirePermission(model.PermPostCreate), h.Tag.Create)
+		t.Delete("/{id}", middleware.RequirePermission(model.PermPostDelete), h.Tag.Delete)
 	})
 
 	protected.PartyFunc("/posts", func(p iris.Party) {
 		p.Get("/", h.Post.List)
+		p.Get("/search", h.Post.Search)
 		p.Get("/{id}", h.Post.GetByID)
-		p.Post("/", h.Post.Create)
-		p.Put("/{id}", h.Post.Update)
-		p.Delete("/{id}", h.Post.Delete)
+		p.Post("/", middleware.RequirePermission(model.PermPostCreate), h.Post.Create)
+		p.Put("/{id}", middleware.RequirePermission(model.PermPostUpdate), h.Post.Update)
+		p.Delete("/{id}", middleware.RequirePermission(model.PermPostDelete), h.Post.Delete)
+
+		p.Get("/{postId}/tags", h.Tag.GetPostTags)
+		p.Post("/{postId}/tags", middleware.RequirePermission(model.PermPostCreate), h.Tag.SetPostTags)
 
 		p.PartyFunc("/{postId}/comments", func(c iris.Party) {
 			c.Get("/", h.Comment.ListByPost)
-			c.Post("/", h.Comment.Create)
-			c.Delete("/{id}", h.Comment.Delete)
+			c.Post("/", middleware.RequirePermission(model.PermCommentCreate), h.Comment.Create)
+			c.Delete("/{id}", middleware.RequirePermission(model.PermCommentDelete), h.Comment.Delete)
 		})
+
+		p.PartyFunc("/{postId}/like", func(l iris.Party) {
+			l.Post("/", h.Like.TogglePostLike)
+			l.Get("/", h.Like.GetPostLikeStatus)
+		})
+
+		p.Post("/{postId}/favorite", h.Favorite.Toggle)
+		p.Get("/{postId}/favorite", h.Favorite.GetStatus)
+	})
+
+	protected.PartyFunc("/favorites", func(f iris.Party) {
+		f.Get("/", h.Favorite.ListByUser)
+	})
+
+	protected.PartyFunc("/comments/{commentId}", func(c iris.Party) {
+		c.Post("/like", h.Like.ToggleCommentLike)
+		c.Get("/like", h.Like.GetCommentLikeStatus)
+	})
+
+	protected.PartyFunc("/users/{userId}", func(u iris.Party) {
+		u.Post("/follow", h.Follow.Follow)
+		u.Delete("/follow", h.Follow.Unfollow)
+		u.Get("/follow", h.Follow.GetStatus)
+		u.Get("/followers", h.Follow.GetFollowers)
+		u.Get("/following", h.Follow.GetFollowing)
+		u.Get("/counts", h.Follow.GetCounts)
 	})
 }

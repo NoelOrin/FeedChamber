@@ -10,9 +10,14 @@ import (
 	"orinforum/internal/model"
 	"orinforum/internal/repository"
 	"orinforum/internal/router"
+	"orinforum/internal/service"
 	"time"
 
+	_ "orinforum/docs"
+
 	"github.com/google/uuid"
+	irisSwagger "github.com/iris-contrib/swagger"
+	"github.com/iris-contrib/swagger/swaggerFiles"
 	"github.com/joho/godotenv"
 	"github.com/kataras/iris/v12"
 	"github.com/sirupsen/logrus"
@@ -43,12 +48,21 @@ func Start(env Env) {
 		&model.Post{},
 		&model.Category{},
 		&model.Comment{},
+		&model.Permission{},
+		&model.RolePermission{},
+		&model.Tag{},
+		&model.PostTag{},
+		&model.PostLike{},
+		&model.CommentLike{},
+		&model.PostFavorite{},
+		&model.UserFollow{},
 	); err != nil {
 		logrus.Warnf("AutoMigrate: %v", err)
 	}
 
 	seedRoles(store)
 	seedAdmin(store)
+	seedPermissions(store)
 
 	app := iris.New()
 
@@ -58,6 +72,14 @@ func Start(env Env) {
 
 	app.Use(middleware.CORS())
 	app.Use(middleware.Logger())
+
+	// Swagger UI
+	swaggerUI := irisSwagger.Handler(swaggerFiles.Handler,
+		irisSwagger.URL("/swagger/doc.json"),
+		irisSwagger.DeepLinking(true),
+		irisSwagger.Prefix("/swagger"),
+	)
+	app.Get("/swagger/{any:path}", swaggerUI)
 
 	h := handler.New(store, cfg)
 	router.Register(app, h)
@@ -119,4 +141,34 @@ func seedAdmin(store db.Store) {
 	}
 	_ = userRepo.Create(ctx, admin)
 	logrus.Info("default admin created (admin / admin123)")
+}
+
+func seedPermissions(store db.Store) {
+	permRepo := repository.NewPermissionRepository(store)
+	ctx := context.Background()
+
+	// Seed permission definitions
+	for _, perm := range model.DefaultPermissions {
+		p := perm
+		_ = permRepo.CreateIfNotExists(ctx, &p)
+	}
+	logrus.Infof("seeded %d permissions", len(model.DefaultPermissions))
+
+	// Seed default role-permission mappings
+	for roleName, codes := range model.DefaultRolePermissions {
+		if err := permRepo.SyncRolePermissions(ctx, roleName, codes); err != nil {
+			logrus.Warnf("sync role permissions for %s: %v", roleName, err)
+		}
+	}
+	logrus.Info("seeded default role-permission mappings")
+
+	// Build permission service and load cache
+	permSvc := service.NewPermissionService(permRepo)
+	if err := permSvc.LoadCache(ctx); err != nil {
+		logrus.Warnf("load permission cache: %v", err)
+	}
+	logrus.Info("permission cache loaded")
+
+	// Inject permission checker into middleware
+	middleware.SetPermissionChecker(permSvc)
 }

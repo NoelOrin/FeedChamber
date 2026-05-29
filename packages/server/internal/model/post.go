@@ -31,3 +31,21 @@ type Comment struct {
 	CreatedAt time.Time `bson:"created_at"`
 	UpdatedAt time.Time `bson:"updated_at"`
 }
+
+// PostListItem 帖子列表项（含关联信息）
+type PostListItem struct {
+	ID           string    `json:"id"`
+	Title        string    `json:"title"`
+	Content      string    `json:"content"`
+	AuthorID     string    `json:"authorId"`
+	AuthorName   string    `json:"authorName"`
+	AuthorAvatar string    `json:"authorAvatar"`
+	CategoryID   string    `json:"categoryId"`
+	CategoryName string    `json:"categoryName"`
+	Pinned       bool      `json:"pinned"`
+	Locked       bool      `json:"locked"`
+	ViewCount    int64     `json:"viewCount"`
+	CommentCount int64     `json:"commentCount"`
+	CreatedAt    time.Time `json:"createdAt"`
+	UpdatedAt    time.Time `json:"updatedAt"`
+}

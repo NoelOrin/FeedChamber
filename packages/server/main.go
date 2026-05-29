@@ -1,5 +1,15 @@
 package main
 
+// @title           OrinForum API
+// @version         1.0
+// @description     OrinForum 社区论坛 API 文档
+// @host            localhost:8080
+// @BasePath        /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter "Bearer {token}" to authenticate
+
 import (
 	"fmt"
 	"orinforum/cmd"

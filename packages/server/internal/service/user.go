@@ -16,6 +16,7 @@ type UserService interface {
 	GetByUUID(ctx context.Context, uuid string) (*model.User, error)
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
 	List(ctx context.Context, page, pageSize int) ([]model.User, error)
+	UpdateProfile(ctx context.Context, uuid string, username, avatar, bio *string) error
 	UpdateRole(ctx context.Context, id, role string) error
 	Delete(ctx context.Context, id string) error
 }
@@ -79,6 +80,33 @@ func (s *userService) List(ctx context.Context, page, pageSize int) ([]model.Use
 		users[i].Password = ""
 	}
 	return users, nil
+}
+
+func (s *userService) UpdateProfile(ctx context.Context, uuid string, username, avatar, bio *string) error {
+	user, err := s.userRepo.FindByUUID(ctx, uuid)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return pkg.NewAppError(pkg.NOT_FOUND, "user not found")
+		}
+		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	if username != nil && *username != user.Username {
+		existing, _ := s.userRepo.FindByUsername(ctx, *username)
+		if existing != nil {
+			return pkg.NewAppError(pkg.USERNAME_EXISTS)
+		}
+		user.Username = *username
+	}
+	if avatar != nil {
+		user.Avatar = *avatar
+	}
+	if bio != nil {
+		user.Bio = *bio
+	}
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	return nil
 }
 
 func (s *userService) UpdateRole(ctx context.Context, id, role string) error {

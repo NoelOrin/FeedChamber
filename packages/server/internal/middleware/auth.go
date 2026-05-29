@@ -9,6 +9,18 @@ import (
 	"github.com/kataras/iris/v12"
 )
 
+// permissionChecker 抽象权限查询，便于测试和解耦。
+type permissionChecker interface {
+	HasPermission(roleName, permCode string) bool
+}
+
+var permChecker permissionChecker
+
+// SetPermissionChecker 注入权限查询实现（启动时调用）。
+func SetPermissionChecker(c permissionChecker) {
+	permChecker = c
+}
+
 func JWTAuth() iris.Handler {
 	return func(ctx iris.Context) {
 		auth := ctx.GetHeader("Authorization")
@@ -53,6 +65,45 @@ func RequireRole(roles ...string) iris.Handler {
 				ctx.Next()
 				return
 			}
+		}
+		pkg.Fail(ctx, pkg.FORBIDDEN)
+		ctx.StopExecution()
+	}
+}
+
+// RequirePermission 基于权限码的鉴权，替代硬编码角色名。
+func RequirePermission(permCode string) iris.Handler {
+	return func(ctx iris.Context) {
+		role := ctx.Values().GetString("user_role")
+		if role == "" {
+			pkg.Fail(ctx, pkg.TOKEN_NOT_EXIST)
+			ctx.StopExecution()
+			return
+		}
+		if permChecker == nil || !permChecker.HasPermission(role, permCode) {
+			pkg.Fail(ctx, pkg.FORBIDDEN)
+			ctx.StopExecution()
+			return
+		}
+		ctx.Next()
+	}
+}
+
+// RequireOwnerOrPermission 资源归属校验：拥有资源归属 或 拥有指定权限码 即可放行。
+func RequireOwnerOrPermission(ownerContextKey, permCode string) iris.Handler {
+	return func(ctx iris.Context) {
+		// 先尝试权限码放行
+		role := ctx.Values().GetString("user_role")
+		if permChecker != nil && permChecker.HasPermission(role, permCode) {
+			ctx.Next()
+			return
+		}
+		// 再尝试归属放行
+		owner := ctx.Values().GetString(ownerContextKey)
+		username := ctx.Values().GetString("username")
+		if owner != "" && username != "" && owner == username {
+			ctx.Next()
+			return
 		}
 		pkg.Fail(ctx, pkg.FORBIDDEN)
 		ctx.StopExecution()

@@ -10,11 +10,12 @@ import (
 )
 
 type PostService interface {
-	List(ctx context.Context, page, pageSize int) ([]model.Post, error)
-	GetByID(ctx context.Context, id string) (*model.Post, error)
+	List(ctx context.Context, page, pageSize int) ([]model.PostListItem, error)
+	GetByID(ctx context.Context, id string) (*model.PostListItem, error)
 	Create(ctx context.Context, authorID, title, content, categoryID string) (*model.Post, error)
 	Update(ctx context.Context, id, title, content string) (*model.Post, error)
 	Delete(ctx context.Context, id string) error
+	Search(ctx context.Context, keyword string, page, pageSize int) ([]model.PostListItem, error)
 }
 
 type postService struct {
@@ -25,12 +26,18 @@ func NewPostService(posts repository.PostRepository) PostService {
 	return &postService{posts: posts}
 }
 
-func (s *postService) List(ctx context.Context, page, pageSize int) ([]model.Post, error) {
-	return s.posts.List(ctx, (page-1)*pageSize, pageSize)
+func (s *postService) List(ctx context.Context, page, pageSize int) ([]model.PostListItem, error) {
+	return s.posts.ListWithDetails(ctx, (page-1)*pageSize, pageSize)
 }
 
-func (s *postService) GetByID(ctx context.Context, id string) (*model.Post, error) {
-	return s.posts.FindByID(ctx, id)
+func (s *postService) GetByID(ctx context.Context, id string) (*model.PostListItem, error) {
+	item, err := s.posts.FindByIDWithDetails(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	// Best-effort view count increment
+	_ = s.posts.IncrementViewCount(ctx, id)
+	return item, nil
 }
 
 func (s *postService) Create(ctx context.Context, authorID, title, content, categoryID string) (*model.Post, error) {
@@ -59,6 +66,10 @@ func (s *postService) Update(ctx context.Context, id, title, content string) (*m
 
 func (s *postService) Delete(ctx context.Context, id string) error {
 	return s.posts.Delete(ctx, id)
+}
+
+func (s *postService) Search(ctx context.Context, keyword string, page, pageSize int) ([]model.PostListItem, error) {
+	return s.posts.Search(ctx, keyword, (page-1)*pageSize, pageSize)
 }
 
 type CategoryService interface {

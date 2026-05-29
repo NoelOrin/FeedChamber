@@ -14,6 +14,7 @@ type User struct {
 	Email     string    `gorm:"uniqueIndex;not null" bson:"email"`
 	Password  string    `json:"-" bson:"password"`
 	Avatar    string    `bson:"avatar"`
+	Bio       string    `gorm:"size:500" bson:"bio"`
 	Role      string    `gorm:"default:user" bson:"role"`
 	CreatedAt time.Time `bson:"created_at"`
 	UpdatedAt time.Time `bson:"updated_at"`
