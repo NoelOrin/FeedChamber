@@ -29,7 +29,7 @@ Thumbs.db
 *.swp
 
 # Test logs
-agent_test_logs/
+# agent_test_logs/
 
 # File uploads
 uploads/

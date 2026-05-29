@@ -96,7 +96,7 @@ func (h *commentHandler) Update(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	c, err := h.svc.Update(ctx.Request().Context(), ctx.Params().Get("id"), body.Content)
+	c, err := h.svc.Update(ctx.Request().Context(), ctx.Params().Get("postId"), ctx.Params().Get("id"), body.Content)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

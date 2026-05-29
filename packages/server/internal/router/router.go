@@ -74,6 +74,9 @@ func Register(app *iris.Application, h *handler.Handler) {
 		p.Put("/{id}", middleware.RequirePermission(model.PermPostUpdate), h.Post.Update)
 		p.Delete("/{id}", middleware.RequirePermission(model.PermPostDelete), h.Post.Delete)
 
+		p.Put("/{id}/pin", middleware.RequirePermission(model.PermPostPin), h.Post.TogglePin)
+		p.Put("/{id}/lock", middleware.RequirePermission(model.PermPostLock), h.Post.ToggleLock)
+
 		p.Get("/{postId}/tags", h.Tag.GetPostTags)
 		p.Post("/{postId}/tags", middleware.RequirePermission(model.PermPostCreate), h.Tag.SetPostTags)
 

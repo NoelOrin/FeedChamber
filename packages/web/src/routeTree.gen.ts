@@ -10,33 +10,115 @@
 
 import { Route as rootRouteImport } from './pages/__root'
 import { Route as IndexRouteImport } from './pages/index'
+import { Route as backendDashboardRouteRouteImport } from './pages/(backend)/dashboard/route'
+import { Route as authOauthRouteRouteImport } from './pages/(auth)/oauth/route'
+import { Route as authLoginRouteRouteImport } from './pages/(auth)/login/route'
+import { Route as appTimelineRouteRouteImport } from './pages/(app)/timeline/route'
+import { Route as appHomeRouteRouteImport } from './pages/(app)/home/route'
+import { Route as appCategoryRouteRouteImport } from './pages/(app)/category/route'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const backendDashboardRouteRoute = backendDashboardRouteRouteImport.update({
+  id: '/(backend)/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authOauthRouteRoute = authOauthRouteRouteImport.update({
+  id: '/(auth)/oauth',
+  path: '/oauth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authLoginRouteRoute = authLoginRouteRouteImport.update({
+  id: '/(auth)/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const appTimelineRouteRoute = appTimelineRouteRouteImport.update({
+  id: '/(app)/timeline',
+  path: '/timeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const appHomeRouteRoute = appHomeRouteRouteImport.update({
+  id: '/(app)/home',
+  path: '/home',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const appCategoryRouteRoute = appCategoryRouteRouteImport.update({
+  id: '/(app)/category',
+  path: '/category',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/category': typeof appCategoryRouteRoute
+  '/home': typeof appHomeRouteRoute
+  '/timeline': typeof appTimelineRouteRoute
+  '/login': typeof authLoginRouteRoute
+  '/oauth': typeof authOauthRouteRoute
+  '/dashboard': typeof backendDashboardRouteRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/category': typeof appCategoryRouteRoute
+  '/home': typeof appHomeRouteRoute
+  '/timeline': typeof appTimelineRouteRoute
+  '/login': typeof authLoginRouteRoute
+  '/oauth': typeof authOauthRouteRoute
+  '/dashboard': typeof backendDashboardRouteRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/(app)/category': typeof appCategoryRouteRoute
+  '/(app)/home': typeof appHomeRouteRoute
+  '/(app)/timeline': typeof appTimelineRouteRoute
+  '/(auth)/login': typeof authLoginRouteRoute
+  '/(auth)/oauth': typeof authOauthRouteRoute
+  '/(backend)/dashboard': typeof backendDashboardRouteRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/category'
+    | '/home'
+    | '/timeline'
+    | '/login'
+    | '/oauth'
+    | '/dashboard'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/category'
+    | '/home'
+    | '/timeline'
+    | '/login'
+    | '/oauth'
+    | '/dashboard'
+  id:
+    | '__root__'
+    | '/'
+    | '/(app)/category'
+    | '/(app)/home'
+    | '/(app)/timeline'
+    | '/(auth)/login'
+    | '/(auth)/oauth'
+    | '/(backend)/dashboard'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  appCategoryRouteRoute: typeof appCategoryRouteRoute
+  appHomeRouteRoute: typeof appHomeRouteRoute
+  appTimelineRouteRoute: typeof appTimelineRouteRoute
+  authLoginRouteRoute: typeof authLoginRouteRoute
+  authOauthRouteRoute: typeof authOauthRouteRoute
+  backendDashboardRouteRoute: typeof backendDashboardRouteRoute
 }
 
 declare module '@tanstack/solid-router' {
@@ -48,11 +130,59 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(backend)/dashboard': {
+      id: '/(backend)/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof backendDashboardRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(auth)/oauth': {
+      id: '/(auth)/oauth'
+      path: '/oauth'
+      fullPath: '/oauth'
+      preLoaderRoute: typeof authOauthRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(auth)/login': {
+      id: '/(auth)/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof authLoginRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(app)/timeline': {
+      id: '/(app)/timeline'
+      path: '/timeline'
+      fullPath: '/timeline'
+      preLoaderRoute: typeof appTimelineRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(app)/home': {
+      id: '/(app)/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof appHomeRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(app)/category': {
+      id: '/(app)/category'
+      path: '/category'
+      fullPath: '/category'
+      preLoaderRoute: typeof appCategoryRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  appCategoryRouteRoute: appCategoryRouteRoute,
+  appHomeRouteRoute: appHomeRouteRoute,
+  appTimelineRouteRoute: appTimelineRouteRoute,
+  authLoginRouteRoute: authLoginRouteRoute,
+  authOauthRouteRoute: authOauthRouteRoute,
+  backendDashboardRouteRoute: backendDashboardRouteRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -2,11 +2,14 @@ package service
 
 import (
 	"context"
+	"errors"
 	"orinforum/internal/model"
+	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type PostService interface {
@@ -77,7 +80,10 @@ func (s *postService) Search(ctx context.Context, keyword string, page, pageSize
 func (s *postService) TogglePin(ctx context.Context, id string) (*model.Post, error) {
 	post, err := s.posts.FindByID(ctx, id)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "post not found")
+		}
+		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
 	post.Pinned = !post.Pinned
 	post.UpdatedAt = time.Now()
@@ -87,7 +93,10 @@ func (s *postService) TogglePin(ctx context.Context, id string) (*model.Post, er
 func (s *postService) ToggleLock(ctx context.Context, id string) (*model.Post, error) {
 	post, err := s.posts.FindByID(ctx, id)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "post not found")
+		}
+		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
 	post.Locked = !post.Locked
 	post.UpdatedAt = time.Now()
@@ -129,7 +138,7 @@ func (s *categoryService) Delete(ctx context.Context, id string) error {
 type CommentService interface {
 	ListByPost(ctx context.Context, postID string) ([]model.Comment, error)
 	Create(ctx context.Context, postID, authorID, content, parentID string) (*model.Comment, error)
-	Update(ctx context.Context, id, content string) (*model.Comment, error)
+	Update(ctx context.Context, postID, id, content string) (*model.Comment, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -158,10 +167,16 @@ func (s *commentService) Create(ctx context.Context, postID, authorID, content, 
 	return c, s.repo.Create(ctx, c)
 }
 
-func (s *commentService) Update(ctx context.Context, id, content string) (*model.Comment, error) {
+func (s *commentService) Update(ctx context.Context, postID, id, content string) (*model.Comment, error) {
 	c, err := s.repo.FindByID(ctx, id)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "comment not found")
+		}
+		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	if c.PostID != postID {
+		return nil, pkg.NewAppError(pkg.NOT_FOUND, "comment not found in this post")
 	}
 	c.Content = content
 	c.UpdatedAt = time.Now()
