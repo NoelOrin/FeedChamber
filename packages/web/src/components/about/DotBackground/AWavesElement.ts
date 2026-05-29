@@ -97,7 +97,7 @@ class AWavesElement extends HTMLElement {
     this.addEventListener('mousemove', this.boundMouseMove)
     this.addEventListener('mouseleave', this.boundMouseLeave)
 
-    this.animate()
+    this.startAnimation()
   }
 
   disconnectedCallback() {
@@ -113,7 +113,7 @@ class AWavesElement extends HTMLElement {
     }
   }
 
-  private animate = () => {
+  private startAnimation = () => {
     if (!this.svg) return
 
     const rect = this.getBoundingClientRect()
@@ -125,7 +125,7 @@ class AWavesElement extends HTMLElement {
       updateDot(this.dots[i], i, totalDots, width, height, this.mouseX, this.mouseY)
     }
 
-    this.animationId = requestAnimationFrame(this.animate)
+    this.animationId = requestAnimationFrame(this.startAnimation)
   }
 }
 
@@ -133,3 +133,5 @@ if (!definedTagNames.has(tagName)) {
   customElements.define(tagName, AWavesElement)
   definedTagNames.add(tagName)
 }
+
+export {}
