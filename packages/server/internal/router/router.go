@@ -80,16 +80,11 @@ func Register(app *iris.Application, h *handler.Handler) {
 		p.Get("/{postId}/tags", h.Tag.GetPostTags)
 		p.Post("/{postId}/tags", middleware.RequirePermission(model.PermPostCreate), h.Tag.SetPostTags)
 
-		p.PartyFunc("/{postId}/comments", func(c iris.Party) {
-			c.Get("/", h.Comment.ListByPost)
-			c.Post("/", middleware.RequirePermission(model.PermCommentCreate), h.Comment.Create)
-			c.Put("/{id}", middleware.RequirePermission(model.PermCommentCreate), h.Comment.Update)
-			c.Delete("/{id}", middleware.RequirePermission(model.PermCommentDelete), h.Comment.Delete)
-		})
-
-		p.PartyFunc("/{postId}/like", func(l iris.Party) {
-			l.Post("/", h.Like.TogglePostLike)
-			l.Get("/", h.Like.GetPostLikeStatus)
+		p.PartyFunc("/{postId}/contents", func(c iris.Party) {
+			c.Get("/", h.Content.ListByPost)
+			c.Post("/", middleware.RequirePermission(model.PermCommentCreate), h.Content.Create)
+			c.Put("/{id}", middleware.RequirePermission(model.PermCommentCreate), h.Content.Update)
+			c.Delete("/{id}", middleware.RequirePermission(model.PermCommentDelete), h.Content.Delete)
 		})
 
 		p.Post("/{postId}/favorite", h.Favorite.Toggle)
@@ -100,9 +95,10 @@ func Register(app *iris.Application, h *handler.Handler) {
 		f.Get("/", h.Favorite.ListByUser)
 	})
 
-	protected.PartyFunc("/comments/{commentId}", func(c iris.Party) {
-		c.Post("/like", h.Like.ToggleCommentLike)
-		c.Get("/like", h.Like.GetCommentLikeStatus)
+	protected.PartyFunc("/contents/{contentId}", func(c iris.Party) {
+		c.Post("/like", h.Like.ToggleContentLike)
+		c.Get("/like", h.Like.GetContentLikeStatus)
+		c.Get("/replies", h.Content.ListReplies)
 	})
 
 	protected.PartyFunc("/users/{userId}", func(u iris.Party) {

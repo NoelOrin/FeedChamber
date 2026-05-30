@@ -6,7 +6,9 @@ import (
 	"orinforum/internal/db"
 	"orinforum/internal/model"
 	"regexp"
+	"time"
 
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"gorm.io/gorm"
@@ -19,6 +21,8 @@ type PostRepository interface {
 	Update(ctx context.Context, post *model.Post) error
 	Delete(ctx context.Context, id string) error
 	IncrementViewCount(ctx context.Context, id string) error
+	IncrementCommentCount(ctx context.Context, id string) error
+	DecrementCommentCount(ctx context.Context, id string) error
 	ListWithDetails(ctx context.Context, offset, limit int) ([]model.PostListItem, error)
 	FindByIDWithDetails(ctx context.Context, id string) (*model.PostListItem, error)
 	Search(ctx context.Context, keyword string, offset, limit int) ([]model.PostListItem, error)
@@ -62,16 +66,27 @@ func (r *sqlPostRepo) IncrementViewCount(ctx context.Context, id string) error {
 		UpdateColumn("view_count", gorm.Expr("view_count + 1")).Error
 }
 
+func (r *sqlPostRepo) IncrementCommentCount(ctx context.Context, id string) error {
+	return r.db.DB().WithContext(ctx).Model(&model.Post{}).Where("id = ?", id).
+		UpdateColumn("comment_count", gorm.Expr("comment_count + 1")).Error
+}
+
+func (r *sqlPostRepo) DecrementCommentCount(ctx context.Context, id string) error {
+	return r.db.DB().WithContext(ctx).Model(&model.Post{}).Where("id = ? AND comment_count > 0", id).
+		UpdateColumn("comment_count", gorm.Expr("comment_count - 1")).Error
+}
+
 func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int) ([]model.PostListItem, error) {
 	var items []model.PostListItem
 	err := r.db.DB().WithContext(ctx).Raw(`
-		SELECT p.id, p.title, p.content, p.author_id, u.username AS author_name, u.avatar AS author_avatar,
-		       p.category_id, c.name AS category_name, p.pinned, p.locked, p.view_count,
-		       (SELECT COUNT(*) FROM comments WHERE post_id = p.id) AS comment_count,
+		SELECT p.id, p.title, p.content_digest, p.author_id, u.username AS author_name, u.avatar AS author_avatar,
+		       p.category_id, c.name AS category_name, p.status, p.pinned, p.locked, p.view_count,
+		       p.comment_count, p.like_count, p.favorite_count,
 		       p.created_at, p.updated_at
 		FROM posts p
 		LEFT JOIN users u ON p.author_id = u.id
 		LEFT JOIN categories c ON p.category_id = c.id
+		WHERE p.deleted_at IS NULL
 		ORDER BY p.created_at DESC
 		LIMIT ? OFFSET ?
 	`, limit, offset).Scan(&items).Error
@@ -81,14 +96,14 @@ func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int) ([
 func (r *sqlPostRepo) FindByIDWithDetails(ctx context.Context, id string) (*model.PostListItem, error) {
 	var item model.PostListItem
 	err := r.db.DB().WithContext(ctx).Raw(`
-		SELECT p.id, p.title, p.content, p.author_id, u.username AS author_name, u.avatar AS author_avatar,
-		       p.category_id, c.name AS category_name, p.pinned, p.locked, p.view_count,
-		       (SELECT COUNT(*) FROM comments WHERE post_id = p.id) AS comment_count,
+		SELECT p.id, p.title, p.content_digest, p.author_id, u.username AS author_name, u.avatar AS author_avatar,
+		       p.category_id, c.name AS category_name, p.status, p.pinned, p.locked, p.view_count,
+		       p.comment_count, p.like_count, p.favorite_count,
 		       p.created_at, p.updated_at
 		FROM posts p
 		LEFT JOIN users u ON p.author_id = u.id
 		LEFT JOIN categories c ON p.category_id = c.id
-		WHERE p.id = ?
+		WHERE p.id = ? AND p.deleted_at IS NULL
 	`, id).Scan(&item).Error
 	if err != nil {
 		return nil, err
@@ -100,14 +115,14 @@ func (r *sqlPostRepo) Search(ctx context.Context, keyword string, offset, limit 
 	var items []model.PostListItem
 	like := "%" + keyword + "%"
 	err := r.db.DB().WithContext(ctx).Raw(`
-		SELECT p.id, p.title, p.content, p.author_id, u.username AS author_name, u.avatar AS author_avatar,
-		       p.category_id, c.name AS category_name, p.pinned, p.locked, p.view_count,
-		       (SELECT COUNT(*) FROM comments WHERE post_id = p.id) AS comment_count,
+		SELECT p.id, p.title, p.content_digest, p.author_id, u.username AS author_name, u.avatar AS author_avatar,
+		       p.category_id, c.name AS category_name, p.status, p.pinned, p.locked, p.view_count,
+		       p.comment_count, p.like_count, p.favorite_count,
 		       p.created_at, p.updated_at
 		FROM posts p
 		LEFT JOIN users u ON p.author_id = u.id
 		LEFT JOIN categories c ON p.category_id = c.id
-		WHERE p.title LIKE ? OR p.content LIKE ?
+		WHERE p.deleted_at IS NULL AND (p.title LIKE ? OR p.content_digest LIKE ?)
 		ORDER BY p.created_at DESC
 		LIMIT ? OFFSET ?
 	`, like, like, limit, offset).Scan(&items).Error
@@ -153,25 +168,30 @@ func (r *mongoPostRepo) IncrementViewCount(ctx context.Context, id string) error
 	return err
 }
 
-// assemblePostItems enriches raw posts with author, category, and comment count data.
+func (r *mongoPostRepo) IncrementCommentCount(ctx context.Context, id string) error {
+	_, err := r.store.Collection("posts").UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$inc": bson.M{"comment_count": 1}})
+	return err
+}
+
+func (r *mongoPostRepo) DecrementCommentCount(ctx context.Context, id string) error {
+	_, err := r.store.Collection("posts").UpdateOne(ctx, bson.M{"_id": id, "comment_count": bson.M{"$gt": 0}}, bson.M{"$inc": bson.M{"comment_count": -1}})
+	return err
+}
+
 func (r *mongoPostRepo) assemblePostItems(ctx context.Context, posts []model.Post) ([]model.PostListItem, error) {
 	if len(posts) == 0 {
 		return []model.PostListItem{}, nil
 	}
 
-	// Collect unique author and category IDs
 	authorIDs := make(map[string]struct{})
 	categoryIDs := make(map[string]struct{})
-	postIDs := make([]string, len(posts))
-	for i, p := range posts {
-		postIDs[i] = p.ID
+	for _, p := range posts {
 		authorIDs[p.AuthorID] = struct{}{}
 		if p.CategoryID != "" {
 			categoryIDs[p.CategoryID] = struct{}{}
 		}
 	}
 
-	// Lookup authors
 	authorMap := make(map[string]struct{ Name, Avatar string })
 	aIDs := make([]string, 0, len(authorIDs))
 	for id := range authorIDs {
@@ -193,7 +213,6 @@ func (r *mongoPostRepo) assemblePostItems(ctx context.Context, posts []model.Pos
 		authorMap[u.ID] = struct{ Name, Avatar string }{Name: u.Username, Avatar: u.Avatar}
 	}
 
-	// Lookup categories
 	categoryMap := make(map[string]string)
 	cIDs := make([]string, 0, len(categoryIDs))
 	for id := range categoryIDs {
@@ -216,45 +235,27 @@ func (r *mongoPostRepo) assemblePostItems(ctx context.Context, posts []model.Pos
 		}
 	}
 
-	// Count comments per post using aggregation
-	commentCounts := make(map[string]int64)
-	cursor, err = r.store.Collection("comments").Aggregate(ctx, bson.A{
-		bson.M{"$match": bson.M{"post_id": bson.M{"$in": postIDs}}},
-		bson.M{"$group": bson.M{"_id": "$post_id", "count": bson.M{"$sum": 1}}},
-	})
-	if err != nil {
-		return nil, err
-	}
-	var countResults []struct {
-		ID    string `bson:"_id"`
-		Count int64  `bson:"count"`
-	}
-	if err := cursor.All(ctx, &countResults); err != nil {
-		return nil, err
-	}
-	for _, cr := range countResults {
-		commentCounts[cr.ID] = cr.Count
-	}
-
-	// Assemble PostListItem
 	items := make([]model.PostListItem, len(posts))
 	for i, p := range posts {
 		author := authorMap[p.AuthorID]
 		items[i] = model.PostListItem{
-			ID:           p.ID,
-			Title:        p.Title,
-			Content:      p.Content,
-			AuthorID:     p.AuthorID,
-			AuthorName:   author.Name,
-			AuthorAvatar: author.Avatar,
-			CategoryID:   p.CategoryID,
-			CategoryName: categoryMap[p.CategoryID],
-			Pinned:       p.Pinned,
-			Locked:       p.Locked,
-			ViewCount:    p.ViewCount,
-			CommentCount: commentCounts[p.ID],
-			CreatedAt:    p.CreatedAt,
-			UpdatedAt:    p.UpdatedAt,
+			ID:            p.ID,
+			Title:         p.Title,
+			ContentDigest: p.ContentDigest,
+			AuthorID:      p.AuthorID,
+			AuthorName:    author.Name,
+			AuthorAvatar:  author.Avatar,
+			CategoryID:    p.CategoryID,
+			CategoryName:  categoryMap[p.CategoryID],
+			Status:        p.Status,
+			Pinned:        p.Pinned,
+			Locked:        p.Locked,
+			ViewCount:     p.ViewCount,
+			CommentCount:  p.CommentCount,
+			LikeCount:     p.LikeCount,
+			FavoriteCount: p.FavoriteCount,
+			CreatedAt:     p.CreatedAt,
+			UpdatedAt:     p.UpdatedAt,
 		}
 	}
 	return items, nil
@@ -292,7 +293,7 @@ func (r *mongoPostRepo) Search(ctx context.Context, keyword string, offset, limi
 	escaped := regexp.QuoteMeta(keyword)
 	filter := bson.M{"$or": bson.A{
 		bson.M{"title": bson.M{"$regex": escaped, "$options": "i"}},
-		bson.M{"content": bson.M{"$regex": escaped, "$options": "i"}},
+		bson.M{"content_digest": bson.M{"$regex": escaped, "$options": "i"}},
 	}}
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
 	cursor, err := r.store.Collection("posts").Find(ctx, filter, opts)
@@ -359,78 +360,151 @@ func (r *mongoCategoryRepo) Delete(ctx context.Context, id string) error {
 	return err
 }
 
-// ── Comment ──────────────────────────────────────────────────────────────────
+// ── Content ──────────────────────────────────────────────────────────────────
 
-type CommentRepository interface {
-	ListByPost(ctx context.Context, postID string) ([]model.Comment, error)
-	FindByID(ctx context.Context, id string) (*model.Comment, error)
-	Create(ctx context.Context, c *model.Comment) error
-	Update(ctx context.Context, c *model.Comment) error
+type ContentRepository interface {
+	ListByRoot(ctx context.Context, rootID string) ([]model.Content, error)
+	ListByParent(ctx context.Context, parentID string) ([]model.Content, error)
+	FindByID(ctx context.Context, id string) (*model.Content, error)
+	Create(ctx context.Context, c *model.Content) error
+	Update(ctx context.Context, c *model.Content) error
 	Delete(ctx context.Context, id string) error
 }
 
-func NewCommentRepository(store db.Store) CommentRepository {
+func NewContentRepository(store db.Store) ContentRepository {
 	if store.SQL() != nil {
-		return &sqlCommentRepo{db: store.SQL()}
+		return &sqlContentRepo{db: store.SQL()}
 	}
-	return &mongoCommentRepo{store: store.Mongo()}
+	return &mongoContentRepo{store: store.Mongo()}
 }
 
-type sqlCommentRepo struct{ db db.SQLStore }
+type sqlContentRepo struct{ db db.SQLStore }
 
-func (r *sqlCommentRepo) ListByPost(ctx context.Context, postID string) ([]model.Comment, error) {
-	var comments []model.Comment
-	err := r.db.DB().WithContext(ctx).Where("post_id = ?", postID).Order("created_at asc").Find(&comments).Error
-	return comments, err
+func (r *sqlContentRepo) ListByRoot(ctx context.Context, rootID string) ([]model.Content, error) {
+	var contents []model.Content
+	err := r.db.DB().WithContext(ctx).Where("root_id = ? AND id != root_id", rootID).Order("created_at asc").Find(&contents).Error
+	return contents, err
 }
 
-func (r *sqlCommentRepo) Create(ctx context.Context, c *model.Comment) error {
-	return r.db.DB().WithContext(ctx).Create(c).Error
+func (r *sqlContentRepo) ListByParent(ctx context.Context, parentID string) ([]model.Content, error) {
+	var contents []model.Content
+	err := r.db.DB().WithContext(ctx).Where("parent_id = ?", parentID).Order("created_at asc").Find(&contents).Error
+	return contents, err
 }
 
-func (r *sqlCommentRepo) FindByID(ctx context.Context, id string) (*model.Comment, error) {
-	var c model.Comment
+func (r *sqlContentRepo) FindByID(ctx context.Context, id string) (*model.Content, error) {
+	var c model.Content
 	err := r.db.DB().WithContext(ctx).First(&c, "id = ?", id).Error
 	return &c, err
 }
 
-func (r *sqlCommentRepo) Update(ctx context.Context, c *model.Comment) error {
+func (r *sqlContentRepo) Create(ctx context.Context, c *model.Content) error {
+	return r.db.DB().WithContext(ctx).Create(c).Error
+}
+
+func (r *sqlContentRepo) Update(ctx context.Context, c *model.Content) error {
 	return r.db.DB().WithContext(ctx).Save(c).Error
 }
 
-func (r *sqlCommentRepo) Delete(ctx context.Context, id string) error {
-	return r.db.DB().WithContext(ctx).Delete(&model.Comment{}, "id = ?", id).Error
+func (r *sqlContentRepo) Delete(ctx context.Context, id string) error {
+	return r.db.DB().WithContext(ctx).Delete(&model.Content{}, "id = ?", id).Error
 }
 
-type mongoCommentRepo struct{ store db.MongoStore }
+type mongoContentRepo struct{ store db.MongoStore }
 
-func (r *mongoCommentRepo) ListByPost(ctx context.Context, postID string) ([]model.Comment, error) {
-	cursor, err := r.store.Collection("comments").Find(ctx, bson.M{"post_id": postID})
+func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string) ([]model.Content, error) {
+	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"root_id": rootID, "_id": bson.M{"$ne": rootID}})
 	if err != nil {
 		return nil, err
 	}
-	var comments []model.Comment
-	err = cursor.All(ctx, &comments)
-	return comments, err
+	var contents []model.Content
+	err = cursor.All(ctx, &contents)
+	return contents, err
 }
 
-func (r *mongoCommentRepo) Create(ctx context.Context, c *model.Comment) error {
-	_, err := r.store.Collection("comments").InsertOne(ctx, c)
-	return err
+func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string) ([]model.Content, error) {
+	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"parent_id": parentID})
+	if err != nil {
+		return nil, err
+	}
+	var contents []model.Content
+	err = cursor.All(ctx, &contents)
+	return contents, err
 }
 
-func (r *mongoCommentRepo) FindByID(ctx context.Context, id string) (*model.Comment, error) {
-	var c model.Comment
-	err := r.store.Collection("comments").FindOne(ctx, bson.M{"_id": id}).Decode(&c)
+func (r *mongoContentRepo) FindByID(ctx context.Context, id string) (*model.Content, error) {
+	var c model.Content
+	err := r.store.Collection("contents").FindOne(ctx, bson.M{"_id": id}).Decode(&c)
 	return &c, err
 }
 
-func (r *mongoCommentRepo) Update(ctx context.Context, c *model.Comment) error {
-	_, err := r.store.Collection("comments").ReplaceOne(ctx, bson.M{"_id": c.ID}, c)
+func (r *mongoContentRepo) Create(ctx context.Context, c *model.Content) error {
+	_, err := r.store.Collection("contents").InsertOne(ctx, c)
 	return err
 }
 
-func (r *mongoCommentRepo) Delete(ctx context.Context, id string) error {
-	_, err := r.store.Collection("comments").DeleteOne(ctx, bson.M{"_id": id})
+func (r *mongoContentRepo) Update(ctx context.Context, c *model.Content) error {
+	_, err := r.store.Collection("contents").ReplaceOne(ctx, bson.M{"_id": c.ID}, c)
 	return err
+}
+
+func (r *mongoContentRepo) Delete(ctx context.Context, id string) error {
+	_, err := r.store.Collection("contents").DeleteOne(ctx, bson.M{"_id": id})
+	return err
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+
+func DigestBody(body string, maxLen int) string {
+	runes := []rune(body)
+	if len(runes) > maxLen {
+		return string(runes[:maxLen])
+	}
+	return body
+}
+
+// CreatePostWithContent is a helper to create post + content atomically.
+func CreatePostWithContent(ctx context.Context, store db.Store, authorID, title, body, categoryID string) (*model.Post, *model.Content, error) {
+	now := time.Now()
+	contentID := uuid.NewString()
+
+	content := &model.Content{
+		ID:        contentID,
+		AuthorID:  authorID,
+		Body:      body,
+		RootID:    contentID, // self-referencing for post body
+		ParentID:  "",
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+
+	post := &model.Post{
+		ID:            uuid.NewString(),
+		Title:         title,
+		ContentID:     contentID,
+		ContentDigest: DigestBody(body, 200),
+		AuthorID:      authorID,
+		CategoryID:    categoryID,
+		Status:        "approved",
+		CreatedAt:     now,
+		UpdatedAt:     now,
+	}
+
+	if store.SQL() != nil {
+		return post, content, store.SQL().DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+			if err := tx.Create(content).Error; err != nil {
+				return err
+			}
+			return tx.Create(post).Error
+		})
+	}
+
+	// MongoDB
+	if _, err := store.Mongo().Collection("contents").InsertOne(ctx, content); err != nil {
+		return nil, nil, err
+	}
+	if _, err := store.Mongo().Collection("posts").InsertOne(ctx, post); err != nil {
+		return nil, nil, err
+	}
+	return post, content, nil
 }

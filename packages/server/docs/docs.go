@@ -931,14 +931,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/comments/{commentId}/like": {
+        "/contents/{contentId}/like": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取当前用户对评论的点赞状态和总点赞数",
+                "description": "获取当前用户对内容的点赞状态和总点赞数",
                 "consumes": [
                     "application/json"
                 ],
@@ -948,12 +948,12 @@ const docTemplate = `{
                 "tags": [
                     "点赞"
                 ],
-                "summary": "获取评论点赞状态",
+                "summary": "获取内容点赞状态",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "评论 ID",
-                        "name": "commentId",
+                        "description": "内容 ID",
+                        "name": "contentId",
                         "in": "path",
                         "required": true
                     }
@@ -999,7 +999,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "切换评论的点赞状态",
+                "description": "切换内容的点赞状态（帖子正文或评论）",
                 "consumes": [
                     "application/json"
                 ],
@@ -1009,12 +1009,12 @@ const docTemplate = `{
                 "tags": [
                     "点赞"
                 ],
-                "summary": "评论点赞/取消点赞",
+                "summary": "内容点赞/取消点赞",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "评论 ID",
-                        "name": "commentId",
+                        "description": "内容 ID",
+                        "name": "contentId",
                         "in": "path",
                         "required": true
                     }
@@ -1047,6 +1047,57 @@ const docTemplate = `{
                         "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/contents/{id}/replies": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "获取指定内容的直接子回复",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "内容"
+                ],
+                "summary": "子回复列表",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "内容 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Content"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "error": {
+                                    "type": "string"
+                                }
+                            }
                         }
                     }
                 }
@@ -2131,14 +2182,14 @@ const docTemplate = `{
                 }
             }
         },
-        "/posts/{postId}/comments/": {
+        "/posts/{postId}/contents/": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "获取指定帖子的所有评论",
+                "description": "获取指定帖子下的所有评论（任意深度）",
                 "consumes": [
                     "application/json"
                 ],
@@ -2146,7 +2197,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "评论"
+                    "内容"
                 ],
                 "summary": "帖子评论列表",
                 "parameters": [
@@ -2164,7 +2215,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/model.Comment"
+                                "$ref": "#/definitions/model.Content"
                             }
                         }
                     },
@@ -2187,7 +2238,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "在指定帖子下创建评论，可选父评论 ID 实现嵌套回复",
+                "description": "在指定帖子下创建评论或回复",
                 "consumes": [
                     "application/json"
                 ],
@@ -2195,9 +2246,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "评论"
+                    "内容"
                 ],
-                "summary": "创建评论",
+                "summary": "创建评论/回复",
                 "parameters": [
                     {
                         "type": "string",
@@ -2207,14 +2258,14 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "评论内容",
+                        "description": "内容",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "content": {
+                                "body": {
                                     "type": "string"
                                 },
                                 "parentId": {
@@ -2228,7 +2279,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/model.Comment"
+                            "$ref": "#/definitions/model.Content"
                         }
                     },
                     "400": {
@@ -2252,29 +2303,18 @@ const docTemplate = `{
                                 }
                             }
                         }
-                    },
-                    "403": {
-                        "description": "Forbidden",
-                        "schema": {
-                            "type": "object",
-                            "properties": {
-                                "error": {
-                                    "type": "string"
-                                }
-                            }
-                        }
                     }
                 }
             }
         },
-        "/posts/{postId}/comments/{id}": {
+        "/posts/{postId}/contents/{id}": {
             "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "编辑指定评论的内容",
+                "description": "编辑指定内容",
                 "consumes": [
                     "application/json"
                 ],
@@ -2282,9 +2322,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "评论"
+                    "内容"
                 ],
-                "summary": "编辑评论",
+                "summary": "编辑内容",
                 "parameters": [
                     {
                         "type": "string",
@@ -2295,20 +2335,20 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "评论 ID",
+                        "description": "内容 ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "评论内容",
+                        "description": "内容",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "content": {
+                                "body": {
                                     "type": "string"
                                 }
                             }
@@ -2327,7 +2367,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "$ref": "#/definitions/model.Comment"
+                                            "$ref": "#/definitions/model.Content"
                                         }
                                     }
                                 }
@@ -2360,7 +2400,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "删除指定评论",
+                "description": "删除指定内容",
                 "consumes": [
                     "application/json"
                 ],
@@ -2368,9 +2408,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "评论"
+                    "内容"
                 ],
-                "summary": "删除评论",
+                "summary": "删除内容",
                 "parameters": [
                     {
                         "type": "string",
@@ -2381,7 +2421,7 @@ const docTemplate = `{
                     },
                     {
                         "type": "string",
-                        "description": "评论 ID",
+                        "description": "内容 ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -2527,127 +2567,6 @@ const docTemplate = `{
                                             "type": "object",
                                             "properties": {
                                                 "favorited": {
-                                                    "type": "boolean"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/pkg.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/posts/{postId}/like": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "获取当前用户对帖子的点赞状态和总点赞数",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "点赞"
-                ],
-                "summary": "获取帖子点赞状态",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "帖子 ID",
-                        "name": "postId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/pkg.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "count": {
-                                                    "type": "integer"
-                                                },
-                                                "liked": {
-                                                    "type": "boolean"
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "$ref": "#/definitions/pkg.Response"
-                        }
-                    }
-                }
-            },
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "切换帖子的点赞状态",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "点赞"
-                ],
-                "summary": "帖子点赞/取消点赞",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "帖子 ID",
-                        "name": "postId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/pkg.Response"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "object",
-                                            "properties": {
-                                                "liked": {
                                                     "type": "boolean"
                                                 }
                                             }
@@ -4531,25 +4450,33 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Comment": {
+        "model.Content": {
             "type": "object",
             "properties": {
                 "authorID": {
                     "type": "string"
                 },
-                "content": {
+                "body": {
                     "type": "string"
                 },
                 "createdAt": {
                     "type": "string"
                 },
+                "deletedAt": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
+                "likeCount": {
+                    "type": "integer"
+                },
                 "parentID": {
+                    "description": "direct parent content; empty for post body",
                     "type": "string"
                 },
-                "postID": {
+                "rootID": {
+                    "description": "points to post's content_id; self-referencing for post body",
                     "type": "string"
                 },
                 "updatedAt": {
@@ -4582,7 +4509,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "type": {
-                    "description": "\"comment\", \"like\", \"follow\", \"mention\"",
+                    "description": "\"reply\", \"like\", \"follow\", \"mention\"",
                     "type": "string"
                 },
                 "userID": {
@@ -4620,20 +4547,43 @@ const docTemplate = `{
                 "categoryID": {
                     "type": "string"
                 },
-                "content": {
+                "commentCount": {
+                    "description": "denormalized reply count",
+                    "type": "integer"
+                },
+                "contentDigest": {
+                    "description": "denormalized preview for list queries",
+                    "type": "string"
+                },
+                "contentID": {
+                    "description": "FK → contents.id (post body)",
                     "type": "string"
                 },
                 "createdAt": {
                     "type": "string"
                 },
+                "deletedAt": {
+                    "type": "string"
+                },
+                "favoriteCount": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "string"
+                },
+                "likeCount": {
+                    "description": "denormalized like count",
+                    "type": "integer"
                 },
                 "locked": {
                     "type": "boolean"
                 },
                 "pinned": {
                     "type": "boolean"
+                },
+                "status": {
+                    "description": "draft/pending/approved/rejected",
+                    "type": "string"
                 },
                 "title": {
                     "type": "string"
@@ -4667,20 +4617,29 @@ const docTemplate = `{
                 "commentCount": {
                     "type": "integer"
                 },
-                "content": {
+                "contentDigest": {
                     "type": "string"
                 },
                 "createdAt": {
                     "type": "string"
                 },
+                "favoriteCount": {
+                    "type": "integer"
+                },
                 "id": {
                     "type": "string"
+                },
+                "likeCount": {
+                    "type": "integer"
                 },
                 "locked": {
                     "type": "boolean"
                 },
                 "pinned": {
                     "type": "boolean"
+                },
+                "status": {
+                    "type": "string"
                 },
                 "title": {
                     "type": "string"

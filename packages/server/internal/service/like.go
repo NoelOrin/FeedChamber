@@ -6,12 +6,9 @@ import (
 )
 
 type LikeService interface {
-	TogglePostLike(ctx context.Context, postID, userID string) (bool, error)
-	ToggleCommentLike(ctx context.Context, commentID, userID string) (bool, error)
-	HasPostLiked(ctx context.Context, postID, userID string) (bool, error)
-	HasCommentLiked(ctx context.Context, commentID, userID string) (bool, error)
-	CountPostLikes(ctx context.Context, postID string) (int64, error)
-	CountCommentLikes(ctx context.Context, commentID string) (int64, error)
+	ToggleContentLike(ctx context.Context, contentID, userID string) (bool, error)
+	HasContentLiked(ctx context.Context, contentID, userID string) (bool, error)
+	CountContentLikes(ctx context.Context, contentID string) (int64, error)
 }
 
 type likeService struct {
@@ -22,26 +19,14 @@ func NewLikeService(repo repository.LikeRepository) LikeService {
 	return &likeService{repo: repo}
 }
 
-func (s *likeService) TogglePostLike(ctx context.Context, postID, userID string) (bool, error) {
-	return s.repo.TogglePostLike(ctx, postID, userID)
+func (s *likeService) ToggleContentLike(ctx context.Context, contentID, userID string) (bool, error) {
+	return s.repo.ToggleContentLike(ctx, contentID, userID)
 }
 
-func (s *likeService) ToggleCommentLike(ctx context.Context, commentID, userID string) (bool, error) {
-	return s.repo.ToggleCommentLike(ctx, commentID, userID)
+func (s *likeService) HasContentLiked(ctx context.Context, contentID, userID string) (bool, error) {
+	return s.repo.HasContentLiked(ctx, contentID, userID)
 }
 
-func (s *likeService) HasPostLiked(ctx context.Context, postID, userID string) (bool, error) {
-	return s.repo.HasPostLiked(ctx, postID, userID)
-}
-
-func (s *likeService) HasCommentLiked(ctx context.Context, commentID, userID string) (bool, error) {
-	return s.repo.HasCommentLiked(ctx, commentID, userID)
-}
-
-func (s *likeService) CountPostLikes(ctx context.Context, postID string) (int64, error) {
-	return s.repo.CountPostLikes(ctx, postID)
-}
-
-func (s *likeService) CountCommentLikes(ctx context.Context, commentID string) (int64, error) {
-	return s.repo.CountCommentLikes(ctx, commentID)
+func (s *likeService) CountContentLikes(ctx context.Context, contentID string) (int64, error) {
+	return s.repo.CountContentLikes(ctx, contentID)
 }

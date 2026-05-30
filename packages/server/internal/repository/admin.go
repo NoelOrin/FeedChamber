@@ -44,7 +44,7 @@ func (r *sqlAdminRepo) CountPosts(ctx context.Context) (int64, error) {
 
 func (r *sqlAdminRepo) CountComments(ctx context.Context) (int64, error) {
 	var count int64
-	err := r.db.DB().WithContext(ctx).Model(&model.Comment{}).Count(&count).Error
+	err := r.db.DB().WithContext(ctx).Model(&model.Content{}).Where("id != root_id").Count(&count).Error
 	return count, err
 }
 
@@ -73,8 +73,8 @@ func (r *sqlAdminRepo) CountTodayPosts(ctx context.Context) (int64, error) {
 func (r *sqlAdminRepo) CountTodayComments(ctx context.Context) (int64, error) {
 	var count int64
 	today := time.Now().Truncate(24 * time.Hour)
-	err := r.db.DB().WithContext(ctx).Model(&model.Comment{}).
-		Where("created_at >= ?", today).Count(&count).Error
+	err := r.db.DB().WithContext(ctx).Model(&model.Content{}).
+		Where("id != root_id AND created_at >= ?", today).Count(&count).Error
 	return count, err
 }
 
@@ -91,7 +91,7 @@ func (r *mongoAdminRepo) CountPosts(ctx context.Context) (int64, error) {
 }
 
 func (r *mongoAdminRepo) CountComments(ctx context.Context) (int64, error) {
-	return r.store.Collection("comments").CountDocuments(ctx, bson.M{})
+	return r.store.Collection("contents").CountDocuments(ctx, bson.M{"$expr": bson.M{"$ne": bson.A{"$_id", "$root_id"}}})
 }
 
 func (r *mongoAdminRepo) CountCategories(ctx context.Context) (int64, error) {
@@ -114,7 +114,8 @@ func (r *mongoAdminRepo) CountTodayPosts(ctx context.Context) (int64, error) {
 
 func (r *mongoAdminRepo) CountTodayComments(ctx context.Context) (int64, error) {
 	today := time.Now().Truncate(24 * time.Hour)
-	return r.store.Collection("comments").CountDocuments(ctx, bson.M{
+	return r.store.Collection("contents").CountDocuments(ctx, bson.M{
+		"$expr": bson.M{"$ne": bson.A{"$_id", "$root_id"}},
 		"created_at": bson.M{"$gte": today},
 	})
 }

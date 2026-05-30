@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"orinforum/internal/db"
 	"orinforum/internal/model"
 	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
@@ -15,8 +16,9 @@ import (
 type PostService interface {
 	List(ctx context.Context, page, pageSize int) ([]model.PostListItem, error)
 	GetByID(ctx context.Context, id string) (*model.PostListItem, error)
-	Create(ctx context.Context, authorID, title, content, categoryID string) (*model.Post, error)
-	Update(ctx context.Context, id, title, content string) (*model.Post, error)
+	GetContent(ctx context.Context, contentID string) (*model.Content, error)
+	Create(ctx context.Context, authorID, title, body, categoryID string) (*model.Post, error)
+	Update(ctx context.Context, id, title, body string) (*model.Post, error)
 	Delete(ctx context.Context, id string) error
 	Search(ctx context.Context, keyword string, page, pageSize int) ([]model.PostListItem, error)
 	TogglePin(ctx context.Context, id string) (*model.Post, error)
@@ -24,11 +26,13 @@ type PostService interface {
 }
 
 type postService struct {
-	posts repository.PostRepository
+	posts    repository.PostRepository
+	contents repository.ContentRepository
+	store    db.Store
 }
 
-func NewPostService(posts repository.PostRepository) PostService {
-	return &postService{posts: posts}
+func NewPostService(posts repository.PostRepository, contents repository.ContentRepository, store db.Store) PostService {
+	return &postService{posts: posts, contents: contents, store: store}
 }
 
 func (s *postService) List(ctx context.Context, page, pageSize int) ([]model.PostListItem, error) {
@@ -40,32 +44,38 @@ func (s *postService) GetByID(ctx context.Context, id string) (*model.PostListIt
 	if err != nil {
 		return nil, err
 	}
-	// Best-effort view count increment
 	_ = s.posts.IncrementViewCount(ctx, id)
 	return item, nil
 }
 
-func (s *postService) Create(ctx context.Context, authorID, title, content, categoryID string) (*model.Post, error) {
-	post := &model.Post{
-		ID:         uuid.NewString(),
-		Title:      title,
-		Content:    content,
-		AuthorID:   authorID,
-		CategoryID: categoryID,
-		CreatedAt:  time.Now(),
-		UpdatedAt:  time.Now(),
-	}
-	return post, s.posts.Create(ctx, post)
+func (s *postService) GetContent(ctx context.Context, contentID string) (*model.Content, error) {
+	return s.contents.FindByID(ctx, contentID)
 }
 
-func (s *postService) Update(ctx context.Context, id, title, content string) (*model.Post, error) {
+func (s *postService) Create(ctx context.Context, authorID, title, body, categoryID string) (*model.Post, error) {
+	post, _, err := repository.CreatePostWithContent(ctx, s.store, authorID, title, body, categoryID)
+	return post, err
+}
+
+func (s *postService) Update(ctx context.Context, id, title, body string) (*model.Post, error) {
 	post, err := s.posts.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	post.Title = title
-	post.Content = content
+	post.ContentDigest = repository.DigestBody(body, 200)
 	post.UpdatedAt = time.Now()
+
+	content, err := s.contents.FindByID(ctx, post.ContentID)
+	if err != nil {
+		return nil, err
+	}
+	content.Body = body
+	content.UpdatedAt = time.Now()
+
+	if err := s.contents.Update(ctx, content); err != nil {
+		return nil, err
+	}
 	return post, s.posts.Update(ctx, post)
 }
 
@@ -135,54 +145,78 @@ func (s *categoryService) Delete(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
 
-type CommentService interface {
-	ListByPost(ctx context.Context, postID string) ([]model.Comment, error)
-	Create(ctx context.Context, postID, authorID, content, parentID string) (*model.Comment, error)
-	Update(ctx context.Context, postID, id, content string) (*model.Comment, error)
-	Delete(ctx context.Context, id string) error
+type ContentService interface {
+	ListByPost(ctx context.Context, postContentID string) ([]model.Content, error)
+	ListReplies(ctx context.Context, parentID string) ([]model.Content, error)
+	Create(ctx context.Context, postID, authorID, body, parentID string) (*model.Content, error)
+	Update(ctx context.Context, postID, id, body string) (*model.Content, error)
+	Delete(ctx context.Context, postID, id string) error
 }
 
-type commentService struct {
-	repo repository.CommentRepository
+type contentService struct {
+	repo     repository.ContentRepository
+	postRepo repository.PostRepository
 }
 
-func NewCommentService(repo repository.CommentRepository) CommentService {
-	return &commentService{repo: repo}
+func NewContentService(repo repository.ContentRepository, postRepo repository.PostRepository) ContentService {
+	return &contentService{repo: repo, postRepo: postRepo}
 }
 
-func (s *commentService) ListByPost(ctx context.Context, postID string) ([]model.Comment, error) {
-	return s.repo.ListByPost(ctx, postID)
+func (s *contentService) ListByPost(ctx context.Context, postContentID string) ([]model.Content, error) {
+	return s.repo.ListByRoot(ctx, postContentID)
 }
 
-func (s *commentService) Create(ctx context.Context, postID, authorID, content, parentID string) (*model.Comment, error) {
-	c := &model.Comment{
+func (s *contentService) ListReplies(ctx context.Context, parentID string) ([]model.Content, error) {
+	return s.repo.ListByParent(ctx, parentID)
+}
+
+func (s *contentService) Create(ctx context.Context, postID, authorID, body, parentID string) (*model.Content, error) {
+	post, err := s.postRepo.FindByID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &model.Content{
 		ID:        uuid.NewString(),
-		PostID:    postID,
 		AuthorID:  authorID,
-		Content:   content,
+		Body:      body,
+		RootID:    post.ContentID,
 		ParentID:  parentID,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	return c, s.repo.Create(ctx, c)
+	if err := s.repo.Create(ctx, c); err != nil {
+		return nil, err
+	}
+	_ = s.postRepo.IncrementCommentCount(ctx, postID)
+	return c, nil
 }
 
-func (s *commentService) Update(ctx context.Context, postID, id, content string) (*model.Comment, error) {
+func (s *contentService) Update(ctx context.Context, postID, id, body string) (*model.Content, error) {
 	c, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, pkg.NewAppError(pkg.NOT_FOUND, "comment not found")
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "content not found")
 		}
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	if c.PostID != postID {
-		return nil, pkg.NewAppError(pkg.NOT_FOUND, "comment not found in this post")
+
+	post, err := s.postRepo.FindByID(ctx, postID)
+	if err != nil {
+		return nil, err
 	}
-	c.Content = content
+	if c.RootID != post.ContentID {
+		return nil, pkg.NewAppError(pkg.NOT_FOUND, "content not found in this post")
+	}
+
+	c.Body = body
 	c.UpdatedAt = time.Now()
 	return c, s.repo.Update(ctx, c)
 }
 
-func (s *commentService) Delete(ctx context.Context, id string) error {
-	return s.repo.Delete(ctx, id)
+func (s *contentService) Delete(ctx context.Context, postID, id string) error {
+	if err := s.repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	return s.postRepo.DecrementCommentCount(ctx, postID)
 }

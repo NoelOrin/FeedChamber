@@ -13,7 +13,7 @@ type Handler struct {
 	Auth       AuthHandler
 	Post       PostHandler
 	Category   CategoryHandler
-	Comment    CommentHandler
+	Content    ContentHandler
 	Like       LikeHandler
 	Favorite   FavoriteHandler
 	Follow     FollowHandler
@@ -45,7 +45,7 @@ func New(store db.Store, cfg config.Config, permSvc service.PermissionService) *
 	roleRepo := repository.NewRoleRepository(store)
 	postRepo := repository.NewPostRepository(store)
 	catRepo := repository.NewCategoryRepository(store)
-	commentRepo := repository.NewCommentRepository(store)
+	contentRepo := repository.NewContentRepository(store)
 	tagRepo := repository.NewTagRepository(store)
 	likeRepo := repository.NewLikeRepository(store)
 	favRepo := repository.NewFavoriteRepository(store)
@@ -53,9 +53,9 @@ func New(store db.Store, cfg config.Config, permSvc service.PermissionService) *
 
 	authSvc := service.NewAuthService(userRepo)
 	userSvc := service.NewUserService(userRepo)
-	postSvc := service.NewPostService(postRepo)
+	postSvc := service.NewPostService(postRepo, contentRepo, store)
 	catSvc := service.NewCategoryService(catRepo)
-	commentSvc := service.NewCommentService(commentRepo)
+	contentSvc := service.NewContentService(contentRepo, postRepo)
 	tagSvc := service.NewTagService(tagRepo)
 	likeSvc := service.NewLikeService(likeRepo)
 	favSvc := service.NewFavoriteService(favRepo)
@@ -82,7 +82,7 @@ func New(store db.Store, cfg config.Config, permSvc service.PermissionService) *
 		Role:       newRoleHandler(roleRepo),
 		Post:       newPostHandler(postSvc),
 		Category:   newCategoryHandler(catSvc),
-		Comment:    newCommentHandler(commentSvc),
+		Content:    newContentHandler(contentSvc),
 		Like:       newLikeHandler(likeSvc),
 		Favorite:   newFavoriteHandler(favSvc),
 		Follow:     newFollowHandler(followSvc),

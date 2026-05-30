@@ -11,19 +11,25 @@ definitions:
       name:
         type: string
     type: object
-  model.Comment:
+  model.Content:
     properties:
       authorID:
         type: string
-      content:
+      body:
         type: string
       createdAt:
         type: string
+      deletedAt:
+        type: string
       id:
         type: string
+      likeCount:
+        type: integer
       parentID:
+        description: direct parent content; empty for post body
         type: string
-      postID:
+      rootID:
+        description: points to post's content_id; self-referencing for post body
         type: string
       updatedAt:
         type: string
@@ -46,7 +52,7 @@ definitions:
         description: who triggered the notification
         type: string
       type:
-        description: '"comment", "like", "follow", "mention"'
+        description: '"reply", "like", "follow", "mention"'
         type: string
       userID:
         description: recipient
@@ -71,16 +77,33 @@ definitions:
         type: string
       categoryID:
         type: string
-      content:
+      commentCount:
+        description: denormalized reply count
+        type: integer
+      contentDigest:
+        description: denormalized preview for list queries
+        type: string
+      contentID:
+        description: FK → contents.id (post body)
         type: string
       createdAt:
         type: string
+      deletedAt:
+        type: string
+      favoriteCount:
+        type: integer
       id:
         type: string
+      likeCount:
+        description: denormalized like count
+        type: integer
       locked:
         type: boolean
       pinned:
         type: boolean
+      status:
+        description: draft/pending/approved/rejected
+        type: string
       title:
         type: string
       updatedAt:
@@ -102,16 +125,22 @@ definitions:
         type: string
       commentCount:
         type: integer
-      content:
+      contentDigest:
         type: string
       createdAt:
         type: string
+      favoriteCount:
+        type: integer
       id:
         type: string
+      likeCount:
+        type: integer
       locked:
         type: boolean
       pinned:
         type: boolean
+      status:
+        type: string
       title:
         type: string
       updatedAt:
@@ -857,15 +886,15 @@ paths:
       summary: 删除分类
       tags:
       - 分类
-  /comments/{commentId}/like:
+  /contents/{contentId}/like:
     get:
       consumes:
       - application/json
-      description: 获取当前用户对评论的点赞状态和总点赞数
+      description: 获取当前用户对内容的点赞状态和总点赞数
       parameters:
-      - description: 评论 ID
+      - description: 内容 ID
         in: path
-        name: commentId
+        name: contentId
         required: true
         type: string
       produces:
@@ -891,17 +920,17 @@ paths:
             $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
-      summary: 获取评论点赞状态
+      summary: 获取内容点赞状态
       tags:
       - 点赞
     post:
       consumes:
       - application/json
-      description: 切换评论的点赞状态
+      description: 切换内容的点赞状态（帖子正文或评论）
       parameters:
-      - description: 评论 ID
+      - description: 内容 ID
         in: path
-        name: commentId
+        name: contentId
         required: true
         type: string
       produces:
@@ -925,9 +954,41 @@ paths:
             $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
-      summary: 评论点赞/取消点赞
+      summary: 内容点赞/取消点赞
       tags:
       - 点赞
+  /contents/{id}/replies:
+    get:
+      consumes:
+      - application/json
+      description: 获取指定内容的直接子回复
+      parameters:
+      - description: 内容 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Content'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 子回复列表
+      tags:
+      - 内容
   /favorites/:
     get:
       consumes:
@@ -1533,11 +1594,11 @@ paths:
       summary: 切换帖子置顶
       tags:
       - 帖子
-  /posts/{postId}/comments/:
+  /posts/{postId}/contents/:
     get:
       consumes:
       - application/json
-      description: 获取指定帖子的所有评论
+      description: 获取指定帖子下的所有评论（任意深度）
       parameters:
       - description: 帖子 ID
         in: path
@@ -1551,7 +1612,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/model.Comment'
+              $ref: '#/definitions/model.Content'
             type: array
         "500":
           description: Internal Server Error
@@ -1564,24 +1625,24 @@ paths:
       - BearerAuth: []
       summary: 帖子评论列表
       tags:
-      - 评论
+      - 内容
     post:
       consumes:
       - application/json
-      description: 在指定帖子下创建评论，可选父评论 ID 实现嵌套回复
+      description: 在指定帖子下创建评论或回复
       parameters:
       - description: 帖子 ID
         in: path
         name: postId
         required: true
         type: string
-      - description: 评论内容
+      - description: 内容
         in: body
         name: body
         required: true
         schema:
           properties:
-            content:
+            body:
               type: string
             parentId:
               type: string
@@ -1592,7 +1653,7 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/model.Comment'
+            $ref: '#/definitions/model.Content'
         "400":
           description: Bad Request
           schema:
@@ -1607,30 +1668,23 @@ paths:
               error:
                 type: string
             type: object
-        "403":
-          description: Forbidden
-          schema:
-            properties:
-              error:
-                type: string
-            type: object
       security:
       - BearerAuth: []
-      summary: 创建评论
+      summary: 创建评论/回复
       tags:
-      - 评论
-  /posts/{postId}/comments/{id}:
+      - 内容
+  /posts/{postId}/contents/{id}:
     delete:
       consumes:
       - application/json
-      description: 删除指定评论
+      description: 删除指定内容
       parameters:
       - description: 帖子 ID
         in: path
         name: postId
         required: true
         type: string
-      - description: 评论 ID
+      - description: 内容 ID
         in: path
         name: id
         required: true
@@ -1663,31 +1717,31 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: 删除评论
+      summary: 删除内容
       tags:
-      - 评论
+      - 内容
     put:
       consumes:
       - application/json
-      description: 编辑指定评论的内容
+      description: 编辑指定内容
       parameters:
       - description: 帖子 ID
         in: path
         name: postId
         required: true
         type: string
-      - description: 评论 ID
+      - description: 内容 ID
         in: path
         name: id
         required: true
         type: string
-      - description: 评论内容
+      - description: 内容
         in: body
         name: body
         required: true
         schema:
           properties:
-            content:
+            body:
               type: string
           type: object
       produces:
@@ -1700,7 +1754,7 @@ paths:
             - $ref: '#/definitions/pkg.Response'
             - properties:
                 data:
-                  $ref: '#/definitions/model.Comment'
+                  $ref: '#/definitions/model.Content'
               type: object
         "400":
           description: Bad Request
@@ -1716,9 +1770,9 @@ paths:
             $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
-      summary: 编辑评论
+      summary: 编辑内容
       tags:
-      - 评论
+      - 内容
   /posts/{postId}/favorite:
     get:
       consumes:
@@ -1788,77 +1842,6 @@ paths:
       summary: 帖子收藏/取消收藏
       tags:
       - 收藏
-  /posts/{postId}/like:
-    get:
-      consumes:
-      - application/json
-      description: 获取当前用户对帖子的点赞状态和总点赞数
-      parameters:
-      - description: 帖子 ID
-        in: path
-        name: postId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/pkg.Response'
-            - properties:
-                data:
-                  properties:
-                    count:
-                      type: integer
-                    liked:
-                      type: boolean
-                  type: object
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/pkg.Response'
-      security:
-      - BearerAuth: []
-      summary: 获取帖子点赞状态
-      tags:
-      - 点赞
-    post:
-      consumes:
-      - application/json
-      description: 切换帖子的点赞状态
-      parameters:
-      - description: 帖子 ID
-        in: path
-        name: postId
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/pkg.Response'
-            - properties:
-                data:
-                  properties:
-                    liked:
-                      type: boolean
-                  type: object
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/pkg.Response'
-      security:
-      - BearerAuth: []
-      summary: 帖子点赞/取消点赞
-      tags:
-      - 点赞
   /posts/{postId}/tags:
     get:
       consumes:

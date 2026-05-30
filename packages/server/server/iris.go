@@ -45,15 +45,14 @@ func Start(env Env) {
 	if err := store.AutoMigrate(
 		&model.Role{},
 		&model.User{},
+		&model.Content{},
 		&model.Post{},
 		&model.Category{},
-		&model.Comment{},
 		&model.Permission{},
 		&model.RolePermission{},
 		&model.Tag{},
 		&model.PostTag{},
-		&model.PostLike{},
-		&model.CommentLike{},
+		&model.ContentLike{},
 		&model.PostFavorite{},
 		&model.UserFollow{},
 		&model.Upload{},
@@ -68,6 +67,7 @@ func Start(env Env) {
 	seedAdmin(store)
 	permSvc := seedPermissions(store)
 	seedSettings(store)
+	ensureMockData(store)
 
 	app := iris.New()
 
