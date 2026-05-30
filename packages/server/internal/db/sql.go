@@ -31,7 +31,7 @@ func newSQLStore(cfg config.DBConfig, backend BackendType) (Store, error) {
 			if err := os.MkdirAll("db", 0o755); err != nil {
 				return nil, fmt.Errorf("create db dir: %w", err)
 			}
-			path = "db/app.db?_journal_mode=WAL&_busy_timeout=5000&_foreign_keys=ON"
+			path = "db/app.db?_journal_mode=DELETE&_busy_timeout=5000&_foreign_keys=ON"
 		}
 		dialector = sqlite.Open(path)
 
