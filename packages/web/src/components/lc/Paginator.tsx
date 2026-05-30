@@ -16,10 +16,6 @@ export default function Paginator(props: PaginatorProps) {
     setCurrentPage(page)
   })
 
-  const getRouterArgument = (query: Record<string, string>) => {
-    return { ...query }
-  }
-
   const scrollToTop = () => {
     BackToTop
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -49,14 +45,34 @@ export default function Paginator(props: PaginatorProps) {
               search={{ page: currentPage() - 1 }}
               onClick={scrollToTop}
             >
-              <svg width="22" height="22" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M24 36L12 24L24 12" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M36 36L24 24L36 12" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M24 36L12 24L24 12"
+                  stroke="currentColor"
+                  stroke-width="4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M36 36L24 24L36 12"
+                  stroke="currentColor"
+                  stroke-width="4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
             </Link>
           </div>
         ) : (
-          <div class="invisible flip"><a href=""></a></div>
+          <div class="invisible flip">
+            <a href=""></a>
+          </div>
         )}
 
         <div class="hidden md:flex gap-2">
@@ -86,14 +102,34 @@ export default function Paginator(props: PaginatorProps) {
               search={{ page: currentPage() + 1 }}
               onClick={scrollToTop}
             >
-              <svg width="22" height="22" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 12L24 24L12 36" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M24 12L36 24L24 36" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 48 48"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M12 12L24 24L12 36"
+                  stroke="currentColor"
+                  stroke-width="4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+                <path
+                  d="M24 12L36 24L24 36"
+                  stroke="currentColor"
+                  stroke-width="4"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
               </svg>
             </Link>
           </div>
         ) : (
-          <div class="invisible flip"><a href=""></a></div>
+          <div class="invisible flip">
+            <a href=""></a>
+          </div>
         )}
       </div>
     </div>

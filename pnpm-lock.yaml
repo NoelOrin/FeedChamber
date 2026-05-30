@@ -8,9 +8,6 @@ importers:
 
   .:
     devDependencies:
-      '@biomejs/biome':
-        specifier: ^2.4.16
-        version: 2.4.16
       '@commitlint/cli':
         specifier: ^19.0.0
         version: 19.8.1(@types/node@25.9.1)(typescript@5.9.3)
@@ -63,7 +60,7 @@ importers:
         version: 4.4.3
     devDependencies:
       '@biomejs/biome':
-        specifier: ^2.4.16
+        specifier: ^2.3.7
         version: 2.4.16
       '@tailwindcss/vite':
         specifier: ^4.0.6
