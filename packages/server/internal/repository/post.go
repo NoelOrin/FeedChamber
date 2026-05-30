@@ -153,7 +153,7 @@ func (r *sqlPostRepo) Search(ctx context.Context, keyword string, offset, limit 
 type mongoPostRepo struct{ store db.MongoStore }
 
 func (r *mongoPostRepo) List(ctx context.Context, offset, limit int) ([]model.Post, error) {
-	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}})
+	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
 	cursor, err := r.store.Collection("posts").Find(ctx, bson.M{"deleted_at": nil}, opts)
 	if err != nil {
 		return nil, err

@@ -18,16 +18,27 @@ type FollowService interface {
 }
 
 type followService struct {
-	repo repository.FollowRepository
+	repo     repository.FollowRepository
+	userRepo repository.UserRepository
 }
 
-func NewFollowService(repo repository.FollowRepository) FollowService {
-	return &followService{repo: repo}
+func NewFollowService(repo repository.FollowRepository, userRepo repository.UserRepository) FollowService {
+	return &followService{
+		repo:     repo,
+		userRepo: userRepo,
+	}
 }
 
 func (s *followService) Follow(ctx context.Context, followerID, followingID string) error {
 	if followerID == followingID {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "cannot follow yourself")
+	}
+	user, err := s.userRepo.FindByID(ctx, followingID)
+	if err != nil {
+		return err
+	}
+	if user == nil {
+		return pkg.NewAppError(pkg.NOT_FOUND, "user not found")
 	}
 	return s.repo.Follow(ctx, followerID, followingID)
 }

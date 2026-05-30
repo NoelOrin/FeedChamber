@@ -10,7 +10,6 @@ dist/
 # Go
 packages/server/tmp/
 packages/server/server/logs/
-packages/server/orinforum
 
 # Database
 *.db

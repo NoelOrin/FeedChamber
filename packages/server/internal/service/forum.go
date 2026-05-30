@@ -42,7 +42,13 @@ func (s *postService) List(ctx context.Context, page, pageSize int, categoryID, 
 func (s *postService) GetByID(ctx context.Context, id string) (*model.PostListItem, error) {
 	item, err := s.posts.FindByIDWithDetails(ctx, id)
 	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "post not found")
+		}
 		return nil, err
+	}
+	if item == nil || item.ID == "" {
+		return nil, pkg.NewAppError(pkg.NOT_FOUND, "post not found")
 	}
 	_ = s.posts.IncrementViewCount(ctx, id)
 	return item, nil
@@ -160,7 +166,7 @@ func (s *categoryService) Delete(ctx context.Context, id string) error {
 }
 
 type ContentService interface {
-	ListByPost(ctx context.Context, postContentID string, page, pageSize int, startTime, endTime *time.Time) ([]model.Content, error)
+	ListByPost(ctx context.Context, postID string, page, pageSize int, startTime, endTime *time.Time) ([]model.Content, error)
 	ListReplies(ctx context.Context, parentID string, page, pageSize int, startTime, endTime *time.Time) ([]model.Content, error)
 	Create(ctx context.Context, postID, authorID, body, parentID string) (*model.Content, error)
 	Update(ctx context.Context, postID, id, body string) (*model.Content, error)
@@ -176,8 +182,12 @@ func NewContentService(repo repository.ContentRepository, postRepo repository.Po
 	return &contentService{repo: repo, postRepo: postRepo}
 }
 
-func (s *contentService) ListByPost(ctx context.Context, postContentID string, page, pageSize int, startTime, endTime *time.Time) ([]model.Content, error) {
-	return s.repo.ListByRoot(ctx, postContentID, (page-1)*pageSize, pageSize, startTime, endTime)
+func (s *contentService) ListByPost(ctx context.Context, postID string, page, pageSize int, startTime, endTime *time.Time) ([]model.Content, error) {
+	post, err := s.postRepo.FindByID(ctx, postID)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.ListByRoot(ctx, post.ContentID, (page-1)*pageSize, pageSize, startTime, endTime)
 }
 
 func (s *contentService) ListReplies(ctx context.Context, parentID string, page, pageSize int, startTime, endTime *time.Time) ([]model.Content, error) {

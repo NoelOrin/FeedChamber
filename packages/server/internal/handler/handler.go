@@ -58,8 +58,8 @@ func New(store db.Store, cfg config.Config, permSvc service.PermissionService) *
 	contentSvc := service.NewContentService(contentRepo, postRepo)
 	tagSvc := service.NewTagService(tagRepo)
 	likeSvc := service.NewLikeService(likeRepo)
-	favSvc := service.NewFavoriteService(favRepo)
-	followSvc := service.NewFollowService(followRepo)
+	favSvc := service.NewFavoriteService(favRepo, postRepo)
+	followSvc := service.NewFollowService(followRepo, userRepo)
 
 	uploadRepo := repository.NewUploadRepository(store)
 	uploadSvc := service.NewUploadService(uploadRepo)

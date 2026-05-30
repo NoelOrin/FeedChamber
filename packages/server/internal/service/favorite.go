@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
 )
 
@@ -13,14 +14,25 @@ type FavoriteService interface {
 }
 
 type favoriteService struct {
-	repo repository.FavoriteRepository
+	repo     repository.FavoriteRepository
+	postRepo repository.PostRepository
 }
 
-func NewFavoriteService(repo repository.FavoriteRepository) FavoriteService {
-	return &favoriteService{repo: repo}
+func NewFavoriteService(repo repository.FavoriteRepository, postRepo repository.PostRepository) FavoriteService {
+	return &favoriteService{
+		repo:     repo,
+		postRepo: postRepo,
+	}
 }
 
 func (s *favoriteService) Toggle(ctx context.Context, postID, userID string) (bool, error) {
+	post, err := s.postRepo.FindByID(ctx, postID)
+	if err != nil {
+		return false, err
+	}
+	if post == nil {
+		return false, pkg.NewAppError(pkg.NOT_FOUND, "post not found")
+	}
 	return s.repo.Toggle(ctx, postID, userID)
 }
 

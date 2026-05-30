@@ -112,7 +112,8 @@ func (r *mongoUserRepo) FindByUsername(ctx context.Context, username string) (*m
 }
 
 func (r *mongoUserRepo) List(ctx context.Context, offset, limit int) ([]model.User, error) {
-	cursor, err := r.store.Collection("users").Find(ctx, bson.M{})
+	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
+	cursor, err := r.store.Collection("users").Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, err
 	}

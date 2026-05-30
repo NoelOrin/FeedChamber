@@ -65,8 +65,10 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Auth
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
 
+	userUUID := uuid.New().String()
 	user = &model.User{
-		ID:        uuid.New().String(),
+		ID:        userUUID,
+		UUID:      userUUID,
 		Username:  req.Username,
 		Email:     req.Email,
 		Password:  string(hash),
@@ -78,7 +80,7 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Auth
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
 
-	token, refreshToken, err := generateTokenPair(user.Username, user.UUID, user.Role)
+	token, refreshToken, err := generateTokenPair(user.Username, userUUID, user.Role)
 	if err != nil {
 		return nil, err
 	}

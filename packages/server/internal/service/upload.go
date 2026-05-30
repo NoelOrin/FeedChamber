@@ -133,7 +133,16 @@ func (s *uploadService) Save(ctx context.Context, userID string, fileHeader *mul
 }
 
 func (s *uploadService) GetByID(ctx context.Context, id string) (*model.Upload, error) {
-	return s.repo.FindByID(ctx, id)
+	upload, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, pkg.NewAppError(pkg.NOT_FOUND, "upload not found")
+	}
+
+	if _, err := os.Stat(upload.Path); os.IsNotExist(err) {
+		return nil, pkg.NewAppError(pkg.NOT_FOUND, "file not found")
+	}
+
+	return upload, nil
 }
 
 func (s *uploadService) ListByUser(ctx context.Context, userID string, page, pageSize int) ([]model.Upload, error) {
