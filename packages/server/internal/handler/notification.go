@@ -12,6 +12,7 @@ type NotificationHandler interface {
 	CountUnread(ctx iris.Context)
 	MarkRead(ctx iris.Context)
 	MarkAllRead(ctx iris.Context)
+	Delete(ctx iris.Context)
 }
 
 type notificationHandler struct {
@@ -117,6 +118,31 @@ func (h *notificationHandler) MarkAllRead(ctx iris.Context) {
 		return
 	}
 	if err := h.svc.MarkAllRead(ctx.Request().Context(), userID); err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, nil)
+}
+
+// Delete 删除通知
+// @Summary      删除通知
+// @Description  删除指定通知
+// @Tags         通知
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      string  true  "通知 ID"
+// @Success      200  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Failure      404  {object}  pkg.Response
+// @Router       /notifications/{id} [delete]
+func (h *notificationHandler) Delete(ctx iris.Context) {
+	userID := ctx.Values().GetString("user_uuid")
+	if userID == "" {
+		pkg.Fail(ctx, pkg.TOKEN_NOT_EXIST)
+		return
+	}
+	if err := h.svc.Delete(ctx.Request().Context(), ctx.Params().Get("id"), userID); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}

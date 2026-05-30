@@ -57,12 +57,14 @@ func Register(app *iris.Application, h *handler.Handler) {
 	protected.PartyFunc("/categories", func(cat iris.Party) {
 		cat.Get("/", h.Category.List)
 		cat.Post("/", middleware.RequirePermission(model.PermCategoryCreate), h.Category.Create)
+		cat.Put("/{id}", middleware.RequirePermission(model.PermCategoryCreate), h.Category.Update)
 		cat.Delete("/{id}", middleware.RequirePermission(model.PermCategoryDelete), h.Category.Delete)
 	})
 
 	protected.PartyFunc("/tags", func(t iris.Party) {
 		t.Get("/", h.Tag.List)
 		t.Post("/", middleware.RequirePermission(model.PermPostCreate), h.Tag.Create)
+		t.Put("/{id}", middleware.RequirePermission(model.PermPostCreate), h.Tag.Update)
 		t.Delete("/{id}", middleware.RequirePermission(model.PermPostDelete), h.Tag.Delete)
 	})
 
@@ -122,6 +124,7 @@ func Register(app *iris.Application, h *handler.Handler) {
 		n.Get("/unread_count", h.Notification.CountUnread)
 		n.Put("/{id}/read", h.Notification.MarkRead)
 		n.Put("/read_all", h.Notification.MarkAllRead)
+		n.Delete("/{id}", h.Notification.Delete)
 	})
 
 	// ── Reports ────────────────────────────────────────────────

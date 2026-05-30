@@ -780,16 +780,18 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/model.Category'
-            type: array
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Category'
+                  type: array
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 分类列表
@@ -817,28 +819,24 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/model.Category'
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Category'
+              type: object
         "400":
           description: Bad Request
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "401":
           description: Unauthorized
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "403":
           description: Forbidden
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 创建分类
@@ -858,32 +856,79 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
         "401":
           description: Unauthorized
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "403":
           description: Forbidden
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "500":
           description: Internal Server Error
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 删除分类
+      tags:
+      - 分类
+    put:
+      consumes:
+      - application/json
+      description: 更新指定分类的名称和描述
+      parameters:
+      - description: 分类 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 分类信息
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            description:
+              type: string
+            name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Category'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新分类
       tags:
       - 分类
   /contents/{contentId}/like:
@@ -961,29 +1006,41 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取指定内容的直接子回复
+      description: 获取指定内容的直接子回复，支持分页
       parameters:
       - description: 内容 ID
         in: path
         name: id
         required: true
         type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: pageSize
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/model.Content'
-            type: array
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Content'
+                  type: array
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 子回复列表
@@ -1086,6 +1143,37 @@ paths:
       security:
       - BearerAuth: []
       summary: 获取通知列表
+      tags:
+      - 通知
+  /notifications/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: 删除指定通知
+      parameters:
+      - description: 通知 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除通知
       tags:
       - 通知
   /notifications/{id}/read:
@@ -1598,29 +1686,41 @@ paths:
     get:
       consumes:
       - application/json
-      description: 获取指定帖子下的所有评论（任意深度）
+      description: 获取指定帖子下的所有评论（任意深度），支持分页
       parameters:
       - description: 帖子 ID
         in: path
         name: postId
         required: true
         type: string
+      - default: 1
+        description: 页码
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: 每页数量
+        in: query
+        name: pageSize
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/model.Content'
-            type: array
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Content'
+                  type: array
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 帖子评论列表
@@ -1653,21 +1753,20 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/model.Content'
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Content'
+              type: object
         "400":
           description: Bad Request
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "401":
           description: Unauthorized
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 创建评论/回复
@@ -1692,29 +1791,22 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
         "401":
           description: Unauthorized
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "403":
           description: Forbidden
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "500":
           description: Internal Server Error
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 删除内容
@@ -1859,16 +1951,18 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/model.Tag'
-            type: array
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Tag'
+                  type: array
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 获取帖子标签
@@ -1884,7 +1978,7 @@ paths:
         name: postId
         required: true
         type: string
-      - description: 标签 ID 列表
+      - description: 标签名称列表
         in: body
         name: body
         required: true
@@ -1901,30 +1995,26 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/model.Tag'
-            type: array
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Tag'
+                  type: array
+              type: object
         "400":
           description: Bad Request
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "401":
           description: Unauthorized
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "403":
           description: Forbidden
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 设置帖子标签
@@ -2285,16 +2375,18 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/model.Tag'
-            type: array
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Tag'
+                  type: array
+              type: object
         "500":
           description: Internal Server Error
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 标签列表
@@ -2320,28 +2412,24 @@ paths:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/model.Tag'
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Tag'
+              type: object
         "400":
           description: Bad Request
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "401":
           description: Unauthorized
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "403":
           description: Forbidden
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 创建标签
@@ -2361,32 +2449,77 @@ paths:
       produces:
       - application/json
       responses:
-        "204":
-          description: No Content
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
         "401":
           description: Unauthorized
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "403":
           description: Forbidden
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
         "500":
           description: Internal Server Error
           schema:
-            properties:
-              error:
-                type: string
-            type: object
+            $ref: '#/definitions/pkg.Response'
       security:
       - BearerAuth: []
       summary: 删除标签
+      tags:
+      - 标签
+    put:
+      consumes:
+      - application/json
+      description: 更新指定标签的名称
+      parameters:
+      - description: 标签 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 标签信息
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Tag'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新标签
       tags:
       - 标签
   /upload/:

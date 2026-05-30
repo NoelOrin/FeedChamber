@@ -23,7 +23,7 @@ type PostRepository interface {
 	IncrementViewCount(ctx context.Context, id string) error
 	IncrementCommentCount(ctx context.Context, id string) error
 	DecrementCommentCount(ctx context.Context, id string) error
-	ListWithDetails(ctx context.Context, offset, limit int) ([]model.PostListItem, error)
+	ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string) ([]model.PostListItem, error)
 	FindByIDWithDetails(ctx context.Context, id string) (*model.PostListItem, error)
 	Search(ctx context.Context, keyword string, offset, limit int) ([]model.PostListItem, error)
 }
@@ -76,9 +76,9 @@ func (r *sqlPostRepo) DecrementCommentCount(ctx context.Context, id string) erro
 		UpdateColumn("comment_count", gorm.Expr("comment_count - 1")).Error
 }
 
-func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int) ([]model.PostListItem, error) {
+func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string) ([]model.PostListItem, error) {
 	var items []model.PostListItem
-	err := r.db.DB().WithContext(ctx).Raw(`
+	query := `
 		SELECT p.id, p.title, p.content_digest, p.author_id, u.username AS author_name, u.avatar AS author_avatar,
 		       p.category_id, c.name AS category_name, p.status, p.pinned, p.locked, p.view_count,
 		       p.comment_count, p.like_count, p.favorite_count,
@@ -86,10 +86,23 @@ func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int) ([
 		FROM posts p
 		LEFT JOIN users u ON p.author_id = u.id
 		LEFT JOIN categories c ON p.category_id = c.id
-		WHERE p.deleted_at IS NULL
-		ORDER BY p.created_at DESC
-		LIMIT ? OFFSET ?
-	`, limit, offset).Scan(&items).Error
+		WHERE p.deleted_at IS NULL`
+	args := []interface{}{}
+	if categoryID != "" {
+		query += " AND p.category_id = ?"
+		args = append(args, categoryID)
+	}
+	if authorID != "" {
+		query += " AND p.author_id = ?"
+		args = append(args, authorID)
+	}
+	if status != "" {
+		query += " AND p.status = ?"
+		args = append(args, status)
+	}
+	query += " ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+	err := r.db.DB().WithContext(ctx).Raw(query, args...).Scan(&items).Error
 	return items, err
 }
 
@@ -264,9 +277,19 @@ func (r *mongoPostRepo) assemblePostItems(ctx context.Context, posts []model.Pos
 	return items, nil
 }
 
-func (r *mongoPostRepo) ListWithDetails(ctx context.Context, offset, limit int) ([]model.PostListItem, error) {
+func (r *mongoPostRepo) ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string) ([]model.PostListItem, error) {
+	filter := bson.M{"deleted_at": nil}
+	if categoryID != "" {
+		filter["category_id"] = categoryID
+	}
+	if authorID != "" {
+		filter["author_id"] = authorID
+	}
+	if status != "" {
+		filter["status"] = status
+	}
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
-	cursor, err := r.store.Collection("posts").Find(ctx, bson.M{"deleted_at": nil}, opts)
+	cursor, err := r.store.Collection("posts").Find(ctx, filter, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -319,7 +342,9 @@ func (r *mongoPostRepo) Search(ctx context.Context, keyword string, offset, limi
 
 type CategoryRepository interface {
 	List(ctx context.Context) ([]model.Category, error)
+	FindByID(ctx context.Context, id string) (*model.Category, error)
 	Create(ctx context.Context, c *model.Category) error
+	Update(ctx context.Context, c *model.Category) error
 	Delete(ctx context.Context, id string) error
 }
 
@@ -340,6 +365,16 @@ func (r *sqlCategoryRepo) List(ctx context.Context) ([]model.Category, error) {
 
 func (r *sqlCategoryRepo) Create(ctx context.Context, c *model.Category) error {
 	return r.db.DB().WithContext(ctx).Create(c).Error
+}
+
+func (r *sqlCategoryRepo) FindByID(ctx context.Context, id string) (*model.Category, error) {
+	var c model.Category
+	err := r.db.DB().WithContext(ctx).First(&c, "id = ?", id).Error
+	return &c, err
+}
+
+func (r *sqlCategoryRepo) Update(ctx context.Context, c *model.Category) error {
+	return r.db.DB().WithContext(ctx).Save(c).Error
 }
 
 func (r *sqlCategoryRepo) Delete(ctx context.Context, id string) error {
@@ -363,6 +398,17 @@ func (r *mongoCategoryRepo) Create(ctx context.Context, c *model.Category) error
 	return err
 }
 
+func (r *mongoCategoryRepo) FindByID(ctx context.Context, id string) (*model.Category, error) {
+	var c model.Category
+	err := r.store.Collection("categories").FindOne(ctx, bson.M{"_id": id}).Decode(&c)
+	return &c, err
+}
+
+func (r *mongoCategoryRepo) Update(ctx context.Context, c *model.Category) error {
+	_, err := r.store.Collection("categories").ReplaceOne(ctx, bson.M{"_id": c.ID}, c)
+	return err
+}
+
 func (r *mongoCategoryRepo) Delete(ctx context.Context, id string) error {
 	_, err := r.store.Collection("categories").DeleteOne(ctx, bson.M{"_id": id})
 	return err
@@ -371,8 +417,8 @@ func (r *mongoCategoryRepo) Delete(ctx context.Context, id string) error {
 // ── Content ──────────────────────────────────────────────────────────────────
 
 type ContentRepository interface {
-	ListByRoot(ctx context.Context, rootID string) ([]model.Content, error)
-	ListByParent(ctx context.Context, parentID string) ([]model.Content, error)
+	ListByRoot(ctx context.Context, rootID string, offset, limit int) ([]model.Content, error)
+	ListByParent(ctx context.Context, parentID string, offset, limit int) ([]model.Content, error)
 	FindByID(ctx context.Context, id string) (*model.Content, error)
 	Create(ctx context.Context, c *model.Content) error
 	Update(ctx context.Context, c *model.Content) error
@@ -388,15 +434,15 @@ func NewContentRepository(store db.Store) ContentRepository {
 
 type sqlContentRepo struct{ db db.SQLStore }
 
-func (r *sqlContentRepo) ListByRoot(ctx context.Context, rootID string) ([]model.Content, error) {
+func (r *sqlContentRepo) ListByRoot(ctx context.Context, rootID string, offset, limit int) ([]model.Content, error) {
 	var contents []model.Content
-	err := r.db.DB().WithContext(ctx).Where("root_id = ? AND id != root_id", rootID).Order("created_at asc").Find(&contents).Error
+	err := r.db.DB().WithContext(ctx).Where("root_id = ? AND id != root_id", rootID).Order("created_at asc").Offset(offset).Limit(limit).Find(&contents).Error
 	return contents, err
 }
 
-func (r *sqlContentRepo) ListByParent(ctx context.Context, parentID string) ([]model.Content, error) {
+func (r *sqlContentRepo) ListByParent(ctx context.Context, parentID string, offset, limit int) ([]model.Content, error) {
 	var contents []model.Content
-	err := r.db.DB().WithContext(ctx).Where("parent_id = ?", parentID).Order("created_at asc").Find(&contents).Error
+	err := r.db.DB().WithContext(ctx).Where("parent_id = ?", parentID).Order("created_at asc").Offset(offset).Limit(limit).Find(&contents).Error
 	return contents, err
 }
 
@@ -420,8 +466,9 @@ func (r *sqlContentRepo) Delete(ctx context.Context, id string) error {
 
 type mongoContentRepo struct{ store db.MongoStore }
 
-func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string) ([]model.Content, error) {
-	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"root_id": rootID, "_id": bson.M{"$ne": rootID}, "deleted_at": nil})
+func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string, offset, limit int) ([]model.Content, error) {
+	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: 1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
+	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"root_id": rootID, "_id": bson.M{"$ne": rootID}, "deleted_at": nil}, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -430,8 +477,9 @@ func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string) ([]mod
 	return contents, err
 }
 
-func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string) ([]model.Content, error) {
-	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"parent_id": parentID, "deleted_at": nil})
+func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string, offset, limit int) ([]model.Content, error) {
+	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: 1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
+	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"parent_id": parentID, "deleted_at": nil}, opts)
 	if err != nil {
 		return nil, err
 	}

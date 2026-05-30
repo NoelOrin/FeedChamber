@@ -46,7 +46,10 @@ func (h *postHandler) List(ctx iris.Context) {
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 20
 	}
-	posts, err := h.svc.List(ctx.Request().Context(), page, pageSize)
+	categoryID := ctx.URLParam("categoryId")
+	authorID := ctx.URLParam("authorId")
+	status := ctx.URLParam("status")
+	posts, err := h.svc.List(ctx.Request().Context(), page, pageSize, categoryID, authorID, status)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

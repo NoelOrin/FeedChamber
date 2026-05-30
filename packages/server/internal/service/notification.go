@@ -17,6 +17,7 @@ type NotificationService interface {
 	CountUnread(ctx context.Context, userID string) (int64, error)
 	MarkRead(ctx context.Context, id, userID string) error
 	MarkAllRead(ctx context.Context, userID string) error
+	Delete(ctx context.Context, id, userID string) error
 }
 
 type notificationService struct {
@@ -70,4 +71,15 @@ func (s *notificationService) MarkRead(ctx context.Context, id, userID string) e
 
 func (s *notificationService) MarkAllRead(ctx context.Context, userID string) error {
 	return s.repo.MarkAllRead(ctx, userID)
+}
+
+func (s *notificationService) Delete(ctx context.Context, id, userID string) error {
+	n, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return pkg.NewAppError(pkg.NOT_FOUND, "notification not found")
+	}
+	if n.UserID != userID {
+		return pkg.NewAppError(pkg.NOT_FOUND, "notification not found")
+	}
+	return s.repo.Delete(ctx, id)
 }

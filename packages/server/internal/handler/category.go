@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"orinforum/internal/pkg"
 	"orinforum/internal/service"
 
 	"github.com/kataras/iris/v12"
@@ -9,6 +10,7 @@ import (
 type CategoryHandler interface {
 	List(ctx iris.Context)
 	Create(ctx iris.Context)
+	Update(ctx iris.Context)
 	Delete(ctx iris.Context)
 }
 
@@ -25,16 +27,16 @@ func newCategoryHandler(svc service.CategoryService) CategoryHandler {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Success      200  {object}  []model.Category
-// @Failure      500  {object}  object{error=string}
+// @Success      200  {object}  pkg.Response{data=[]model.Category}
+// @Failure      500  {object}  pkg.Response
 // @Router       /categories/ [get]
 func (h *categoryHandler) List(ctx iris.Context) {
 	cats, err := h.svc.List(ctx.Request().Context())
 	if err != nil {
-		ctx.StopWithJSON(iris.StatusInternalServerError, iris.Map{"error": err.Error()})
+		pkg.HandleError(ctx, err)
 		return
 	}
-	ctx.JSON(cats)
+	pkg.Success(ctx, cats)
 }
 
 // Create 创建分类
@@ -45,10 +47,10 @@ func (h *categoryHandler) List(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        body body object{name=string,description=string} true "分类信息"
-// @Success      201  {object}  model.Category
-// @Failure      400  {object}  object{error=string}
-// @Failure      401  {object}  object{error=string}
-// @Failure      403  {object}  object{error=string}
+// @Success      201  {object}  pkg.Response{data=model.Category}
+// @Failure      400  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Failure      403  {object}  pkg.Response
 // @Router       /categories/ [post]
 func (h *categoryHandler) Create(ctx iris.Context) {
 	var body struct {
@@ -56,16 +58,48 @@ func (h *categoryHandler) Create(ctx iris.Context) {
 		Description string `json:"description"`
 	}
 	if err := ctx.ReadJSON(&body); err != nil {
-		ctx.StopWithError(iris.StatusBadRequest, err)
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
 	cat, err := h.svc.Create(ctx.Request().Context(), body.Name, body.Description)
 	if err != nil {
-		ctx.StopWithJSON(iris.StatusInternalServerError, iris.Map{"error": err.Error()})
+		pkg.HandleError(ctx, err)
 		return
 	}
 	ctx.StatusCode(iris.StatusCreated)
-	ctx.JSON(cat)
+	pkg.Success(ctx, cat)
+}
+
+// Update 更新分类
+// @Summary      更新分类
+// @Description  更新指定分类的名称和描述
+// @Tags         分类
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      string  true  "分类 ID"
+// @Param        body body object{name=string,description=string} true "分类信息"
+// @Success      200  {object}  pkg.Response{data=model.Category}
+// @Failure      400  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Failure      403  {object}  pkg.Response
+// @Failure      404  {object}  pkg.Response
+// @Router       /categories/{id} [put]
+func (h *categoryHandler) Update(ctx iris.Context) {
+	var body struct {
+		Name        string `json:"name"`
+		Description string `json:"description"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
+		return
+	}
+	cat, err := h.svc.Update(ctx.Request().Context(), ctx.Params().Get("id"), body.Name, body.Description)
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, cat)
 }
 
 // Delete 删除分类
@@ -76,15 +110,15 @@ func (h *categoryHandler) Create(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        id   path      string  true  "分类 ID"
-// @Success      204  "No Content"
-// @Failure      401  {object}  object{error=string}
-// @Failure      403  {object}  object{error=string}
-// @Failure      500  {object}  object{error=string}
+// @Success      200  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Failure      403  {object}  pkg.Response
+// @Failure      500  {object}  pkg.Response
 // @Router       /categories/{id} [delete]
 func (h *categoryHandler) Delete(ctx iris.Context) {
 	if err := h.svc.Delete(ctx.Request().Context(), ctx.Params().Get("id")); err != nil {
-		ctx.StopWithJSON(iris.StatusInternalServerError, iris.Map{"error": err.Error()})
+		pkg.HandleError(ctx, err)
 		return
 	}
-	ctx.StatusCode(iris.StatusNoContent)
+	pkg.Success(ctx, nil)
 }

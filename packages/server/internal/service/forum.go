@@ -14,7 +14,7 @@ import (
 )
 
 type PostService interface {
-	List(ctx context.Context, page, pageSize int) ([]model.PostListItem, error)
+	List(ctx context.Context, page, pageSize int, categoryID, authorID, status string) ([]model.PostListItem, error)
 	GetByID(ctx context.Context, id string) (*model.PostListItem, error)
 	GetContent(ctx context.Context, contentID string) (*model.Content, error)
 	Create(ctx context.Context, authorID, title, body, categoryID string) (*model.Post, error)
@@ -35,8 +35,8 @@ func NewPostService(posts repository.PostRepository, contents repository.Content
 	return &postService{posts: posts, contents: contents, store: store}
 }
 
-func (s *postService) List(ctx context.Context, page, pageSize int) ([]model.PostListItem, error) {
-	return s.posts.ListWithDetails(ctx, (page-1)*pageSize, pageSize)
+func (s *postService) List(ctx context.Context, page, pageSize int, categoryID, authorID, status string) ([]model.PostListItem, error) {
+	return s.posts.ListWithDetails(ctx, (page-1)*pageSize, pageSize, categoryID, authorID, status)
 }
 
 func (s *postService) GetByID(ctx context.Context, id string) (*model.PostListItem, error) {
@@ -116,6 +116,7 @@ func (s *postService) ToggleLock(ctx context.Context, id string) (*model.Post, e
 type CategoryService interface {
 	List(ctx context.Context) ([]model.Category, error)
 	Create(ctx context.Context, name, description string) (*model.Category, error)
+	Update(ctx context.Context, id, name, description string) (*model.Category, error)
 	Delete(ctx context.Context, id string) error
 }
 
@@ -141,13 +142,26 @@ func (s *categoryService) Create(ctx context.Context, name, description string) 
 	return cat, s.repo.Create(ctx, cat)
 }
 
+func (s *categoryService) Update(ctx context.Context, id, name, description string) (*model.Category, error) {
+	cat, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "category not found")
+		}
+		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	cat.Name = name
+	cat.Description = description
+	return cat, s.repo.Update(ctx, cat)
+}
+
 func (s *categoryService) Delete(ctx context.Context, id string) error {
 	return s.repo.Delete(ctx, id)
 }
 
 type ContentService interface {
-	ListByPost(ctx context.Context, postContentID string) ([]model.Content, error)
-	ListReplies(ctx context.Context, parentID string) ([]model.Content, error)
+	ListByPost(ctx context.Context, postContentID string, page, pageSize int) ([]model.Content, error)
+	ListReplies(ctx context.Context, parentID string, page, pageSize int) ([]model.Content, error)
 	Create(ctx context.Context, postID, authorID, body, parentID string) (*model.Content, error)
 	Update(ctx context.Context, postID, id, body string) (*model.Content, error)
 	Delete(ctx context.Context, postID, id string) error
@@ -162,12 +176,12 @@ func NewContentService(repo repository.ContentRepository, postRepo repository.Po
 	return &contentService{repo: repo, postRepo: postRepo}
 }
 
-func (s *contentService) ListByPost(ctx context.Context, postContentID string) ([]model.Content, error) {
-	return s.repo.ListByRoot(ctx, postContentID)
+func (s *contentService) ListByPost(ctx context.Context, postContentID string, page, pageSize int) ([]model.Content, error) {
+	return s.repo.ListByRoot(ctx, postContentID, (page-1)*pageSize, pageSize)
 }
 
-func (s *contentService) ListReplies(ctx context.Context, parentID string) ([]model.Content, error) {
-	return s.repo.ListByParent(ctx, parentID)
+func (s *contentService) ListReplies(ctx context.Context, parentID string, page, pageSize int) ([]model.Content, error) {
+	return s.repo.ListByParent(ctx, parentID, (page-1)*pageSize, pageSize)
 }
 
 func (s *contentService) Create(ctx context.Context, postID, authorID, body, parentID string) (*model.Content, error) {

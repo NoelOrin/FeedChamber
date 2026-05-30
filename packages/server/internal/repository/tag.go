@@ -11,9 +11,11 @@ import (
 
 type TagRepository interface {
 	List(ctx context.Context) ([]model.Tag, error)
+	FindByID(ctx context.Context, id string) (*model.Tag, error)
 	GetByName(ctx context.Context, name string) (*model.Tag, error)
 	Create(ctx context.Context, tag *model.Tag) error
 	CreateIfNotExists(ctx context.Context, tag *model.Tag) error
+	Update(ctx context.Context, tag *model.Tag) error
 	Delete(ctx context.Context, id string) error
 	AddPostTag(ctx context.Context, postID, tagID string) error
 	RemovePostTags(ctx context.Context, postID string) error
@@ -44,6 +46,12 @@ func (r *sqlTagRepo) GetByName(ctx context.Context, name string) (*model.Tag, er
 	return &t, err
 }
 
+func (r *sqlTagRepo) FindByID(ctx context.Context, id string) (*model.Tag, error) {
+	var t model.Tag
+	err := r.db.DB().WithContext(ctx).First(&t, "id = ?", id).Error
+	return &t, err
+}
+
 func (r *sqlTagRepo) Create(ctx context.Context, tag *model.Tag) error {
 	return r.db.DB().WithContext(ctx).Create(tag).Error
 }
@@ -56,6 +64,10 @@ func (r *sqlTagRepo) CreateIfNotExists(ctx context.Context, tag *model.Tag) erro
 		return nil
 	}
 	return r.db.DB().WithContext(ctx).Create(tag).Error
+}
+
+func (r *sqlTagRepo) Update(ctx context.Context, tag *model.Tag) error {
+	return r.db.DB().WithContext(ctx).Save(tag).Error
 }
 
 func (r *sqlTagRepo) Delete(ctx context.Context, id string) error {
@@ -114,6 +126,12 @@ func (r *mongoTagRepo) GetByName(ctx context.Context, name string) (*model.Tag, 
 	return &t, err
 }
 
+func (r *mongoTagRepo) FindByID(ctx context.Context, id string) (*model.Tag, error) {
+	var t model.Tag
+	err := r.store.Collection("tags").FindOne(ctx, bson.M{"_id": id}).Decode(&t)
+	return &t, err
+}
+
 func (r *mongoTagRepo) Create(ctx context.Context, tag *model.Tag) error {
 	_, err := r.store.Collection("tags").InsertOne(ctx, tag)
 	return err
@@ -125,6 +143,11 @@ func (r *mongoTagRepo) CreateIfNotExists(ctx context.Context, tag *model.Tag) er
 		return nil
 	}
 	_, err = r.store.Collection("tags").InsertOne(ctx, tag)
+	return err
+}
+
+func (r *mongoTagRepo) Update(ctx context.Context, tag *model.Tag) error {
+	_, err := r.store.Collection("tags").ReplaceOne(ctx, bson.M{"_id": tag.ID}, tag)
 	return err
 }
 

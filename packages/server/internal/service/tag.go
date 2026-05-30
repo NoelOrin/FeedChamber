@@ -2,16 +2,20 @@ package service
 
 import (
 	"context"
+	"errors"
 	"orinforum/internal/model"
+	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type TagService interface {
 	List(ctx context.Context) ([]model.Tag, error)
 	Create(ctx context.Context, name string) (*model.Tag, error)
+	Update(ctx context.Context, id, name string) (*model.Tag, error)
 	Delete(ctx context.Context, id string) error
 	GetTagsByPostID(ctx context.Context, postID string) ([]model.Tag, error)
 	SetPostTags(ctx context.Context, postID string, tagNames []string) error
@@ -37,6 +41,18 @@ func (s *tagService) Create(ctx context.Context, name string) (*model.Tag, error
 		CreatedAt: time.Now(),
 	}
 	return tag, s.repo.Create(ctx, tag)
+}
+
+func (s *tagService) Update(ctx context.Context, id, name string) (*model.Tag, error) {
+	tag, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "tag not found")
+		}
+		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	tag.Name = name
+	return tag, s.repo.Update(ctx, tag)
 }
 
 func (s *tagService) Delete(ctx context.Context, id string) error {
