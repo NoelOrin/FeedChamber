@@ -1,7 +1,6 @@
-@import "tailwindcss";
 @import "./assets/css/global.css";
+@import "./assets/css/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
 
 @font-face {
   font-family: 'BlackItalic';
@@ -15,9 +14,6 @@
   font-display: swap;
 }
 
-.fontBlackItalic {
-  font-family: 'BlackItalic', sans-serif;
-}
 
 @property --themeColorMain {
   syntax: "<color>";
@@ -97,9 +93,6 @@
   initial-value: #52525b;
 }
 
-@theme {
-  --color-theme-main: var(--themeColorMain);
-}
 
 body {
   font-family: 'Segoe UI', Arial, 'Microsoft Yahei', sans-serif;
