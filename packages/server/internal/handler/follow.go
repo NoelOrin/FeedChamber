@@ -115,9 +115,8 @@ func (h *followHandler) GetStatus(ctx iris.Context) {
 // @Router       /users/{userId}/followers [get]
 func (h *followHandler) GetFollowers(ctx iris.Context) {
 	userID := ctx.Params().Get("userId")
-	page := ctx.URLParamIntDefault("page", 1)
-	pageSize := ctx.URLParamIntDefault("pageSize", 20)
-	followers, err := h.svc.GetFollowers(ctx.Request().Context(), userID, page, pageSize)
+	p := readListParams(ctx)
+	followers, err := h.svc.GetFollowers(ctx.Request().Context(), userID, p.Page, p.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -140,9 +139,8 @@ func (h *followHandler) GetFollowers(ctx iris.Context) {
 // @Router       /users/{userId}/following [get]
 func (h *followHandler) GetFollowing(ctx iris.Context) {
 	userID := ctx.Params().Get("userId")
-	page := ctx.URLParamIntDefault("page", 1)
-	pageSize := ctx.URLParamIntDefault("pageSize", 20)
-	following, err := h.svc.GetFollowing(ctx.Request().Context(), userID, page, pageSize)
+	p := readListParams(ctx)
+	following, err := h.svc.GetFollowing(ctx.Request().Context(), userID, p.Page, p.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

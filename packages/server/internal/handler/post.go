@@ -3,26 +3,9 @@ package handler
 import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/service"
-	"strconv"
-	"time"
 
 	"github.com/kataras/iris/v12"
 )
-
-func parseTimeParam(ctx iris.Context, key string) *time.Time {
-	v := ctx.URLParam(key)
-	if v == "" {
-		return nil
-	}
-	t, err := time.Parse(time.RFC3339, v)
-	if err != nil {
-		t, err = time.Parse("2006-01-02", v)
-	}
-	if err != nil {
-		return nil
-	}
-	return &t
-}
 
 type PostHandler interface {
 	List(ctx iris.Context)
@@ -43,31 +26,26 @@ func newPostHandler(svc service.PostService) PostHandler {
 
 // List 帖子列表
 // @Summary      帖子列表
-// @Description  分页获取帖子列表
+// @Description  分页获取帖子列表，支持分类/作者/状态/时间筛选
 // @Tags         帖子
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        page     query  int  false  "页码"  default(1)
-// @Param        pageSize query  int  false  "每页数量"  default(20)
+// @Param        body body object{page=int,pageSize=int,categoryId=string,authorId=string,status=string,startTime=string,endTime=string} false "筛选参数"
 // @Success      200  {object}  pkg.Response{data=[]model.PostListItem}
 // @Failure      401  {object}  pkg.Response
-// @Router       /posts/ [get]
+// @Router       /posts/list [post]
 func (h *postHandler) List(ctx iris.Context) {
-	page, _ := strconv.Atoi(ctx.URLParamDefault("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.URLParamDefault("pageSize", "20"))
-	if page < 1 {
-		page = 1
+	var body struct {
+		ListParams
+		CategoryID string `json:"categoryId"`
+		AuthorID   string `json:"authorId"`
+		Status     string `json:"status"`
 	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
-	categoryID := ctx.URLParam("categoryId")
-	authorID := ctx.URLParam("authorId")
-	status := ctx.URLParam("status")
-	startTime := parseTimeParam(ctx, "startTime")
-	endTime := parseTimeParam(ctx, "endTime")
-	posts, err := h.svc.List(ctx.Request().Context(), page, pageSize, categoryID, authorID, status, startTime, endTime)
+	_ = ctx.ReadJSON(&body)
+	body.Normalize()
+	st, et := readTimeRange(ctx, body.ListParams)
+	posts, err := h.svc.List(ctx.Request().Context(), body.Page, body.PageSize, body.CategoryID, body.AuthorID, body.Status, st, et)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -108,7 +86,7 @@ func (h *postHandler) GetByID(ctx iris.Context) {
 // @Failure      400  {object}  pkg.Response
 // @Failure      401  {object}  pkg.Response
 // @Failure      403  {object}  pkg.Response
-// @Router       /posts/ [post]
+// @Router       /posts/create [post]
 func (h *postHandler) Create(ctx iris.Context) {
 	var body struct {
 		Title      string `json:"title"`
@@ -143,7 +121,7 @@ func (h *postHandler) Create(ctx iris.Context) {
 // @Failure      401  {object}  pkg.Response
 // @Failure      403  {object}  pkg.Response
 // @Failure      404  {object}  pkg.Response
-// @Router       /posts/{id} [put]
+// @Router       /posts/{id}/update [post]
 func (h *postHandler) Update(ctx iris.Context) {
 	var body struct {
 		Title   string `json:"title"`
@@ -172,8 +150,7 @@ func (h *postHandler) Update(ctx iris.Context) {
 // @Success      200  {object}  pkg.Response
 // @Failure      401  {object}  pkg.Response
 // @Failure      403  {object}  pkg.Response
-// @Failure      404  {object}  pkg.Response
-// @Router       /posts/{id} [delete]
+// @Router       /posts/{id}/delete [post]
 func (h *postHandler) Delete(ctx iris.Context) {
 	if err := h.svc.Delete(ctx.Request().Context(), ctx.Params().Get("id")); err != nil {
 		pkg.HandleError(ctx, err)
@@ -189,28 +166,26 @@ func (h *postHandler) Delete(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        q        query  string  true   "搜索关键词"
-// @Param        page     query  int     false  "页码"  default(1)
-// @Param        pageSize query  int     false  "每页数量"  default(20)
+// @Param        body body object{q=string,page=int,pageSize=int} true "搜索参数"
 // @Success      200  {object}  pkg.Response{data=[]model.PostListItem}
 // @Failure      400  {object}  pkg.Response
 // @Failure      401  {object}  pkg.Response
-// @Router       /posts/search [get]
+// @Router       /posts/search [post]
 func (h *postHandler) Search(ctx iris.Context) {
-	q := ctx.URLParam("q")
-	if q == "" {
+	var body struct {
+		ListParams
+		Q string `json:"q"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
+		return
+	}
+	if body.Q == "" {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, "search keyword is required")
 		return
 	}
-	page, _ := strconv.Atoi(ctx.URLParamDefault("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.URLParamDefault("pageSize", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
-	posts, err := h.svc.Search(ctx.Request().Context(), q, page, pageSize)
+	body.Normalize()
+	posts, err := h.svc.Search(ctx.Request().Context(), body.Q, body.Page, body.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -229,8 +204,7 @@ func (h *postHandler) Search(ctx iris.Context) {
 // @Success      200  {object}  pkg.Response{data=model.Post}
 // @Failure      401  {object}  pkg.Response
 // @Failure      403  {object}  pkg.Response
-// @Failure      404  {object}  pkg.Response
-// @Router       /posts/{id}/pin [put]
+// @Router       /posts/{id}/pin [post]
 func (h *postHandler) TogglePin(ctx iris.Context) {
 	post, err := h.svc.TogglePin(ctx.Request().Context(), ctx.Params().Get("id"))
 	if err != nil {
@@ -251,8 +225,7 @@ func (h *postHandler) TogglePin(ctx iris.Context) {
 // @Success      200  {object}  pkg.Response{data=model.Post}
 // @Failure      401  {object}  pkg.Response
 // @Failure      403  {object}  pkg.Response
-// @Failure      404  {object}  pkg.Response
-// @Router       /posts/{id}/lock [put]
+// @Router       /posts/{id}/lock [post]
 func (h *postHandler) ToggleLock(ctx iris.Context) {
 	post, err := h.svc.ToggleLock(ctx.Request().Context(), ctx.Params().Get("id"))
 	if err != nil {

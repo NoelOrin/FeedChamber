@@ -55,14 +55,20 @@ func (h *permissionHandler) ListPermissions(ctx iris.Context) {
 // @Failure      403  {object}  pkg.Response
 // @Router       /permission/role [get]
 func (h *permissionHandler) GetRolePermissions(ctx iris.Context) {
-	roleName := ctx.URLParam("role")
-	if roleName == "" {
+	var req struct {
+		Role string `json:"role"`
+	}
+	_ = ctx.ReadJSON(&req)
+	if req.Role == "" {
+		req.Role = ctx.URLParam("role")
+	}
+	if req.Role == "" {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, "role is required")
 		return
 	}
-	codes := h.permSvc.GetRolePermissions(roleName)
+	codes := h.permSvc.GetRolePermissions(req.Role)
 	pkg.Success(ctx, iris.Map{
-		"role":        roleName,
+		"role":        req.Role,
 		"permissions": codes,
 	})
 }

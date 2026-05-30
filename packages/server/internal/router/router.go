@@ -32,116 +32,126 @@ func Register(app *iris.Application, h *handler.Handler) {
 		auth.Post("/first_change_password", h.Auth.FirstChangePassword)
 	})
 
+	// ── User ──────────────────────────────────────────────────
 	protected.PartyFunc("/user", func(u iris.Party) {
 		u.Get("/profile", h.User.GetProfile)
-		u.Put("/profile", h.User.UpdateProfile)
-		u.Get("/search", middleware.RequirePermission(model.PermUserRead), h.User.Search)
-		u.Get("/list", middleware.RequirePermission(model.PermUserRead), h.User.List)
+		u.Post("/profile/update", h.User.UpdateProfile)
+		u.Post("/search", middleware.RequirePermission(model.PermUserRead), h.User.Search)
+		u.Post("/list", middleware.RequirePermission(model.PermUserRead), h.User.List)
 		u.Get("/{id}", middleware.RequirePermission(model.PermUserRead), h.User.GetByID)
-		u.Delete("/{id}", middleware.RequirePermission(model.PermUserDelete), h.User.Delete)
-		u.Put("/{id}/role", middleware.RequirePermission(model.PermUserUpdate), h.User.UpdateRole)
+		u.Post("/{id}/delete", middleware.RequirePermission(model.PermUserDelete), h.User.Delete)
+		u.Post("/{id}/role/update", middleware.RequirePermission(model.PermUserUpdate), h.User.UpdateRole)
 	})
 
+	// ── Role ──────────────────────────────────────────────────
 	protected.PartyFunc("/role", func(r iris.Party) {
-		r.Get("/list", middleware.RequirePermission(model.PermRoleRead), h.Role.List)
+		r.Post("/list", middleware.RequirePermission(model.PermRoleRead), h.Role.List)
 		r.Post("/create", middleware.RequirePermission(model.PermRoleManage), h.Role.Create)
-		r.Delete("/{id}", middleware.RequirePermission(model.PermRoleManage), h.Role.Delete)
+		r.Post("/{id}/delete", middleware.RequirePermission(model.PermRoleManage), h.Role.Delete)
 	})
 
+	// ── Permission ────────────────────────────────────────────
 	protected.PartyFunc("/permission", func(p iris.Party) {
-		p.Get("/list", middleware.RequirePermission(model.PermRoleRead), h.Permission.ListPermissions)
-		p.Get("/role", middleware.RequirePermission(model.PermRoleRead), h.Permission.GetRolePermissions)
+		p.Post("/list", middleware.RequirePermission(model.PermRoleRead), h.Permission.ListPermissions)
+		p.Post("/role", middleware.RequirePermission(model.PermRoleRead), h.Permission.GetRolePermissions)
 		p.Post("/sync", middleware.RequirePermission(model.PermRoleManage), h.Permission.SyncRolePermissions)
 	})
 
+	// ── Category ──────────────────────────────────────────────
 	protected.PartyFunc("/categories", func(cat iris.Party) {
-		cat.Get("/", h.Category.List)
-		cat.Post("/", middleware.RequirePermission(model.PermCategoryCreate), h.Category.Create)
-		cat.Put("/{id}", middleware.RequirePermission(model.PermCategoryCreate), h.Category.Update)
-		cat.Delete("/{id}", middleware.RequirePermission(model.PermCategoryDelete), h.Category.Delete)
+		cat.Post("/list", h.Category.List)
+		cat.Post("/create", middleware.RequirePermission(model.PermCategoryCreate), h.Category.Create)
+		cat.Post("/{id}/update", middleware.RequirePermission(model.PermCategoryCreate), h.Category.Update)
+		cat.Post("/{id}/delete", middleware.RequirePermission(model.PermCategoryDelete), h.Category.Delete)
 	})
 
+	// ── Tag ───────────────────────────────────────────────────
 	protected.PartyFunc("/tags", func(t iris.Party) {
-		t.Get("/", h.Tag.List)
-		t.Post("/", middleware.RequirePermission(model.PermPostCreate), h.Tag.Create)
-		t.Put("/{id}", middleware.RequirePermission(model.PermPostCreate), h.Tag.Update)
-		t.Delete("/{id}", middleware.RequirePermission(model.PermPostDelete), h.Tag.Delete)
+		t.Post("/list", h.Tag.List)
+		t.Post("/create", middleware.RequirePermission(model.PermPostCreate), h.Tag.Create)
+		t.Post("/{id}/update", middleware.RequirePermission(model.PermPostCreate), h.Tag.Update)
+		t.Post("/{id}/delete", middleware.RequirePermission(model.PermPostDelete), h.Tag.Delete)
 	})
 
+	// ── Post ──────────────────────────────────────────────────
 	protected.PartyFunc("/posts", func(p iris.Party) {
-		p.Get("/", h.Post.List)
-		p.Get("/search", h.Post.Search)
+		p.Post("/list", h.Post.List)
+		p.Post("/search", h.Post.Search)
 		p.Get("/{id}", h.Post.GetByID)
-		p.Post("/", middleware.RequirePermission(model.PermPostCreate), h.Post.Create)
-		p.Put("/{id}", middleware.RequirePermission(model.PermPostUpdate), h.Post.Update)
-		p.Delete("/{id}", middleware.RequirePermission(model.PermPostDelete), h.Post.Delete)
+		p.Post("/create", middleware.RequirePermission(model.PermPostCreate), h.Post.Create)
+		p.Post("/{id}/update", middleware.RequirePermission(model.PermPostUpdate), h.Post.Update)
+		p.Post("/{id}/delete", middleware.RequirePermission(model.PermPostDelete), h.Post.Delete)
+		p.Post("/{id}/pin", middleware.RequirePermission(model.PermPostPin), h.Post.TogglePin)
+		p.Post("/{id}/lock", middleware.RequirePermission(model.PermPostLock), h.Post.ToggleLock)
 
-		p.Put("/{id}/pin", middleware.RequirePermission(model.PermPostPin), h.Post.TogglePin)
-		p.Put("/{id}/lock", middleware.RequirePermission(model.PermPostLock), h.Post.ToggleLock)
+		p.Post("/{postId}/tags", h.Tag.GetPostTags)
+		p.Post("/{postId}/tags/set", middleware.RequirePermission(model.PermPostCreate), h.Tag.SetPostTags)
 
-		p.Get("/{postId}/tags", h.Tag.GetPostTags)
-		p.Post("/{postId}/tags", middleware.RequirePermission(model.PermPostCreate), h.Tag.SetPostTags)
+		// ── Content (comments/replies) ────────────────────────
+		p.Post("/{postId}/contents/list", h.Content.ListByPost)
+		p.Post("/{postId}/contents/create", middleware.RequirePermission(model.PermCommentCreate), h.Content.Create)
+		p.Post("/{postId}/contents/{id}/update", middleware.RequirePermission(model.PermCommentCreate), h.Content.Update)
+		p.Post("/{postId}/contents/{id}/delete", middleware.RequirePermission(model.PermCommentDelete), h.Content.Delete)
 
-		p.PartyFunc("/{postId}/contents", func(c iris.Party) {
-			c.Get("/", h.Content.ListByPost)
-			c.Post("/", middleware.RequirePermission(model.PermCommentCreate), h.Content.Create)
-			c.Put("/{id}", middleware.RequirePermission(model.PermCommentCreate), h.Content.Update)
-			c.Delete("/{id}", middleware.RequirePermission(model.PermCommentDelete), h.Content.Delete)
-		})
-
+		// ── Favorite ──────────────────────────────────────────
 		p.Post("/{postId}/favorite", h.Favorite.Toggle)
-		p.Get("/{postId}/favorite", h.Favorite.GetStatus)
+		p.Post("/{postId}/favorite/status", h.Favorite.GetStatus)
 	})
 
+	// ── Favorites list ────────────────────────────────────────
 	protected.PartyFunc("/favorites", func(f iris.Party) {
-		f.Get("/", h.Favorite.ListByUser)
+		f.Post("/list", h.Favorite.ListByUser)
 	})
 
+	// ── Content standalone ────────────────────────────────────
 	protected.PartyFunc("/contents/{contentId}", func(c iris.Party) {
 		c.Post("/like", h.Like.ToggleContentLike)
-		c.Get("/like", h.Like.GetContentLikeStatus)
-		c.Get("/replies", h.Content.ListReplies)
+		c.Post("/like/status", h.Like.GetContentLikeStatus)
+		c.Post("/replies", h.Content.ListReplies)
 	})
 
+	// ── Follow ────────────────────────────────────────────────
 	protected.PartyFunc("/users/{userId}", func(u iris.Party) {
 		u.Post("/follow", h.Follow.Follow)
-		u.Delete("/follow", h.Follow.Unfollow)
-		u.Get("/follow", h.Follow.GetStatus)
-		u.Get("/followers", h.Follow.GetFollowers)
-		u.Get("/following", h.Follow.GetFollowing)
-		u.Get("/counts", h.Follow.GetCounts)
+		u.Post("/unfollow", h.Follow.Unfollow)
+		u.Post("/follow/status", h.Follow.GetStatus)
+		u.Post("/followers", h.Follow.GetFollowers)
+		u.Post("/following", h.Follow.GetFollowing)
+		u.Post("/counts", h.Follow.GetCounts)
 	})
 
+	// ── Upload ────────────────────────────────────────────────
 	protected.PartyFunc("/upload", func(u iris.Party) {
 		u.Post("/", h.Upload.Upload)
-		u.Get("/", h.Upload.List)
+		u.Post("/list", h.Upload.List)
 		u.Get("/{id}", h.Upload.GetFile)
-		u.Delete("/{id}", h.Upload.Delete)
+		u.Post("/{id}/delete", h.Upload.Delete)
 	})
 
+	// ── Notification ──────────────────────────────────────────
 	protected.PartyFunc("/notifications", func(n iris.Party) {
-		n.Get("/", h.Notification.List)
-		n.Get("/unread_count", h.Notification.CountUnread)
-		n.Put("/{id}/read", h.Notification.MarkRead)
-		n.Put("/read_all", h.Notification.MarkAllRead)
-		n.Delete("/{id}", h.Notification.Delete)
+		n.Post("/list", h.Notification.List)
+		n.Post("/unread_count", h.Notification.CountUnread)
+		n.Post("/{id}/read", h.Notification.MarkRead)
+		n.Post("/read_all", h.Notification.MarkAllRead)
+		n.Post("/{id}/delete", h.Notification.Delete)
 	})
 
-	// ── Reports ────────────────────────────────────────────────
+	// ── Report ────────────────────────────────────────────────
 	protected.PartyFunc("/reports", func(r iris.Party) {
-		r.Post("/", middleware.RequirePermission(model.PermReportCreate), h.Report.Create)
-		r.Get("/", middleware.RequirePermission(model.PermReportManage), h.Report.List)
-		r.Put("/{id}/status", middleware.RequirePermission(model.PermReportManage), h.Report.UpdateStatus)
-		r.Delete("/{id}", middleware.RequirePermission(model.PermReportManage), h.Report.Delete)
+		r.Post("/create", middleware.RequirePermission(model.PermReportCreate), h.Report.Create)
+		r.Post("/list", middleware.RequirePermission(model.PermReportManage), h.Report.List)
+		r.Post("/{id}/status", middleware.RequirePermission(model.PermReportManage), h.Report.UpdateStatus)
+		r.Post("/{id}/delete", middleware.RequirePermission(model.PermReportManage), h.Report.Delete)
 	})
 
-	// ── Admin ───────────────────────────────────────────────────
+	// ── Admin ─────────────────────────────────────────────────
 	protected.PartyFunc("/admin", func(a iris.Party) {
 		a.Use(middleware.RequirePermission(model.PermRoleManage))
-		a.Get("/stats", h.Admin.GetStats)
-		a.Get("/settings", h.Setting.GetAll)
-		a.Get("/settings/{key}", h.Setting.Get)
-		a.Put("/settings/{key}", h.Setting.Set)
-		a.Delete("/settings/{key}", h.Setting.Delete)
+		a.Post("/stats", h.Admin.GetStats)
+		a.Post("/settings", h.Setting.GetAll)
+		a.Post("/settings/{key}", h.Setting.Get)
+		a.Post("/settings/{key}/update", h.Setting.Set)
+		a.Post("/settings/{key}/delete", h.Setting.Delete)
 	})
 }

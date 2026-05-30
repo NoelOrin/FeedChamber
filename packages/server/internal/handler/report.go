@@ -3,7 +3,6 @@ package handler
 import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/service"
-	"strconv"
 
 	"github.com/kataras/iris/v12"
 )
@@ -69,16 +68,22 @@ func (h *reportHandler) Create(ctx iris.Context) {
 // @Failure      403  {object}  pkg.Response
 // @Router       /reports/ [get]
 func (h *reportHandler) List(ctx iris.Context) {
-	status := ctx.URLParam("status")
-	page, _ := strconv.Atoi(ctx.URLParamDefault("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.URLParamDefault("pageSize", "20"))
-	if page < 1 {
-		page = 1
+	var req struct {
+		Status   string `json:"status"`
+		Page     int    `json:"page"`
+		PageSize int    `json:"pageSize"`
 	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
+	_ = ctx.ReadJSON(&req)
+	if req.Status == "" {
+		req.Status = ctx.URLParam("status")
 	}
-	reports, err := h.svc.List(ctx.Request().Context(), status, page, pageSize)
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.PageSize < 1 || req.PageSize > 100 {
+		req.PageSize = 20
+	}
+	reports, err := h.svc.List(ctx.Request().Context(), req.Status, req.Page, req.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

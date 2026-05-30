@@ -3,7 +3,6 @@ package handler
 import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/service"
-	"strconv"
 
 	"github.com/kataras/iris/v12"
 )
@@ -30,23 +29,14 @@ func newContentHandler(svc service.ContentService) ContentHandler {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        postId   path      string  true   "帖子 ID"
-// @Param        page     query     int     false  "页码"      default(1)
-// @Param        pageSize query     int     false  "每页数量"  default(20)
+// @Param        body     body      object{page=int,pageSize=int,startTime=string,endTime=string} false "筛选参数"
 // @Success      200  {object}  pkg.Response{data=[]model.Content}
 // @Failure      500  {object}  pkg.Response
-// @Router       /posts/{postId}/contents/ [get]
+// @Router       /posts/{postId}/contents/list [post]
 func (h *contentHandler) ListByPost(ctx iris.Context) {
-	page, _ := strconv.Atoi(ctx.URLParamDefault("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.URLParamDefault("pageSize", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
-	startTime := parseTimeParam(ctx, "startTime")
-	endTime := parseTimeParam(ctx, "endTime")
-	contents, err := h.svc.ListByPost(ctx.Request().Context(), ctx.Params().Get("postId"), page, pageSize, startTime, endTime)
+	p := readListParams(ctx)
+	st, et := readTimeRange(ctx, p)
+	contents, err := h.svc.ListByPost(ctx.Request().Context(), ctx.Params().Get("postId"), p.Page, p.PageSize, st, et)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -61,24 +51,14 @@ func (h *contentHandler) ListByPost(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        id       path      string  true   "内容 ID"
-// @Param        page     query     int     false  "页码"      default(1)
-// @Param        pageSize query     int     false  "每页数量"  default(20)
+// @Param        body     body      object{page=int,pageSize=int,startTime=string,endTime=string} false "筛选参数"
 // @Success      200  {object}  pkg.Response{data=[]model.Content}
 // @Failure      500  {object}  pkg.Response
-// @Router       /contents/{id}/replies [get]
+// @Router       /contents/{contentId}/replies [post]
 func (h *contentHandler) ListReplies(ctx iris.Context) {
-	page, _ := strconv.Atoi(ctx.URLParamDefault("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.URLParamDefault("pageSize", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
-	startTime := parseTimeParam(ctx, "startTime")
-	endTime := parseTimeParam(ctx, "endTime")
-	contents, err := h.svc.ListReplies(ctx.Request().Context(), ctx.Params().Get("id"), page, pageSize, startTime, endTime)
+	p := readListParams(ctx)
+	st, et := readTimeRange(ctx, p)
+	contents, err := h.svc.ListReplies(ctx.Request().Context(), ctx.Params().Get("contentId"), p.Page, p.PageSize, st, et)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

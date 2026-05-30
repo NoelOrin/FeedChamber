@@ -41,9 +41,8 @@ func (h *notificationHandler) List(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.TOKEN_NOT_EXIST)
 		return
 	}
-	page := ctx.URLParamIntDefault("page", 1)
-	pageSize := ctx.URLParamIntDefault("pageSize", 20)
-	notifications, err := h.svc.List(ctx.Request().Context(), userID, page, pageSize)
+	p := readListParams(ctx)
+	notifications, err := h.svc.List(ctx.Request().Context(), userID, p.Page, p.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

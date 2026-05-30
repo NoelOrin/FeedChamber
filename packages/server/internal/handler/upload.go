@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"orinforum/internal/pkg"
 	"orinforum/internal/service"
-	"strconv"
 
 	"github.com/kataras/iris/v12"
 )
@@ -102,16 +101,9 @@ func (h *uploadHandler) List(ctx iris.Context) {
 		return
 	}
 
-	page, _ := strconv.Atoi(ctx.URLParamDefault("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.URLParamDefault("pageSize", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
+	p := readListParams(ctx)
 
-	uploads, err := h.svc.ListByUser(ctx.Request().Context(), userID, page, pageSize)
+	uploads, err := h.svc.ListByUser(ctx.Request().Context(), userID, p.Page, p.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

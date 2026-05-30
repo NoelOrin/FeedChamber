@@ -3,7 +3,6 @@ package handler
 import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/service"
-	"strconv"
 
 	"github.com/kataras/iris/v12"
 )
@@ -90,15 +89,8 @@ func (h *favoriteHandler) ListByUser(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.TOKEN_NOT_EXIST)
 		return
 	}
-	page, _ := strconv.Atoi(ctx.URLParamDefault("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.URLParamDefault("pageSize", "20"))
-	if page < 1 {
-		page = 1
-	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
-	}
-	ids, err := h.svc.ListByUser(ctx.Request().Context(), userID, page, pageSize)
+	p := readListParams(ctx)
+	ids, err := h.svc.ListByUser(ctx.Request().Context(), userID, p.Page, p.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

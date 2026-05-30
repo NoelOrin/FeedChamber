@@ -1002,27 +1002,26 @@ paths:
       summary: 内容点赞/取消点赞
       tags:
       - 点赞
-  /contents/{id}/replies:
-    get:
+  /contents/{contentId}/replies:
+    post:
       consumes:
       - application/json
       description: 获取指定内容的直接子回复，支持分页
       parameters:
-      - description: 内容 ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - default: 1
-        description: 页码
-        in: query
-        name: page
-        type: integer
-      - default: 20
-        description: 每页数量
-        in: query
-        name: pageSize
-        type: integer
+      - description: 筛选参数
+        in: body
+        name: body
+        schema:
+          properties:
+            endTime:
+              type: string
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            startTime:
+              type: string
+          type: object
       produces:
       - application/json
       responses:
@@ -1392,127 +1391,7 @@ paths:
       summary: 同步角色权限
       tags:
       - 权限
-  /posts/:
-    get:
-      consumes:
-      - application/json
-      description: 分页获取帖子列表
-      parameters:
-      - default: 1
-        description: 页码
-        in: query
-        name: page
-        type: integer
-      - default: 20
-        description: 每页数量
-        in: query
-        name: pageSize
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/pkg.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/model.PostListItem'
-                  type: array
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/pkg.Response'
-      security:
-      - BearerAuth: []
-      summary: 帖子列表
-      tags:
-      - 帖子
-    post:
-      consumes:
-      - application/json
-      description: 创建新帖子
-      parameters:
-      - description: 帖子信息
-        in: body
-        name: body
-        required: true
-        schema:
-          properties:
-            categoryId:
-              type: string
-            content:
-              type: string
-            title:
-              type: string
-          type: object
-      produces:
-      - application/json
-      responses:
-        "201":
-          description: Created
-          schema:
-            allOf:
-            - $ref: '#/definitions/pkg.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.Post'
-              type: object
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/pkg.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/pkg.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/pkg.Response'
-      security:
-      - BearerAuth: []
-      summary: 创建帖子
-      tags:
-      - 帖子
   /posts/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: 删除指定帖子
-      parameters:
-      - description: 帖子 ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/pkg.Response'
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/pkg.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/pkg.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/pkg.Response'
-      security:
-      - BearerAuth: []
-      summary: 删除帖子
-      tags:
-      - 帖子
     get:
       consumes:
       - application/json
@@ -1548,7 +1427,111 @@ paths:
       summary: 获取帖子详情
       tags:
       - 帖子
-    put:
+  /posts/{id}/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删除指定帖子
+      parameters:
+      - description: 帖子 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除帖子
+      tags:
+      - 帖子
+  /posts/{id}/lock:
+    post:
+      consumes:
+      - application/json
+      description: 切换指定帖子的锁定状态
+      parameters:
+      - description: 帖子 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Post'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 切换帖子锁定
+      tags:
+      - 帖子
+  /posts/{id}/pin:
+    post:
+      consumes:
+      - application/json
+      description: 切换指定帖子的置顶状态
+      parameters:
+      - description: 帖子 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Post'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 切换帖子置顶
+      tags:
+      - 帖子
+  /posts/{id}/update:
+    post:
       consumes:
       - application/json
       description: 更新指定帖子的标题和内容
@@ -1602,130 +1585,7 @@ paths:
       summary: 更新帖子
       tags:
       - 帖子
-  /posts/{id}/lock:
-    put:
-      consumes:
-      - application/json
-      description: 切换指定帖子的锁定状态
-      parameters:
-      - description: 帖子 ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/pkg.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.Post'
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/pkg.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/pkg.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/pkg.Response'
-      security:
-      - BearerAuth: []
-      summary: 切换帖子锁定
-      tags:
-      - 帖子
-  /posts/{id}/pin:
-    put:
-      consumes:
-      - application/json
-      description: 切换指定帖子的置顶状态
-      parameters:
-      - description: 帖子 ID
-        in: path
-        name: id
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/pkg.Response'
-            - properties:
-                data:
-                  $ref: '#/definitions/model.Post'
-              type: object
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/pkg.Response'
-        "403":
-          description: Forbidden
-          schema:
-            $ref: '#/definitions/pkg.Response'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/pkg.Response'
-      security:
-      - BearerAuth: []
-      summary: 切换帖子置顶
-      tags:
-      - 帖子
   /posts/{postId}/contents/:
-    get:
-      consumes:
-      - application/json
-      description: 获取指定帖子下的所有评论（任意深度），支持分页
-      parameters:
-      - description: 帖子 ID
-        in: path
-        name: postId
-        required: true
-        type: string
-      - default: 1
-        description: 页码
-        in: query
-        name: page
-        type: integer
-      - default: 20
-        description: 每页数量
-        in: query
-        name: pageSize
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            allOf:
-            - $ref: '#/definitions/pkg.Response'
-            - properties:
-                data:
-                  items:
-                    $ref: '#/definitions/model.Content'
-                  type: array
-              type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/pkg.Response'
-      security:
-      - BearerAuth: []
-      summary: 帖子评论列表
-      tags:
-      - 内容
     post:
       consumes:
       - application/json
@@ -1863,6 +1723,54 @@ paths:
       security:
       - BearerAuth: []
       summary: 编辑内容
+      tags:
+      - 内容
+  /posts/{postId}/contents/list:
+    post:
+      consumes:
+      - application/json
+      description: 获取指定帖子下的所有评论（任意深度），支持分页
+      parameters:
+      - description: 帖子 ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: 筛选参数
+        in: body
+        name: body
+        schema:
+          properties:
+            endTime:
+              type: string
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            startTime:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.Content'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 帖子评论列表
       tags:
       - 内容
   /posts/{postId}/favorite:
@@ -2020,27 +1928,122 @@ paths:
       summary: 设置帖子标签
       tags:
       - 标签
+  /posts/create:
+    post:
+      consumes:
+      - application/json
+      description: 创建新帖子
+      parameters:
+      - description: 帖子信息
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            categoryId:
+              type: string
+            content:
+              type: string
+            title:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.Post'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 创建帖子
+      tags:
+      - 帖子
+  /posts/list:
+    post:
+      consumes:
+      - application/json
+      description: 分页获取帖子列表，支持分类/作者/状态/时间筛选
+      parameters:
+      - description: 筛选参数
+        in: body
+        name: body
+        schema:
+          properties:
+            authorId:
+              type: string
+            categoryId:
+              type: string
+            endTime:
+              type: string
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            startTime:
+              type: string
+            status:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.PostListItem'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 帖子列表
+      tags:
+      - 帖子
   /posts/search:
-    get:
+    post:
       consumes:
       - application/json
       description: 根据关键词搜索帖子
       parameters:
-      - description: 搜索关键词
-        in: query
-        name: q
+      - description: 搜索参数
+        in: body
+        name: body
         required: true
-        type: string
-      - default: 1
-        description: 页码
-        in: query
-        name: page
-        type: integer
-      - default: 20
-        description: 每页数量
-        in: query
-        name: pageSize
-        type: integer
+        schema:
+          properties:
+            page:
+              type: integer
+            pageSize:
+              type: integer
+            q:
+              type: string
+          type: object
       produces:
       - application/json
       responses:

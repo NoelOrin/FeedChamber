@@ -3,7 +3,6 @@ package handler
 import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/service"
-	"strconv"
 
 	"github.com/kataras/iris/v12"
 )
@@ -85,9 +84,8 @@ func (h *userHandler) GetByID(ctx iris.Context) {
 // @Failure      403  {object}  pkg.Response
 // @Router       /user/list [get]
 func (h *userHandler) List(ctx iris.Context) {
-	page := ctx.URLParamIntDefault("page", 1)
-	pageSize := ctx.URLParamIntDefault("pageSize", 20)
-	users, err := h.svc.List(ctx.Request().Context(), page, pageSize)
+	p := readListParams(ctx)
+	users, err := h.svc.List(ctx.Request().Context(), p.Page, p.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -111,17 +109,26 @@ func (h *userHandler) List(ctx iris.Context) {
 // @Failure      403  {object}  pkg.Response
 // @Router       /user/search [get]
 func (h *userHandler) Search(ctx iris.Context) {
-	keyword := ctx.URLParam("q")
-	role := ctx.URLParam("role")
-	page, _ := strconv.Atoi(ctx.URLParamDefault("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.URLParamDefault("pageSize", "20"))
-	if page < 1 {
-		page = 1
+	var req struct {
+		Keyword  string `json:"keyword"`
+		Role     string `json:"role"`
+		Page     int    `json:"page"`
+		PageSize int    `json:"pageSize"`
 	}
-	if pageSize < 1 || pageSize > 100 {
-		pageSize = 20
+	_ = ctx.ReadJSON(&req)
+	if req.Keyword == "" {
+		req.Keyword = ctx.URLParam("q")
 	}
-	users, err := h.svc.Search(ctx.Request().Context(), keyword, role, page, pageSize)
+	if req.Role == "" {
+		req.Role = ctx.URLParam("role")
+	}
+	if req.Page < 1 {
+		req.Page = 1
+	}
+	if req.PageSize < 1 || req.PageSize > 100 {
+		req.PageSize = 20
+	}
+	users, err := h.svc.Search(ctx.Request().Context(), req.Keyword, req.Role, req.Page, req.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
