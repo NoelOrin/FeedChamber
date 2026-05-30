@@ -31,12 +31,16 @@ export default function Nav(props: NavProps) {
 
   onMount(() => {
     initTheme()
-    window.addEventListener('scroll', handleScroll, { passive: true })
-    handleScroll()
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', handleScroll, { passive: true })
+      handleScroll()
+    }
   })
 
   onCleanup(() => {
-    window.removeEventListener('scroll', handleScroll)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('scroll', handleScroll)
+    }
     if (scrollTimeout) clearTimeout(scrollTimeout)
   })
 

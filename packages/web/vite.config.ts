@@ -1,8 +1,9 @@
 import { defineConfig } from 'vite'
-import solidPlugin from 'vite-plugin-solid'
+import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
+import viteSolid from 'vite-plugin-solid'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import tailwindcss from '@tailwindcss/vite'
-import tsconfigPaths from 'vite-tsconfig-paths'
+import { nitro } from 'nitro/vite'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -10,24 +11,26 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   plugins: [
-    tanstackRouter({
-      target: 'solid',
-      autoCodeSplitting: true,
-      routesDirectory: './src/pages',
-      generatedRouteTree: './src/routeTree.gen.ts',
-      quoteStyle: 'single',
-      semicolons: false,
-      routeFileIgnorePrefix: '-',
-    }),
-    solidPlugin({ dev: true, ssr: true }),
     tailwindcss(),
-    tsconfigPaths(),
+    tanstackStart({
+      router: {
+        routesDirectory: './src/pages',
+        generatedRouteTree: './src/routeTree.gen.ts',
+        quoteStyle: 'single',
+        semicolons: false,
+        routeFileIgnorePrefix: '-',
+      }
+    }
+    ),
+    viteSolid({ ssr: true }),
+    nitro(),
   ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
       '~': path.resolve(__dirname, './src'),
     },
+    tsconfigPaths: true,
   },
   ssr: {
     noExternal: ['@tanstack/solid-router'],

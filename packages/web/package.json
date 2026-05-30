@@ -3,29 +3,26 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node --import tsx server.ts",
-    "build": "vite build && vite build --ssr src/entry-server.tsx --outDir dist/server",
-    "preview": "NODE_ENV=production node --import tsx server.ts",
+    "dev": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview",
+    "start": "node .output/server/index.mjs",
     "lint": "biome lint ./src",
     "format": "biome format ./src",
     "check": "biome check ./src"
   },
   "dependencies": {
-    "@solidjs/meta": "^0.29.4",
     "@tanstack/solid-form": "^1.27.6",
     "@tanstack/solid-query": "^5.90.15",
     "@tanstack/solid-query-devtools": "^5.91.1",
-    "@tanstack/solid-router": "^1.133.20",
-    "@tanstack/start": "^1.120.20",
+    "@tanstack/solid-router": "^1.170.10",
+    "@tanstack/solid-start": "^1.168.17",
     "clsx": "^2.1.1",
     "dayjs": "^1.11.19",
-    "express": "^5.2.1",
     "lucide-solid": "^0.561.0",
     "solid-js": "^1.9.9",
     "tailwind-merge": "^3.4.0",
     "tailwindcss": "^4.0.6",
-    "tsx": "^4.22.3",
-    "vinxi": "^0.5.11",
     "zod": "^4.2.1"
   },
   "devDependencies": {
@@ -33,12 +30,12 @@
     "@tailwindcss/vite": "^4.0.6",
     "@tanstack/router-cli": "^1.141.2",
     "@tanstack/router-plugin": "^1.141.1",
-    "@types/express": "^5.0.6",
+    "@tanstack/solid-router-devtools": "^1.167.0",
     "@types/node": "^25.0.3",
     "esbuild": "^0.25.0",
+    "nitro": "^3.0.260311-beta",
     "typescript": "~5.9.3",
     "vite": "npm:rolldown-vite@latest",
-    "vite-plugin-solid": "^2.11.10",
-    "vite-tsconfig-paths": "^5.1.4"
+    "vite-plugin-solid": "^2.11.10"
   }
 }

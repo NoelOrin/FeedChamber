@@ -16,11 +16,15 @@ export default function BackToTop() {
   }
 
   onMount(() => {
-    window.addEventListener('scroll', handleScroll)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('scroll', handleScroll)
+    }
   })
 
   onCleanup(() => {
-    window.removeEventListener('scroll', handleScroll)
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('scroll', handleScroll)
+    }
     if (scrollTimeout) clearTimeout(scrollTimeout)
   })
 
