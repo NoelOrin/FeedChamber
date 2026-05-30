@@ -1,47 +1,61 @@
-import { createSignal, onMount, For } from 'solid-js'
-import { Link } from '@tanstack/solid-router'
-import BackToTop from './BackToTop'
+import { createSignal, For, Show, createEffect, createMemo } from "solid-js";
+import { Link, useLocation } from "@tanstack/solid-router";
 
 interface PaginatorProps {
-  pageNum: number
-  totalPages: number
+  pageNum: number;
+  totalPages: number;
 }
 
 export default function Paginator(props: PaginatorProps) {
-  const [currentPage, setCurrentPage] = createSignal(1)
+  const [currentPage, setCurrentPage] = createSignal(1);
+  const location = useLocation();
+  const page = createMemo(
+    () => Number((location().search as Record<string, string>)?.page) || 1,
+  );
 
-  onMount(() => {
-    const urlParams = new URLSearchParams(window.location.search)
-    const page = parseInt(urlParams.get('page') || '1', 10)
-    setCurrentPage(page)
-  })
+  createEffect(() => {
+    setCurrentPage(page());
+  });
 
   const scrollToTop = () => {
-    BackToTop
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
-  const renderPageLinks = () => {
-    const pages: number[] = []
-    const current = currentPage()
-    const total = props.totalPages
+  const renderPageLinks = createMemo(() => {
+    const pages: number[] = [];
+    const current = currentPage();
+    const total = props.totalPages;
 
-    if (current - 2 > 0) pages.push(current - 2)
-    if (current - 1 > 0) pages.push(current - 1)
-    pages.push(current)
-    if (current + 1 <= total) pages.push(current + 1)
-    if (current + 2 <= total) pages.push(current + 2)
+    if (total <= 11) {
+      for (let i = 1; i <= total; i++) pages.push(i);
+      return pages;
+    }
 
-    return pages
-  }
+    let start = current - 5;
+    let end = current + 5;
+    if (start < 1) {
+      start = 1;
+      end = 11;
+    } else if (end > total) {
+      start = total - 10;
+      end = total;
+    }
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+
+    return pages;
+  });
 
   return (
     <div id="pagination" class="select-none pt-8">
-      <div class="flex items-center justify-center gap-2">
-        {currentPage() !== 1 ? (
-          <div class="flip">
+      <div class="flex items-center justify-between gap-2 w-full">
+        {/* 上一页 */}
+        <div class="flip">
+          <Show when={currentPage() > 1}>
             <Link
-              to="/"
+              to="."
               search={{ page: currentPage() - 1 }}
               onClick={scrollToTop}
             >
@@ -68,22 +82,18 @@ export default function Paginator(props: PaginatorProps) {
                 />
               </svg>
             </Link>
-          </div>
-        ) : (
-          <div class="invisible flip">
-            <a href=""></a>
-          </div>
-        )}
-
-        <div class="hidden md:flex gap-2">
+          </Show>
+        </div>
+        {/* 页码 */}
+        <div class="hidden md:flex flex-1 justify-center w-full">
           <For each={renderPageLinks()}>
             {(page) => (
               <Link
-                to="/"
+                to="."
                 search={{ page }}
                 onClick={scrollToTop}
                 classList={{ current: page === currentPage() }}
-                class="px-3 py-1 rounded hover:bg-gray-100 dark:hover:bg-zinc-700"
+                class="rounded hover:bg-gray-100 dark:hover:bg-zinc-700"
               >
                 {page}
               </Link>
@@ -94,11 +104,11 @@ export default function Paginator(props: PaginatorProps) {
         <div class="flex items-center justify-center md:hidden">
           {currentPage()} / {props.totalPages}
         </div>
-
-        {currentPage() !== props.totalPages ? (
-          <div class="flip">
+        {/* 下一页 */}
+        <div class="flip">
+          <Show when={currentPage() !== props.totalPages}>
             <Link
-              to="/"
+              to="."
               search={{ page: currentPage() + 1 }}
               onClick={scrollToTop}
             >
@@ -125,13 +135,9 @@ export default function Paginator(props: PaginatorProps) {
                 />
               </svg>
             </Link>
-          </div>
-        ) : (
-          <div class="invisible flip">
-            <a href=""></a>
-          </div>
-        )}
+          </Show>
+        </div>
       </div>
     </div>
-  )
+  );
 }
