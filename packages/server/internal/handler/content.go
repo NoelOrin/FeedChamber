@@ -44,7 +44,9 @@ func (h *contentHandler) ListByPost(ctx iris.Context) {
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 20
 	}
-	contents, err := h.svc.ListByPost(ctx.Request().Context(), ctx.Params().Get("postId"), page, pageSize)
+	startTime := parseTimeParam(ctx, "startTime")
+	endTime := parseTimeParam(ctx, "endTime")
+	contents, err := h.svc.ListByPost(ctx.Request().Context(), ctx.Params().Get("postId"), page, pageSize, startTime, endTime)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -74,7 +76,9 @@ func (h *contentHandler) ListReplies(ctx iris.Context) {
 	if pageSize < 1 || pageSize > 100 {
 		pageSize = 20
 	}
-	contents, err := h.svc.ListReplies(ctx.Request().Context(), ctx.Params().Get("id"), page, pageSize)
+	startTime := parseTimeParam(ctx, "startTime")
+	endTime := parseTimeParam(ctx, "endTime")
+	contents, err := h.svc.ListReplies(ctx.Request().Context(), ctx.Params().Get("id"), page, pageSize, startTime, endTime)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

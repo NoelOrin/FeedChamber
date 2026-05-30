@@ -23,7 +23,7 @@ type PostRepository interface {
 	IncrementViewCount(ctx context.Context, id string) error
 	IncrementCommentCount(ctx context.Context, id string) error
 	DecrementCommentCount(ctx context.Context, id string) error
-	ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string) ([]model.PostListItem, error)
+	ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string, startTime, endTime *time.Time) ([]model.PostListItem, error)
 	FindByIDWithDetails(ctx context.Context, id string) (*model.PostListItem, error)
 	Search(ctx context.Context, keyword string, offset, limit int) ([]model.PostListItem, error)
 }
@@ -76,7 +76,7 @@ func (r *sqlPostRepo) DecrementCommentCount(ctx context.Context, id string) erro
 		UpdateColumn("comment_count", gorm.Expr("comment_count - 1")).Error
 }
 
-func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string) ([]model.PostListItem, error) {
+func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string, startTime, endTime *time.Time) ([]model.PostListItem, error) {
 	var items []model.PostListItem
 	query := `
 		SELECT p.id, p.title, p.content_digest, p.author_id, u.username AS author_name, u.avatar AS author_avatar,
@@ -99,6 +99,14 @@ func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int, ca
 	if status != "" {
 		query += " AND p.status = ?"
 		args = append(args, status)
+	}
+	if startTime != nil {
+		query += " AND p.created_at >= ?"
+		args = append(args, *startTime)
+	}
+	if endTime != nil {
+		query += " AND p.created_at <= ?"
+		args = append(args, *endTime)
 	}
 	query += " ORDER BY p.created_at DESC LIMIT ? OFFSET ?"
 	args = append(args, limit, offset)
@@ -277,7 +285,7 @@ func (r *mongoPostRepo) assemblePostItems(ctx context.Context, posts []model.Pos
 	return items, nil
 }
 
-func (r *mongoPostRepo) ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string) ([]model.PostListItem, error) {
+func (r *mongoPostRepo) ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string, startTime, endTime *time.Time) ([]model.PostListItem, error) {
 	filter := bson.M{"deleted_at": nil}
 	if categoryID != "" {
 		filter["category_id"] = categoryID
@@ -287,6 +295,16 @@ func (r *mongoPostRepo) ListWithDetails(ctx context.Context, offset, limit int, 
 	}
 	if status != "" {
 		filter["status"] = status
+	}
+	if startTime != nil || endTime != nil {
+		timeFilter := bson.M{}
+		if startTime != nil {
+			timeFilter["$gte"] = *startTime
+		}
+		if endTime != nil {
+			timeFilter["$lte"] = *endTime
+		}
+		filter["created_at"] = timeFilter
 	}
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
 	cursor, err := r.store.Collection("posts").Find(ctx, filter, opts)
@@ -417,8 +435,8 @@ func (r *mongoCategoryRepo) Delete(ctx context.Context, id string) error {
 // ── Content ──────────────────────────────────────────────────────────────────
 
 type ContentRepository interface {
-	ListByRoot(ctx context.Context, rootID string, offset, limit int) ([]model.Content, error)
-	ListByParent(ctx context.Context, parentID string, offset, limit int) ([]model.Content, error)
+	ListByRoot(ctx context.Context, rootID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error)
+	ListByParent(ctx context.Context, parentID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error)
 	FindByID(ctx context.Context, id string) (*model.Content, error)
 	Create(ctx context.Context, c *model.Content) error
 	Update(ctx context.Context, c *model.Content) error
@@ -434,15 +452,29 @@ func NewContentRepository(store db.Store) ContentRepository {
 
 type sqlContentRepo struct{ db db.SQLStore }
 
-func (r *sqlContentRepo) ListByRoot(ctx context.Context, rootID string, offset, limit int) ([]model.Content, error) {
+func (r *sqlContentRepo) ListByRoot(ctx context.Context, rootID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error) {
 	var contents []model.Content
-	err := r.db.DB().WithContext(ctx).Where("root_id = ? AND id != root_id", rootID).Order("created_at asc").Offset(offset).Limit(limit).Find(&contents).Error
+	q := r.db.DB().WithContext(ctx).Where("root_id = ? AND id != root_id", rootID)
+	if startTime != nil {
+		q = q.Where("updated_at >= ?", *startTime)
+	}
+	if endTime != nil {
+		q = q.Where("updated_at <= ?", *endTime)
+	}
+	err := q.Order("created_at asc").Offset(offset).Limit(limit).Find(&contents).Error
 	return contents, err
 }
 
-func (r *sqlContentRepo) ListByParent(ctx context.Context, parentID string, offset, limit int) ([]model.Content, error) {
+func (r *sqlContentRepo) ListByParent(ctx context.Context, parentID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error) {
 	var contents []model.Content
-	err := r.db.DB().WithContext(ctx).Where("parent_id = ?", parentID).Order("created_at asc").Offset(offset).Limit(limit).Find(&contents).Error
+	q := r.db.DB().WithContext(ctx).Where("parent_id = ?", parentID)
+	if startTime != nil {
+		q = q.Where("updated_at >= ?", *startTime)
+	}
+	if endTime != nil {
+		q = q.Where("updated_at <= ?", *endTime)
+	}
+	err := q.Order("created_at asc").Offset(offset).Limit(limit).Find(&contents).Error
 	return contents, err
 }
 
@@ -466,9 +498,20 @@ func (r *sqlContentRepo) Delete(ctx context.Context, id string) error {
 
 type mongoContentRepo struct{ store db.MongoStore }
 
-func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string, offset, limit int) ([]model.Content, error) {
+func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error) {
+	filter := bson.M{"root_id": rootID, "_id": bson.M{"$ne": rootID}, "deleted_at": nil}
+	if startTime != nil || endTime != nil {
+		timeFilter := bson.M{}
+		if startTime != nil {
+			timeFilter["$gte"] = *startTime
+		}
+		if endTime != nil {
+			timeFilter["$lte"] = *endTime
+		}
+		filter["updated_at"] = timeFilter
+	}
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: 1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
-	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"root_id": rootID, "_id": bson.M{"$ne": rootID}, "deleted_at": nil}, opts)
+	cursor, err := r.store.Collection("contents").Find(ctx, filter, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -477,9 +520,20 @@ func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string, offset
 	return contents, err
 }
 
-func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string, offset, limit int) ([]model.Content, error) {
+func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error) {
+	filter := bson.M{"parent_id": parentID, "deleted_at": nil}
+	if startTime != nil || endTime != nil {
+		timeFilter := bson.M{}
+		if startTime != nil {
+			timeFilter["$gte"] = *startTime
+		}
+		if endTime != nil {
+			timeFilter["$lte"] = *endTime
+		}
+		filter["updated_at"] = timeFilter
+	}
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: 1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
-	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"parent_id": parentID, "deleted_at": nil}, opts)
+	cursor, err := r.store.Collection("contents").Find(ctx, filter, opts)
 	if err != nil {
 		return nil, err
 	}

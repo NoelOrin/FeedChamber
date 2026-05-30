@@ -4,9 +4,25 @@ import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/service"
 	"strconv"
+	"time"
 
 	"github.com/kataras/iris/v12"
 )
+
+func parseTimeParam(ctx iris.Context, key string) *time.Time {
+	v := ctx.URLParam(key)
+	if v == "" {
+		return nil
+	}
+	t, err := time.Parse(time.RFC3339, v)
+	if err != nil {
+		t, err = time.Parse("2006-01-02", v)
+	}
+	if err != nil {
+		return nil
+	}
+	return &t
+}
 
 type PostHandler interface {
 	List(ctx iris.Context)
@@ -49,7 +65,9 @@ func (h *postHandler) List(ctx iris.Context) {
 	categoryID := ctx.URLParam("categoryId")
 	authorID := ctx.URLParam("authorId")
 	status := ctx.URLParam("status")
-	posts, err := h.svc.List(ctx.Request().Context(), page, pageSize, categoryID, authorID, status)
+	startTime := parseTimeParam(ctx, "startTime")
+	endTime := parseTimeParam(ctx, "endTime")
+	posts, err := h.svc.List(ctx.Request().Context(), page, pageSize, categoryID, authorID, status, startTime, endTime)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
