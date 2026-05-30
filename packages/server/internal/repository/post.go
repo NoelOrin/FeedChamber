@@ -133,7 +133,7 @@ type mongoPostRepo struct{ store db.MongoStore }
 
 func (r *mongoPostRepo) List(ctx context.Context, offset, limit int) ([]model.Post, error) {
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}})
-	cursor, err := r.store.Collection("posts").Find(ctx, bson.M{}, opts)
+	cursor, err := r.store.Collection("posts").Find(ctx, bson.M{"deleted_at": nil}, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -144,7 +144,7 @@ func (r *mongoPostRepo) List(ctx context.Context, offset, limit int) ([]model.Po
 
 func (r *mongoPostRepo) FindByID(ctx context.Context, id string) (*model.Post, error) {
 	var p model.Post
-	err := r.store.Collection("posts").FindOne(ctx, bson.M{"_id": id}).Decode(&p)
+	err := r.store.Collection("posts").FindOne(ctx, bson.M{"_id": id, "deleted_at": nil}).Decode(&p)
 	return &p, err
 }
 
@@ -159,7 +159,10 @@ func (r *mongoPostRepo) Update(ctx context.Context, post *model.Post) error {
 }
 
 func (r *mongoPostRepo) Delete(ctx context.Context, id string) error {
-	_, err := r.store.Collection("posts").DeleteOne(ctx, bson.M{"_id": id})
+	_, err := r.store.Collection("posts").UpdateOne(ctx,
+		bson.M{"_id": id, "deleted_at": nil},
+		bson.M{"$set": bson.M{"deleted_at": time.Now()}},
+	)
 	return err
 }
 
@@ -263,7 +266,7 @@ func (r *mongoPostRepo) assemblePostItems(ctx context.Context, posts []model.Pos
 
 func (r *mongoPostRepo) ListWithDetails(ctx context.Context, offset, limit int) ([]model.PostListItem, error) {
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
-	cursor, err := r.store.Collection("posts").Find(ctx, bson.M{}, opts)
+	cursor, err := r.store.Collection("posts").Find(ctx, bson.M{"deleted_at": nil}, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +279,7 @@ func (r *mongoPostRepo) ListWithDetails(ctx context.Context, offset, limit int) 
 
 func (r *mongoPostRepo) FindByIDWithDetails(ctx context.Context, id string) (*model.PostListItem, error) {
 	var p model.Post
-	if err := r.store.Collection("posts").FindOne(ctx, bson.M{"_id": id}).Decode(&p); err != nil {
+	if err := r.store.Collection("posts").FindOne(ctx, bson.M{"_id": id, "deleted_at": nil}).Decode(&p); err != nil {
 		return nil, err
 	}
 	items, err := r.assemblePostItems(ctx, []model.Post{p})
@@ -291,10 +294,15 @@ func (r *mongoPostRepo) FindByIDWithDetails(ctx context.Context, id string) (*mo
 
 func (r *mongoPostRepo) Search(ctx context.Context, keyword string, offset, limit int) ([]model.PostListItem, error) {
 	escaped := regexp.QuoteMeta(keyword)
-	filter := bson.M{"$or": bson.A{
-		bson.M{"title": bson.M{"$regex": escaped, "$options": "i"}},
-		bson.M{"content_digest": bson.M{"$regex": escaped, "$options": "i"}},
-	}}
+	filter := bson.M{
+		"$and": bson.A{
+			bson.M{"deleted_at": nil},
+			bson.M{"$or": bson.A{
+				bson.M{"title": bson.M{"$regex": escaped, "$options": "i"}},
+				bson.M{"content_digest": bson.M{"$regex": escaped, "$options": "i"}},
+			}},
+		},
+	}
 	opts := options.Find().SetSort(bson.D{{Key: "created_at", Value: -1}}).SetSkip(int64(offset)).SetLimit(int64(limit))
 	cursor, err := r.store.Collection("posts").Find(ctx, filter, opts)
 	if err != nil {
@@ -413,7 +421,7 @@ func (r *sqlContentRepo) Delete(ctx context.Context, id string) error {
 type mongoContentRepo struct{ store db.MongoStore }
 
 func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string) ([]model.Content, error) {
-	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"root_id": rootID, "_id": bson.M{"$ne": rootID}})
+	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"root_id": rootID, "_id": bson.M{"$ne": rootID}, "deleted_at": nil})
 	if err != nil {
 		return nil, err
 	}
@@ -423,7 +431,7 @@ func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string) ([]mod
 }
 
 func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string) ([]model.Content, error) {
-	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"parent_id": parentID})
+	cursor, err := r.store.Collection("contents").Find(ctx, bson.M{"parent_id": parentID, "deleted_at": nil})
 	if err != nil {
 		return nil, err
 	}
@@ -434,7 +442,7 @@ func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string) ([
 
 func (r *mongoContentRepo) FindByID(ctx context.Context, id string) (*model.Content, error) {
 	var c model.Content
-	err := r.store.Collection("contents").FindOne(ctx, bson.M{"_id": id}).Decode(&c)
+	err := r.store.Collection("contents").FindOne(ctx, bson.M{"_id": id, "deleted_at": nil}).Decode(&c)
 	return &c, err
 }
 
@@ -449,7 +457,10 @@ func (r *mongoContentRepo) Update(ctx context.Context, c *model.Content) error {
 }
 
 func (r *mongoContentRepo) Delete(ctx context.Context, id string) error {
-	_, err := r.store.Collection("contents").DeleteOne(ctx, bson.M{"_id": id})
+	_, err := r.store.Collection("contents").UpdateOne(ctx,
+		bson.M{"_id": id, "deleted_at": nil},
+		bson.M{"$set": bson.M{"deleted_at": time.Now()}},
+	)
 	return err
 }
 
