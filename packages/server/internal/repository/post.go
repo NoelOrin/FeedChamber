@@ -435,8 +435,8 @@ func (r *mongoCategoryRepo) Delete(ctx context.Context, id string) error {
 // ── Content ──────────────────────────────────────────────────────────────────
 
 type ContentRepository interface {
-	ListByRoot(ctx context.Context, rootID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error)
-	ListByParent(ctx context.Context, parentID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error)
+	ListByRoot(ctx context.Context, rootID string, offset, limit int, startTime, endTime *time.Time) ([]model.ContentListItem, error)
+	ListByParent(ctx context.Context, parentID string, offset, limit int, startTime, endTime *time.Time) ([]model.ContentListItem, error)
 	FindByID(ctx context.Context, id string) (*model.Content, error)
 	Create(ctx context.Context, c *model.Content) error
 	Update(ctx context.Context, c *model.Content) error
@@ -452,30 +452,46 @@ func NewContentRepository(store db.Store) ContentRepository {
 
 type sqlContentRepo struct{ db db.SQLStore }
 
-func (r *sqlContentRepo) ListByRoot(ctx context.Context, rootID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error) {
-	var contents []model.Content
-	q := r.db.DB().WithContext(ctx).Where("root_id = ? AND id != root_id", rootID)
+func (r *sqlContentRepo) ListByRoot(ctx context.Context, rootID string, offset, limit int, startTime, endTime *time.Time) ([]model.ContentListItem, error) {
+	var items []model.ContentListItem
+	q := `SELECT c.id, c.author_id, u.username AS author_name, u.avatar AS author_avatar,
+	      c.body, c.root_id, c.parent_id, c.like_count, c.created_at, c.updated_at
+	      FROM contents c LEFT JOIN users u ON c.author_id = u.id
+	      WHERE c.root_id = ? AND c.id != c.root_id AND c.deleted_at IS NULL`
+	args := []interface{}{rootID}
 	if startTime != nil {
-		q = q.Where("updated_at >= ?", *startTime)
+		q += " AND c.updated_at >= ?"
+		args = append(args, *startTime)
 	}
 	if endTime != nil {
-		q = q.Where("updated_at <= ?", *endTime)
+		q += " AND c.updated_at <= ?"
+		args = append(args, *endTime)
 	}
-	err := q.Order("created_at asc").Offset(offset).Limit(limit).Find(&contents).Error
-	return contents, err
+	q += " ORDER BY c.created_at ASC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+	err := r.db.DB().WithContext(ctx).Raw(q, args...).Scan(&items).Error
+	return items, err
 }
 
-func (r *sqlContentRepo) ListByParent(ctx context.Context, parentID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error) {
-	var contents []model.Content
-	q := r.db.DB().WithContext(ctx).Where("parent_id = ?", parentID)
+func (r *sqlContentRepo) ListByParent(ctx context.Context, parentID string, offset, limit int, startTime, endTime *time.Time) ([]model.ContentListItem, error) {
+	var items []model.ContentListItem
+	q := `SELECT c.id, c.author_id, u.username AS author_name, u.avatar AS author_avatar,
+	      c.body, c.root_id, c.parent_id, c.like_count, c.created_at, c.updated_at
+	      FROM contents c LEFT JOIN users u ON c.author_id = u.id
+	      WHERE c.parent_id = ? AND c.deleted_at IS NULL`
+	args := []interface{}{parentID}
 	if startTime != nil {
-		q = q.Where("updated_at >= ?", *startTime)
+		q += " AND c.updated_at >= ?"
+		args = append(args, *startTime)
 	}
 	if endTime != nil {
-		q = q.Where("updated_at <= ?", *endTime)
+		q += " AND c.updated_at <= ?"
+		args = append(args, *endTime)
 	}
-	err := q.Order("created_at asc").Offset(offset).Limit(limit).Find(&contents).Error
-	return contents, err
+	q += " ORDER BY c.created_at ASC LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+	err := r.db.DB().WithContext(ctx).Raw(q, args...).Scan(&items).Error
+	return items, err
 }
 
 func (r *sqlContentRepo) FindByID(ctx context.Context, id string) (*model.Content, error) {
@@ -498,7 +514,7 @@ func (r *sqlContentRepo) Delete(ctx context.Context, id string) error {
 
 type mongoContentRepo struct{ store db.MongoStore }
 
-func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error) {
+func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string, offset, limit int, startTime, endTime *time.Time) ([]model.ContentListItem, error) {
 	filter := bson.M{"root_id": rootID, "_id": bson.M{"$ne": rootID}, "deleted_at": nil}
 	if startTime != nil || endTime != nil {
 		timeFilter := bson.M{}
@@ -516,11 +532,13 @@ func (r *mongoContentRepo) ListByRoot(ctx context.Context, rootID string, offset
 		return nil, err
 	}
 	var contents []model.Content
-	err = cursor.All(ctx, &contents)
-	return contents, err
+	if err := cursor.All(ctx, &contents); err != nil {
+		return nil, err
+	}
+	return r.assembleContentItems(ctx, contents)
 }
 
-func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string, offset, limit int, startTime, endTime *time.Time) ([]model.Content, error) {
+func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string, offset, limit int, startTime, endTime *time.Time) ([]model.ContentListItem, error) {
 	filter := bson.M{"parent_id": parentID, "deleted_at": nil}
 	if startTime != nil || endTime != nil {
 		timeFilter := bson.M{}
@@ -538,8 +556,61 @@ func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string, of
 		return nil, err
 	}
 	var contents []model.Content
-	err = cursor.All(ctx, &contents)
-	return contents, err
+	if err := cursor.All(ctx, &contents); err != nil {
+		return nil, err
+	}
+	return r.assembleContentItems(ctx, contents)
+}
+
+func (r *mongoContentRepo) assembleContentItems(ctx context.Context, contents []model.Content) ([]model.ContentListItem, error) {
+	if len(contents) == 0 {
+		return []model.ContentListItem{}, nil
+	}
+
+	authorIDs := make(map[string]struct{})
+	for _, c := range contents {
+		authorIDs[c.AuthorID] = struct{}{}
+	}
+	aIDs := make([]string, 0, len(authorIDs))
+	for id := range authorIDs {
+		aIDs = append(aIDs, id)
+	}
+	authorMap := make(map[string]struct{ Name, Avatar string })
+	if len(aIDs) > 0 {
+		cursor, err := r.store.Collection("users").Find(ctx, bson.M{"_id": bson.M{"$in": aIDs}})
+		if err != nil {
+			return nil, err
+		}
+		var users []struct {
+			ID       string `bson:"_id"`
+			Username string `bson:"username"`
+			Avatar   string `bson:"avatar"`
+		}
+		if err := cursor.All(ctx, &users); err != nil {
+			return nil, err
+		}
+		for _, u := range users {
+			authorMap[u.ID] = struct{ Name, Avatar string }{Name: u.Username, Avatar: u.Avatar}
+		}
+	}
+
+	items := make([]model.ContentListItem, len(contents))
+	for i, c := range contents {
+		author := authorMap[c.AuthorID]
+		items[i] = model.ContentListItem{
+			ID:           c.ID,
+			AuthorID:     c.AuthorID,
+			AuthorName:   author.Name,
+			AuthorAvatar: author.Avatar,
+			Body:         c.Body,
+			RootID:       c.RootID,
+			ParentID:     c.ParentID,
+			LikeCount:    c.LikeCount,
+			CreatedAt:    c.CreatedAt,
+			UpdatedAt:    c.UpdatedAt,
+		}
+	}
+	return items, nil
 }
 
 func (r *mongoContentRepo) FindByID(ctx context.Context, id string) (*model.Content, error) {

@@ -165,8 +165,8 @@ func (s *categoryService) Delete(ctx context.Context, id string) error {
 }
 
 type ContentService interface {
-	ListByPost(ctx context.Context, postID string, page, pageSize int, startTime, endTime *time.Time) ([]model.Content, error)
-	ListReplies(ctx context.Context, parentID string, page, pageSize int, startTime, endTime *time.Time) ([]model.Content, error)
+	ListByPost(ctx context.Context, postID string, page, pageSize int, startTime, endTime *time.Time) ([]model.ContentListItem, error)
+	ListReplies(ctx context.Context, parentID string, page, pageSize int, startTime, endTime *time.Time) ([]model.ContentListItem, error)
 	Create(ctx context.Context, postID, authorID, body, parentID string) (*model.Content, error)
 	Update(ctx context.Context, postID, id, body string) (*model.Content, error)
 	Delete(ctx context.Context, postID, id string) error
@@ -181,7 +181,7 @@ func NewContentService(repo repository.ContentRepository, postRepo repository.Po
 	return &contentService{repo: repo, postRepo: postRepo}
 }
 
-func (s *contentService) ListByPost(ctx context.Context, postID string, page, pageSize int, startTime, endTime *time.Time) ([]model.Content, error) {
+func (s *contentService) ListByPost(ctx context.Context, postID string, page, pageSize int, startTime, endTime *time.Time) ([]model.ContentListItem, error) {
 	post, err := s.postRepo.FindByID(ctx, postID)
 	if err != nil {
 		return nil, err
@@ -189,7 +189,7 @@ func (s *contentService) ListByPost(ctx context.Context, postID string, page, pa
 	return s.repo.ListByRoot(ctx, post.ContentID, (page-1)*pageSize, pageSize, startTime, endTime)
 }
 
-func (s *contentService) ListReplies(ctx context.Context, parentID string, page, pageSize int, startTime, endTime *time.Time) ([]model.Content, error) {
+func (s *contentService) ListReplies(ctx context.Context, parentID string, page, pageSize int, startTime, endTime *time.Time) ([]model.ContentListItem, error) {
 	return s.repo.ListByParent(ctx, parentID, (page-1)*pageSize, pageSize, startTime, endTime)
 }
 

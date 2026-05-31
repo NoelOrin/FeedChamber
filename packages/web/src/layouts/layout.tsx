@@ -23,10 +23,10 @@ export default function Layout(props: LayoutProps) {
           />
           <main class="mx-0 flex flex-1 flex-col p-2 min-w-0">
             {props.children}
-            <BackToTop />
           </main>
         </div>
       </div>
+      <BackToTop />
       <Footer />
     </>
   );

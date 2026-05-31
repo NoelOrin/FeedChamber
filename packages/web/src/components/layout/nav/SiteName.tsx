@@ -30,7 +30,7 @@ export default function SiteName() {
         </div>
       </a>
       {/* Popover content for mobile - shown on hover via CSS group */}
-      <div
+      {/* <div
         class="hidden sm:flex space-x-[8px] xl:hidden select-none box-border items-center -mt-[6px] card absolute z-50 px-[10px] py-[6px]
                opacity-0 pointer-events-none group-hover/sitename:opacity-100 group-hover/sitename:pointer-events-auto
                transition-opacity duration-200"
@@ -39,7 +39,7 @@ export default function SiteName() {
         <a href="/about" class="link fontExtraBold">关于</a>
         <a href="/friends" class="link fontExtraBold">友链</a>
         <a href="/contact" class="link fontExtraBold">联系我</a>
-      </div>
+      </div> */}
     </div>
   )
 }

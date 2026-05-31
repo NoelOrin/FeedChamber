@@ -6,8 +6,9 @@ interface CommentItemProps {
 }
 
 export default function CommentItem(props: CommentItemProps) {
+  console.log(props.comment);
   return (
-    <div class="rounded p-4 space-y-1">
+    <div class="rounded py-4 space-y-1">
       <div class="flex items-center gap-2 text-sm">
         <span class="font-medium">{props.comment.author_name}</span>
         <span class="opacity-60">

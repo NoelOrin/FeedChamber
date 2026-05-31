@@ -30,7 +30,7 @@ export default function BackToTop() {
 
   return (
     <div
-      class="sm:right-12 lg:right-20 bottom-16 cursor-pointer p-2 duration-200 backToTop"
+      class="fixed sm:right-12 lg:right-20 bottom-16 cursor-pointer p-2 duration-200"
       classList={{ hidden: !shouldShowBackToTop() }}
       style="border-radius: 55rem;"
       onClick={scrollToTop}
