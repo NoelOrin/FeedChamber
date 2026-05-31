@@ -10,7 +10,7 @@ export default function Sidebar(props: SidebarProps) {
   return (
     <>
       {/* Desktop */}
-      <aside id="sidebar-left" class="hidden xl:block">
+      <aside id="sidebar-left" class="hidden xl:block w-72">
         {props.children}
       </aside>
 

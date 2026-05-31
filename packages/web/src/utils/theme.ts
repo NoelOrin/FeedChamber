@@ -37,9 +37,11 @@ let _setThemeMode: ((v: ThemeMode) => void) | null = null
 
 export function useTheme() {
   if (!_themeMode) {
-    const [mode, setMode] = createSignal<ThemeMode>(getInitialTheme())
+    const initial = getInitialTheme()
+    const [mode, setMode] = createSignal<ThemeMode>(initial)
     _themeMode = mode
     _setThemeMode = setMode
+    applyTheme(initial)
   }
 
   const themeMode = _themeMode!

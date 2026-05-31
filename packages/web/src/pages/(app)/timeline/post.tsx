@@ -5,6 +5,7 @@ import type { ContentListItem, PostListItem } from "~/api";
 import PostHeader from "./-modules/PostHeader";
 import PostContent from "./-modules/PostContent";
 import CommentList from "./-modules/CommentList";
+import ContentItem from "./-modules/ContentItem";
 
 export const Route = createFileRoute("/(app)/timeline/post")({
   component: RouteComponent,
@@ -56,12 +57,12 @@ function RouteComponent() {
     <div class="w-full px-4 py-6 card">
       <PostHeader post={post()} />
       <Show when={contents().length > 0}>
-        <PostContent body={contents()[0].body} />
+        {/* <PostContent body={contents()[0].body} /> */}
+        <ContentItem class="pt-6" content={contents()[0]} />
       </Show>
-      <div class="divider"></div>
       <CommentList
         postId={post().id}
-        initialComments={contents().slice(1)}
+        initialContents={contents().slice(1)}
         initialHasMore={loaderData().hasMore}
         totalCount={post().comment_count}
       />
