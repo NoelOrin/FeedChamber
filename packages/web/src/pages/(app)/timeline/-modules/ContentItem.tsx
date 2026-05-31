@@ -7,7 +7,7 @@ interface ContentItemProps {
 }
 
 export default function ContentItem(props: ContentItemProps) {
-  console.log(props.content);
+  // console.log(props.content);
   return (
     <>
       <div class={`rounded flex gap-2 min-h-36 ${props.class}`}>
@@ -15,7 +15,7 @@ export default function ContentItem(props: ContentItemProps) {
         <div class="">
           <img
             src={props.content.author_avatar}
-            class="w-12 h-12 rounded-full sticky top-13 shrink-0"
+            class="w-12 h-12 rounded-full sticky top-14 shrink-0"
           />
         </div>
         {/* 右侧内容 */}

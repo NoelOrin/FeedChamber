@@ -1,9 +1,9 @@
-import { post } from '../client'
+import { post, postPaginated } from '../client'
 import type { Content, ContentListItem, ListParams } from '../types'
 
 export const contentService = {
   list(postId: string, params: ListParams) {
-    return post<ContentListItem[]>(`/posts/${postId}/contents/list`, params)
+    return postPaginated<ContentListItem[]>(`/posts/${postId}/contents/list`, params)
   },
 
   create(postId: string, body: { body: string; parentId?: string }) {
@@ -19,6 +19,6 @@ export const contentService = {
   },
 
   replies(contentId: string, params: ListParams) {
-    return post<ContentListItem[]>(`/contents/${contentId}/replies`, params)
+    return postPaginated<ContentListItem[]>(`/contents/${contentId}/replies`, params)
   },
 }

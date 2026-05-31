@@ -1,9 +1,9 @@
-import { post } from '../client'
-import type { Tag } from '../types'
+import { post, postPaginated } from '../client'
+import type { Tag, ListParams } from '../types'
 
 export const tagService = {
-  list() {
-    return post<Tag[]>('/tags/list')
+  list(params?: ListParams) {
+    return postPaginated<Tag[]>('/tags/list', params)
   },
 
   create(name: string) {

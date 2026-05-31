@@ -12,7 +12,7 @@ import (
 )
 
 type TagService interface {
-	List(ctx context.Context) ([]model.Tag, error)
+	List(ctx context.Context, page, pageSize int) ([]model.Tag, int, error)
 	Create(ctx context.Context, name string) (*model.Tag, error)
 	Update(ctx context.Context, id, name string) (*model.Tag, error)
 	Delete(ctx context.Context, id string) error
@@ -29,8 +29,16 @@ func NewTagService(repo repository.TagRepository) TagService {
 	return &tagService{repo: repo}
 }
 
-func (s *tagService) List(ctx context.Context) ([]model.Tag, error) {
-	return s.repo.List(ctx)
+func (s *tagService) List(ctx context.Context, page, pageSize int) ([]model.Tag, int, error) {
+	items, err := s.repo.List(ctx, (page-1)*pageSize, pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	total, err := s.repo.Count(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
 }
 
 func (s *tagService) Create(ctx context.Context, name string) (*model.Tag, error) {

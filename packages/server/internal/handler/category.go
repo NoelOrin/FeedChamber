@@ -31,12 +31,17 @@ func newCategoryHandler(svc service.CategoryService) CategoryHandler {
 // @Failure      500  {object}  pkg.Response
 // @Router       /categories/ [get]
 func (h *categoryHandler) List(ctx iris.Context) {
-	cats, err := h.svc.List(ctx.Request().Context())
+	var body struct {
+		ListParams
+	}
+	_ = ctx.ReadJSON(&body)
+	body.Normalize()
+	cats, total, err := h.svc.List(ctx.Request().Context(), body.Page, body.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.Success(ctx, cats)
+	pkg.SuccessPaginated(ctx, cats, body.Page, body.PageSize, total)
 }
 
 // Create 创建分类

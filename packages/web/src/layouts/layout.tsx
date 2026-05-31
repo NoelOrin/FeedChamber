@@ -4,6 +4,7 @@ import Nav from "~/components/layout/nav/Nav";
 import Sidebar from "~/components/aside/Sidebar";
 import BackToTop from "~/components/lc/BackToTop";
 import Footer from "~/components/layout/Footer";
+import SidebarContent from "~/components/aside/SidebarContent";
 
 interface LayoutProps {
   children: JSX.Element;
@@ -15,15 +16,12 @@ export default function Layout(props: LayoutProps) {
   return (
     <>
       <Nav onToggleSidebar={() => setSidebarOpen(!sidebarOpen())} />
-      <div class="mx-auto mt-10 flex-col justify-between py-1.5 min-h-[90vh]]">
-        <div class="flex w-full h-full max-w-full">
-          <Sidebar
-            isOpen={sidebarOpen()}
-            onClose={() => setSidebarOpen(false)}
-          >
-
+      <div class="mx-auto mt-12 py-1.5 min-h-[100vh]">
+        <div class="flex w-full h-full justify-between px-2 space-x-2">
+          <Sidebar isOpen={sidebarOpen()} onClose={() => setSidebarOpen(false)}>
+            <SidebarContent />
           </Sidebar>
-          <main class="mx-0 flex flex-1 flex-col p-2 min-w-0">
+          <main class="mx-0 flex flex-1 flex-col min-w-0">
             {props.children}
           </main>
         </div>

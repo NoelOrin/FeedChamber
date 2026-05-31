@@ -10,7 +10,8 @@ import (
 )
 
 type TagRepository interface {
-	List(ctx context.Context) ([]model.Tag, error)
+	List(ctx context.Context, offset, limit int) ([]model.Tag, error)
+	Count(ctx context.Context) (int, error)
 	FindByID(ctx context.Context, id string) (*model.Tag, error)
 	GetByName(ctx context.Context, name string) (*model.Tag, error)
 	Create(ctx context.Context, tag *model.Tag) error
@@ -34,10 +35,16 @@ func NewTagRepository(store db.Store) TagRepository {
 
 type sqlTagRepo struct{ db db.SQLStore }
 
-func (r *sqlTagRepo) List(ctx context.Context) ([]model.Tag, error) {
+func (r *sqlTagRepo) List(ctx context.Context, offset, limit int) ([]model.Tag, error) {
 	var tags []model.Tag
-	err := r.db.DB().WithContext(ctx).Order("name asc").Find(&tags).Error
+	err := r.db.DB().WithContext(ctx).Order("name asc").Offset(offset).Limit(limit).Find(&tags).Error
 	return tags, err
+}
+
+func (r *sqlTagRepo) Count(ctx context.Context) (int, error) {
+	var count int64
+	err := r.db.DB().WithContext(ctx).Model(&model.Tag{}).Count(&count).Error
+	return int(count), err
 }
 
 func (r *sqlTagRepo) GetByName(ctx context.Context, name string) (*model.Tag, error) {
@@ -110,14 +117,20 @@ func (r *sqlTagRepo) GetPostsByTagID(ctx context.Context, tagID string, offset, 
 
 type mongoTagRepo struct{ store db.MongoStore }
 
-func (r *mongoTagRepo) List(ctx context.Context) ([]model.Tag, error) {
-	cursor, err := r.store.Collection("tags").Find(ctx, bson.M{})
+func (r *mongoTagRepo) List(ctx context.Context, offset, limit int) ([]model.Tag, error) {
+	opts := options.Find().SetSkip(int64(offset)).SetLimit(int64(limit))
+	cursor, err := r.store.Collection("tags").Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, err
 	}
 	var tags []model.Tag
 	err = cursor.All(ctx, &tags)
 	return tags, err
+}
+
+func (r *mongoTagRepo) Count(ctx context.Context) (int, error) {
+	count, err := r.store.Collection("tags").CountDocuments(ctx, bson.M{})
+	return int(count), err
 }
 
 func (r *mongoTagRepo) GetByName(ctx context.Context, name string) (*model.Tag, error) {

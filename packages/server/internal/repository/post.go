@@ -23,9 +23,11 @@ type PostRepository interface {
 	IncrementViewCount(ctx context.Context, id string) error
 	IncrementCommentCount(ctx context.Context, id string) error
 	DecrementCommentCount(ctx context.Context, id string) error
-	ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string, startTime, endTime *time.Time) ([]model.PostListItem, error)
+	ListWithDetails(ctx context.Context, offset, limit int, categoryName, tagName, authorID, status string, startTime, endTime *time.Time) ([]model.PostListItem, error)
+	CountWithDetails(ctx context.Context, categoryName, tagName, authorID, status string, startTime, endTime *time.Time) (int, error)
 	FindByIDWithDetails(ctx context.Context, id string) (*model.PostListItem, error)
 	Search(ctx context.Context, keyword string, offset, limit int) ([]model.PostListItem, error)
+	CountSearch(ctx context.Context, keyword string) (int, error)
 }
 
 func NewPostRepository(store db.Store) PostRepository {
@@ -76,7 +78,7 @@ func (r *sqlPostRepo) DecrementCommentCount(ctx context.Context, id string) erro
 		UpdateColumn("comment_count", gorm.Expr("comment_count - 1")).Error
 }
 
-func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string, startTime, endTime *time.Time) ([]model.PostListItem, error) {
+func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int, categoryName, tagName, authorID, status string, startTime, endTime *time.Time) ([]model.PostListItem, error) {
 	var items []model.PostListItem
 	query := `
 		SELECT p.id, p.title, p.content_digest, p.author_id, u.username AS author_name, u.avatar AS author_avatar,
@@ -88,9 +90,13 @@ func (r *sqlPostRepo) ListWithDetails(ctx context.Context, offset, limit int, ca
 		LEFT JOIN categories c ON p.category_id = c.id
 		WHERE p.deleted_at IS NULL`
 	args := []interface{}{}
-	if categoryID != "" {
-		query += " AND p.category_id = ?"
-		args = append(args, categoryID)
+	if categoryName != "" {
+		query += " AND c.name = ?"
+		args = append(args, categoryName)
+	}
+	if tagName != "" {
+		query += " AND EXISTS (SELECT 1 FROM post_tags pt INNER JOIN tags t ON pt.tag_id = t.id WHERE pt.post_id = p.id AND t.name = ?)"
+		args = append(args, tagName)
 	}
 	if authorID != "" {
 		query += " AND p.author_id = ?"
@@ -130,6 +136,50 @@ func (r *sqlPostRepo) FindByIDWithDetails(ctx context.Context, id string) (*mode
 		return nil, err
 	}
 	return &item, nil
+}
+
+func (r *sqlPostRepo) CountWithDetails(ctx context.Context, categoryName, tagName, authorID, status string, startTime, endTime *time.Time) (int, error) {
+	query := `SELECT COUNT(*) FROM posts p
+		LEFT JOIN categories c ON p.category_id = c.id
+		WHERE p.deleted_at IS NULL`
+	args := []interface{}{}
+	if categoryName != "" {
+		query += " AND c.name = ?"
+		args = append(args, categoryName)
+	}
+	if tagName != "" {
+		query += " AND EXISTS (SELECT 1 FROM post_tags pt INNER JOIN tags t ON pt.tag_id = t.id WHERE pt.post_id = p.id AND t.name = ?)"
+		args = append(args, tagName)
+	}
+	if authorID != "" {
+		query += " AND p.author_id = ?"
+		args = append(args, authorID)
+	}
+	if status != "" {
+		query += " AND p.status = ?"
+		args = append(args, status)
+	}
+	if startTime != nil {
+		query += " AND p.created_at >= ?"
+		args = append(args, *startTime)
+	}
+	if endTime != nil {
+		query += " AND p.created_at <= ?"
+		args = append(args, *endTime)
+	}
+	var count int64
+	err := r.db.DB().WithContext(ctx).Raw(query, args...).Scan(&count).Error
+	return int(count), err
+}
+
+func (r *sqlPostRepo) CountSearch(ctx context.Context, keyword string) (int, error) {
+	like := "%" + keyword + "%"
+	var count int64
+	err := r.db.DB().WithContext(ctx).Raw(`
+		SELECT COUNT(*) FROM posts p
+		WHERE p.deleted_at IS NULL AND (p.title LIKE ? OR p.content_digest LIKE ?)
+	`, like, like).Scan(&count).Error
+	return int(count), err
 }
 
 func (r *sqlPostRepo) Search(ctx context.Context, keyword string, offset, limit int) ([]model.PostListItem, error) {
@@ -285,10 +335,43 @@ func (r *mongoPostRepo) assemblePostItems(ctx context.Context, posts []model.Pos
 	return items, nil
 }
 
-func (r *mongoPostRepo) ListWithDetails(ctx context.Context, offset, limit int, categoryID, authorID, status string, startTime, endTime *time.Time) ([]model.PostListItem, error) {
+func (r *mongoPostRepo) ListWithDetails(ctx context.Context, offset, limit int, categoryName, tagName, authorID, status string, startTime, endTime *time.Time) ([]model.PostListItem, error) {
 	filter := bson.M{"deleted_at": nil}
-	if categoryID != "" {
-		filter["category_id"] = categoryID
+	if categoryName != "" {
+		// resolve category name to ID
+		var cat struct {
+			ID string `bson:"_id"`
+		}
+		if err := r.store.Collection("categories").FindOne(ctx, bson.M{"name": categoryName, "deleted_at": nil}).Decode(&cat); err == nil && cat.ID != "" {
+			filter["category_id"] = cat.ID
+		} else {
+			return []model.PostListItem{}, nil
+		}
+	}
+	if tagName != "" {
+		// resolve tag name to ID, then find post IDs with that tag
+		var tag struct {
+			ID string `bson:"_id"`
+		}
+		if err := r.store.Collection("tags").FindOne(ctx, bson.M{"name": tagName}).Decode(&tag); err == nil && tag.ID != "" {
+			cursor, err := r.store.Collection("post_tags").Find(ctx, bson.M{"tag_id": tag.ID})
+			if err != nil {
+				return nil, err
+			}
+			var pts []struct {
+				PostID string `bson:"post_id"`
+			}
+			if err := cursor.All(ctx, &pts); err != nil {
+				return nil, err
+			}
+			postIDs := make([]string, 0, len(pts))
+			for _, pt := range pts {
+				postIDs = append(postIDs, pt.PostID)
+			}
+			filter["_id"] = bson.M{"$in": postIDs}
+		} else {
+			return []model.PostListItem{}, nil
+		}
 	}
 	if authorID != "" {
 		filter["author_id"] = authorID
@@ -333,6 +416,77 @@ func (r *mongoPostRepo) FindByIDWithDetails(ctx context.Context, id string) (*mo
 	return &items[0], nil
 }
 
+func (r *mongoPostRepo) CountWithDetails(ctx context.Context, categoryName, tagName, authorID, status string, startTime, endTime *time.Time) (int, error) {
+	filter := bson.M{"deleted_at": nil}
+	if categoryName != "" {
+		var cat struct {
+			ID string `bson:"_id"`
+		}
+		if err := r.store.Collection("categories").FindOne(ctx, bson.M{"name": categoryName, "deleted_at": nil}).Decode(&cat); err == nil && cat.ID != "" {
+			filter["category_id"] = cat.ID
+		} else {
+			return 0, nil
+		}
+	}
+	if tagName != "" {
+		var tag struct {
+			ID string `bson:"_id"`
+		}
+		if err := r.store.Collection("tags").FindOne(ctx, bson.M{"name": tagName}).Decode(&tag); err == nil && tag.ID != "" {
+			cursor, err := r.store.Collection("post_tags").Find(ctx, bson.M{"tag_id": tag.ID})
+			if err != nil {
+				return 0, err
+			}
+			var pts []struct {
+				PostID string `bson:"post_id"`
+			}
+			if err := cursor.All(ctx, &pts); err != nil {
+				return 0, err
+			}
+			postIDs := make([]string, 0, len(pts))
+			for _, pt := range pts {
+				postIDs = append(postIDs, pt.PostID)
+			}
+			filter["_id"] = bson.M{"$in": postIDs}
+		} else {
+			return 0, nil
+		}
+	}
+	if authorID != "" {
+		filter["author_id"] = authorID
+	}
+	if status != "" {
+		filter["status"] = status
+	}
+	if startTime != nil || endTime != nil {
+		timeFilter := bson.M{}
+		if startTime != nil {
+			timeFilter["$gte"] = *startTime
+		}
+		if endTime != nil {
+			timeFilter["$lte"] = *endTime
+		}
+		filter["created_at"] = timeFilter
+	}
+	count, err := r.store.Collection("posts").CountDocuments(ctx, filter)
+	return int(count), err
+}
+
+func (r *mongoPostRepo) CountSearch(ctx context.Context, keyword string) (int, error) {
+	escaped := regexp.QuoteMeta(keyword)
+	filter := bson.M{
+		"$and": bson.A{
+			bson.M{"deleted_at": nil},
+			bson.M{"$or": bson.A{
+				bson.M{"title": bson.M{"$regex": escaped, "$options": "i"}},
+				bson.M{"content_digest": bson.M{"$regex": escaped, "$options": "i"}},
+			}},
+		},
+	}
+	count, err := r.store.Collection("posts").CountDocuments(ctx, filter)
+	return int(count), err
+}
+
 func (r *mongoPostRepo) Search(ctx context.Context, keyword string, offset, limit int) ([]model.PostListItem, error) {
 	escaped := regexp.QuoteMeta(keyword)
 	filter := bson.M{
@@ -359,7 +513,8 @@ func (r *mongoPostRepo) Search(ctx context.Context, keyword string, offset, limi
 // ── Category ─────────────────────────────────────────────────────────────────
 
 type CategoryRepository interface {
-	List(ctx context.Context) ([]model.Category, error)
+	List(ctx context.Context, offset, limit int) ([]model.Category, error)
+	Count(ctx context.Context) (int, error)
 	FindByID(ctx context.Context, id string) (*model.Category, error)
 	Create(ctx context.Context, c *model.Category) error
 	Update(ctx context.Context, c *model.Category) error
@@ -375,10 +530,16 @@ func NewCategoryRepository(store db.Store) CategoryRepository {
 
 type sqlCategoryRepo struct{ db db.SQLStore }
 
-func (r *sqlCategoryRepo) List(ctx context.Context) ([]model.Category, error) {
+func (r *sqlCategoryRepo) List(ctx context.Context, offset, limit int) ([]model.Category, error) {
 	var cats []model.Category
-	err := r.db.DB().WithContext(ctx).Order("name asc").Find(&cats).Error
+	err := r.db.DB().WithContext(ctx).Order("name asc").Offset(offset).Limit(limit).Find(&cats).Error
 	return cats, err
+}
+
+func (r *sqlCategoryRepo) Count(ctx context.Context) (int, error) {
+	var count int64
+	err := r.db.DB().WithContext(ctx).Model(&model.Category{}).Count(&count).Error
+	return int(count), err
 }
 
 func (r *sqlCategoryRepo) Create(ctx context.Context, c *model.Category) error {
@@ -401,14 +562,20 @@ func (r *sqlCategoryRepo) Delete(ctx context.Context, id string) error {
 
 type mongoCategoryRepo struct{ store db.MongoStore }
 
-func (r *mongoCategoryRepo) List(ctx context.Context) ([]model.Category, error) {
-	cursor, err := r.store.Collection("categories").Find(ctx, bson.M{})
+func (r *mongoCategoryRepo) List(ctx context.Context, offset, limit int) ([]model.Category, error) {
+	opts := options.Find().SetSkip(int64(offset)).SetLimit(int64(limit))
+	cursor, err := r.store.Collection("categories").Find(ctx, bson.M{}, opts)
 	if err != nil {
 		return nil, err
 	}
 	var cats []model.Category
 	err = cursor.All(ctx, &cats)
 	return cats, err
+}
+
+func (r *mongoCategoryRepo) Count(ctx context.Context) (int, error) {
+	count, err := r.store.Collection("categories").CountDocuments(ctx, bson.M{})
+	return int(count), err
 }
 
 func (r *mongoCategoryRepo) Create(ctx context.Context, c *model.Category) error {
@@ -436,7 +603,9 @@ func (r *mongoCategoryRepo) Delete(ctx context.Context, id string) error {
 
 type ContentRepository interface {
 	ListByRoot(ctx context.Context, rootID string, offset, limit int, startTime, endTime *time.Time) ([]model.ContentListItem, error)
+	CountByRoot(ctx context.Context, rootID string, startTime, endTime *time.Time) (int, error)
 	ListByParent(ctx context.Context, parentID string, offset, limit int, startTime, endTime *time.Time) ([]model.ContentListItem, error)
+	CountByParent(ctx context.Context, parentID string, startTime, endTime *time.Time) (int, error)
 	FindByID(ctx context.Context, id string) (*model.Content, error)
 	Create(ctx context.Context, c *model.Content) error
 	Update(ctx context.Context, c *model.Content) error
@@ -492,6 +661,40 @@ func (r *sqlContentRepo) ListByParent(ctx context.Context, parentID string, offs
 	args = append(args, limit, offset)
 	err := r.db.DB().WithContext(ctx).Raw(q, args...).Scan(&items).Error
 	return items, err
+}
+
+func (r *sqlContentRepo) CountByRoot(ctx context.Context, rootID string, startTime, endTime *time.Time) (int, error) {
+	q := `SELECT COUNT(*) FROM contents c
+	      WHERE c.root_id = ? AND c.id != c.root_id AND c.deleted_at IS NULL`
+	args := []interface{}{rootID}
+	if startTime != nil {
+		q += " AND c.updated_at >= ?"
+		args = append(args, *startTime)
+	}
+	if endTime != nil {
+		q += " AND c.updated_at <= ?"
+		args = append(args, *endTime)
+	}
+	var count int64
+	err := r.db.DB().WithContext(ctx).Raw(q, args...).Scan(&count).Error
+	return int(count), err
+}
+
+func (r *sqlContentRepo) CountByParent(ctx context.Context, parentID string, startTime, endTime *time.Time) (int, error) {
+	q := `SELECT COUNT(*) FROM contents c
+	      WHERE c.parent_id = ? AND c.deleted_at IS NULL`
+	args := []interface{}{parentID}
+	if startTime != nil {
+		q += " AND c.updated_at >= ?"
+		args = append(args, *startTime)
+	}
+	if endTime != nil {
+		q += " AND c.updated_at <= ?"
+		args = append(args, *endTime)
+	}
+	var count int64
+	err := r.db.DB().WithContext(ctx).Raw(q, args...).Scan(&count).Error
+	return int(count), err
 }
 
 func (r *sqlContentRepo) FindByID(ctx context.Context, id string) (*model.Content, error) {
@@ -560,6 +763,38 @@ func (r *mongoContentRepo) ListByParent(ctx context.Context, parentID string, of
 		return nil, err
 	}
 	return r.assembleContentItems(ctx, contents)
+}
+
+func (r *mongoContentRepo) CountByRoot(ctx context.Context, rootID string, startTime, endTime *time.Time) (int, error) {
+	filter := bson.M{"root_id": rootID, "_id": bson.M{"$ne": rootID}, "deleted_at": nil}
+	if startTime != nil || endTime != nil {
+		timeFilter := bson.M{}
+		if startTime != nil {
+			timeFilter["$gte"] = *startTime
+		}
+		if endTime != nil {
+			timeFilter["$lte"] = *endTime
+		}
+		filter["updated_at"] = timeFilter
+	}
+	count, err := r.store.Collection("contents").CountDocuments(ctx, filter)
+	return int(count), err
+}
+
+func (r *mongoContentRepo) CountByParent(ctx context.Context, parentID string, startTime, endTime *time.Time) (int, error) {
+	filter := bson.M{"parent_id": parentID, "deleted_at": nil}
+	if startTime != nil || endTime != nil {
+		timeFilter := bson.M{}
+		if startTime != nil {
+			timeFilter["$gte"] = *startTime
+		}
+		if endTime != nil {
+			timeFilter["$lte"] = *endTime
+		}
+		filter["updated_at"] = timeFilter
+	}
+	count, err := r.store.Collection("contents").CountDocuments(ctx, filter)
+	return int(count), err
 }
 
 func (r *mongoContentRepo) assembleContentItems(ctx context.Context, contents []model.Content) ([]model.ContentListItem, error) {

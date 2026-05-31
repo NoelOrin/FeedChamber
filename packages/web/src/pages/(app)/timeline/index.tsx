@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate } from "@tanstack/solid-router";
-import { createSignal, For, onMount } from "solid-js";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router";
+import { createSignal, For, on, createEffect } from "solid-js";
 import ScrollPaginator from "~/components/pagination/ScrollPaginator";
 import { postService } from "~/api";
 import type { PostListItem } from "~/api";
@@ -8,35 +8,83 @@ const DEFAULT_PAGE_SIZE = 10;
 
 export const Route = createFileRoute("/(app)/timeline/")({
   component: Home,
-  loader: async () => {
-    const items = await postService.list({
+  validateSearch: (search: Record<string, unknown>) => {
+    const category = (search.category as string) || undefined;
+    const tag = (search.tag as string) || undefined;
+    return {
+      category: category ? category : undefined,
+      tag: !category && tag ? tag : undefined,
+    };
+  },
+  loader: async ({ location }) => {
+    const category = (location.search as Record<string, string>).category;
+    const tag = (location.search as Record<string, string>).tag;
+    const result = await postService.list({
       page: 1,
       pageSize: DEFAULT_PAGE_SIZE,
+      categoryName: category,
+      tagName: tag,
     });
+    const p = result.pagination;
     return {
-      items: items ?? [],
-      hasMore: (items?.length ?? 0) >= DEFAULT_PAGE_SIZE,
+      items: result.data ?? [],
+      hasMore: p ? p.currentPage < p.totalPages : false,
     };
   },
 });
 
 function Home() {
   const loaderData = Route.useLoaderData();
+  const search = useSearch({ from: "/(app)/timeline/" });
   const [posts, setPosts] = createSignal<PostListItem[]>(loaderData().items);
   const [page, setPage] = createSignal(2);
-  const [pageSize, _setPageSize] = createSignal(DEFAULT_PAGE_SIZE);
+  const [pageSize] = createSignal(DEFAULT_PAGE_SIZE);
   const [hasMore, setHasMore] = createSignal(loaderData().hasMore);
   const [isLoading, setIsLoading] = createSignal(false);
+
+  createEffect(
+    on(
+      search,
+      async (s) => {
+        setIsLoading(true);
+        try {
+          const result = await postService.list({
+            page: 1,
+            pageSize: pageSize(),
+            categoryName: s.category,
+            tagName: s.tag,
+          });
+          const items = result.data ?? [];
+          const p = result.pagination;
+          setPosts(items);
+          setPage(2);
+          setHasMore(p ? p.currentPage < p.totalPages : false);
+        } catch {
+          setHasMore(false);
+        } finally {
+          setIsLoading(false);
+        }
+      },
+      { defer: true },
+    ),
+  );
 
   const loadMore = async () => {
     if (isLoading() || !hasMore()) return;
     setIsLoading(true);
     try {
-      const items =
-        (await postService.list({ page: page(), pageSize: pageSize() })) ?? [];
+      const s = search();
+      const result = await postService.list({
+        page: page(),
+        pageSize: pageSize(),
+        categoryName: s.category,
+        tagName: s.tag,
+      });
+      const items = result.data ?? [];
+      const p = result.pagination;
       setPosts((prev) => [...prev, ...items]);
       setPage((p) => p + 1);
-      if (items.length < pageSize()) setHasMore(false);
+      if (p && p.currentPage >= p.totalPages) setHasMore(false);
     } catch {
       setHasMore(false);
     } finally {
@@ -46,14 +94,13 @@ function Home() {
 
   return (
     <div class="w-full h-full flex flex-col pb-32">
-      <div class="grid gap-4 lg:grid-cols-1 xl:grid-cols-2">
+      <div class="grid gap-2 grid-cols-1">
         <For each={posts()}>{(post) => <PostItem post={post} />}</For>
       </div>
       <ScrollPaginator
         hasMore={hasMore()}
         isLoading={isLoading()}
         onLoadMore={loadMore}
-        // threshold={-205}
       />
     </div>
   );

@@ -38,19 +38,20 @@ func newPostHandler(svc service.PostService) PostHandler {
 func (h *postHandler) List(ctx iris.Context) {
 	var body struct {
 		ListParams
-		CategoryID string `json:"categoryId"`
-		AuthorID   string `json:"authorId"`
-		Status     string `json:"status"`
+		CategoryName string `json:"categoryName"`
+		TagName      string `json:"tagName"`
+		AuthorID     string `json:"authorId"`
+		Status       string `json:"status"`
 	}
 	_ = ctx.ReadJSON(&body)
 	body.Normalize()
 	st, et := readTimeRange(ctx, body.ListParams)
-	posts, err := h.svc.List(ctx.Request().Context(), body.Page, body.PageSize, body.CategoryID, body.AuthorID, body.Status, st, et)
+	posts, total, err := h.svc.List(ctx.Request().Context(), body.Page, body.PageSize, body.CategoryName, body.TagName, body.AuthorID, body.Status, st, et)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.Success(ctx, posts)
+	pkg.SuccessPaginated(ctx, posts, body.Page, body.PageSize, total)
 }
 
 // GetByID 获取帖子详情
@@ -185,12 +186,12 @@ func (h *postHandler) Search(ctx iris.Context) {
 		return
 	}
 	body.Normalize()
-	posts, err := h.svc.Search(ctx.Request().Context(), body.Q, body.Page, body.PageSize)
+	posts, total, err := h.svc.Search(ctx.Request().Context(), body.Q, body.Page, body.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.Success(ctx, posts)
+	pkg.SuccessPaginated(ctx, posts, body.Page, body.PageSize, total)
 }
 
 // TogglePin 切换帖子置顶

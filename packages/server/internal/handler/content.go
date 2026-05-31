@@ -36,12 +36,12 @@ func newContentHandler(svc service.ContentService) ContentHandler {
 func (h *contentHandler) ListByPost(ctx iris.Context) {
 	p := readListParams(ctx)
 	st, et := readTimeRange(ctx, p)
-	contents, err := h.svc.ListByPost(ctx.Request().Context(), ctx.Params().Get("postId"), p.Page, p.PageSize, st, et)
+	contents, total, err := h.svc.ListByPost(ctx.Request().Context(), ctx.Params().Get("postId"), p.Page, p.PageSize, st, et)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.Success(ctx, contents)
+	pkg.SuccessPaginated(ctx, contents, p.Page, p.PageSize, total)
 }
 
 // ListReplies 子回复列表
@@ -58,12 +58,12 @@ func (h *contentHandler) ListByPost(ctx iris.Context) {
 func (h *contentHandler) ListReplies(ctx iris.Context) {
 	p := readListParams(ctx)
 	st, et := readTimeRange(ctx, p)
-	contents, err := h.svc.ListReplies(ctx.Request().Context(), ctx.Params().Get("contentId"), p.Page, p.PageSize, st, et)
+	contents, total, err := h.svc.ListReplies(ctx.Request().Context(), ctx.Params().Get("contentId"), p.Page, p.PageSize, st, et)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.Success(ctx, contents)
+	pkg.SuccessPaginated(ctx, contents, p.Page, p.PageSize, total)
 }
 
 // Create 创建评论/回复

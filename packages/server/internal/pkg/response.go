@@ -15,8 +15,43 @@ type Response struct {
 	Data interface{} `json:"data"`
 }
 
+// PaginatedResponse 分页响应体
+type PaginatedResponse struct {
+	Code       ErrCode     `json:"code"`
+	Msg        string      `json:"msg"`
+	Data       interface{} `json:"data"`
+	Pagination *Pagination `json:"pagination"`
+}
+
+// Pagination 分页信息
+type Pagination struct {
+	CurrentPage int `json:"currentPage"`
+	PageSize    int `json:"pageSize"`
+	TotalItems  int `json:"totalItems"`
+	TotalPages  int `json:"totalPages"`
+}
+
 func Success(ctx iris.Context, data interface{}) {
 	ctx.JSON(Response{Code: SUCCESS, Msg: GetErrMsg(SUCCESS), Data: data})
+}
+
+// SuccessPaginated 带分页的成功响应
+func SuccessPaginated(ctx iris.Context, data interface{}, page, pageSize, totalItems int) {
+	totalPages := 0
+	if pageSize > 0 {
+		totalPages = (totalItems + pageSize - 1) / pageSize
+	}
+	ctx.JSON(PaginatedResponse{
+		Code: SUCCESS,
+		Msg:  GetErrMsg(SUCCESS),
+		Data: data,
+		Pagination: &Pagination{
+			CurrentPage: page,
+			PageSize:    pageSize,
+			TotalItems:  totalItems,
+			TotalPages:  totalPages,
+		},
+	})
 }
 
 func Fail(ctx iris.Context, code ErrCode, msg ...string) {

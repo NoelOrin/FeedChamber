@@ -4,6 +4,7 @@ export const Route = createFileRoute("/(app)/")({
   beforeLoad: () => {
     throw redirect({
       to: "/timeline",
+      search: { category: undefined, tag: undefined },
     });
   },
 });

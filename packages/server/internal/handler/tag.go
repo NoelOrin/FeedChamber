@@ -33,12 +33,17 @@ func newTagHandler(svc service.TagService) TagHandler {
 // @Failure      500  {object}  pkg.Response
 // @Router       /tags/ [get]
 func (h *tagHandler) List(ctx iris.Context) {
-	tags, err := h.svc.List(ctx.Request().Context())
+	var body struct {
+		ListParams
+	}
+	_ = ctx.ReadJSON(&body)
+	body.Normalize()
+	tags, total, err := h.svc.List(ctx.Request().Context(), body.Page, body.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.Success(ctx, tags)
+	pkg.SuccessPaginated(ctx, tags, body.Page, body.PageSize, total)
 }
 
 // Create 创建标签

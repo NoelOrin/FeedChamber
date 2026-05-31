@@ -90,10 +90,10 @@ func (h *favoriteHandler) ListByUser(ctx iris.Context) {
 		return
 	}
 	p := readListParams(ctx)
-	ids, err := h.svc.ListByUser(ctx.Request().Context(), userID, p.Page, p.PageSize)
+	ids, total, err := h.svc.ListByUser(ctx.Request().Context(), userID, p.Page, p.PageSize)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.Success(ctx, ids)
+	pkg.SuccessPaginated(ctx, ids, p.Page, p.PageSize, total)
 }

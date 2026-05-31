@@ -1,9 +1,9 @@
-import { post } from '../client'
-import type { Category } from '../types'
+import { post, postPaginated } from '../client'
+import type { Category, ListParams } from '../types'
 
 export const categoryService = {
-  list() {
-    return post<Category[]>('/categories/list')
+  list(params?: ListParams) {
+    return postPaginated<Category[]>('/categories/list', params)
   },
 
   create(body: { name: string; description?: string }) {

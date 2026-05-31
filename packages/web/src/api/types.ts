@@ -4,6 +4,18 @@ export interface ApiResponse<T = unknown> {
   data: T | null
 }
 
+export interface PaginatedResponse<T = unknown> {
+  code: number
+  msg: string
+  data: T | null
+  pagination: {
+    currentPage: number
+    pageSize: number
+    totalItems: number
+    totalPages: number
+  } | null
+}
+
 export interface ListParams {
   page?: number
   pageSize?: number

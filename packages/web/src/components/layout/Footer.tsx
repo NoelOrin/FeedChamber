@@ -1,9 +1,9 @@
 export default function Footer() {
   return (
-    <footer class="mt-4 flex w-full cursor-default items-center justify-center text-sm text-remark">
-      <div class="flex w-full items-center p-4 lg:max-w-[1080px] xl:max-w-[1080px] 2xl:max-w-[1248px]">
+    <footer class="bottom-0 absolute flex w-full cursor-default items-center justify-center text-sm text-remark">
+      <div class="flex w-full items-center p-4">
         <div class="flex w-full flex-col ">
-          <div class="flex w-full sm:flex-col-reverse sm:items-center sm:space-y-[4px] md:space-y-0 sm:justify-center lg:flex-row lg:items-start lg:justify-between">
+          <div class="flex w-full sm:flex-col-reverse sm:items-center sm:space-y-1 md:space-y-0 sm:justify-center lg:flex-row lg:items-start lg:justify-between">
             <div class="flex flex-col sm:items-center lg:items-start">
               <div class="select-none footer_title">
                 <span>Powered By </span>

@@ -15,20 +15,25 @@ export default function CommentList(props: CommentListProps) {
   const [contents, setContents] = createSignal<ContentListItem[]>(
     props.initialContents,
   );
+  const [page, setPage] = createSignal(2);
   const [hasMore, setHasMore] = createSignal(props.initialHasMore);
   const [isLoading, setIsLoading] = createSignal(false);
+
+  const PAGE_SIZE = 20;
 
   const loadMore = async () => {
     if (isLoading() || !hasMore()) return;
     setIsLoading(true);
     try {
-      const items =
-        (await contentService.list(props.postId, {
-          page: Math.floor(contents().length / 20) + 1,
-          pageSize: 20,
-        })) ?? [];
+      const result = await contentService.list(props.postId, {
+        page: page(),
+        pageSize: PAGE_SIZE,
+      });
+      const items = result.data ?? [];
+      const p = result.pagination;
       setContents((prev) => [...prev, ...items]);
-      if (items.length < 20) setHasMore(false);
+      setPage((v) => v + 1);
+      if (p && p.currentPage >= p.totalPages) setHasMore(false);
     } catch {
       setHasMore(false);
     } finally {

@@ -8,13 +8,14 @@ import ContentItem from "./-modules/ContentItem";
 
 export const Route = createFileRoute("/(app)/timeline/post")({
   component: RouteComponent,
+  validateSearch: (search: Record<string, unknown>) => ({
+    id: (search.id as string) || "",
+  }),
   head: (props) => {
     const post = (props.loaderData as any)?.post;
     const title = post?.title ? `${post.title} - OrinForum` : "OrinForum";
     const description = post?.content_digest || "OrinForum 社区论坛";
     const url = typeof window !== "undefined" ? window.location.href : "";
-    // console.log(props);
-    // console.log(post, title, description, url);
     return {
       meta: [
         { title },
@@ -31,15 +32,17 @@ export const Route = createFileRoute("/(app)/timeline/post")({
   },
 
   loader: async ({ location }) => {
-    const { id } = location.search as Record<string, string>;
-    const [post, contents] = await Promise.all([
+    const { id } = location.search as { id: string };
+    const [post, contentsResult] = await Promise.all([
       postService.getById(id),
       contentService.list(id, { page: 1, pageSize: 30 }),
     ]);
+    const contents = contentsResult.data ?? [];
+    const p = contentsResult.pagination;
     return {
       post: post ?? ({} as PostListItem),
-      contents: contents ?? [],
-      hasMore: (contents?.length ?? 0) >= 30,
+      contents,
+      hasMore: p ? p.currentPage < p.totalPages : false,
     };
   },
 });

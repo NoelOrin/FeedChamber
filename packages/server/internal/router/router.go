@@ -22,6 +22,10 @@ func Register(app *iris.Application, h *handler.Handler) {
 		auth.Post("/reset_password", h.Auth.ResetPassword)
 	})
 
+	// Public category and tag lists
+	v1.Post("/categories/list", h.Category.List)
+	v1.Post("/tags/list", h.Tag.List)
+
 	// ── Protected (require JWT) ───────────────────────────────
 	protected := v1.Party("")
 	protected.Use(middleware.JWTAuth(), middleware.BanCheck())
@@ -60,7 +64,6 @@ func Register(app *iris.Application, h *handler.Handler) {
 
 	// ── Category ──────────────────────────────────────────────
 	protected.PartyFunc("/categories", func(cat iris.Party) {
-		cat.Post("/list", h.Category.List)
 		cat.Post("/create", middleware.RequirePermission(model.PermCategoryCreate), h.Category.Create)
 		cat.Post("/{id}/update", middleware.RequirePermission(model.PermCategoryCreate), h.Category.Update)
 		cat.Post("/{id}/delete", middleware.RequirePermission(model.PermCategoryDelete), h.Category.Delete)
@@ -68,7 +71,6 @@ func Register(app *iris.Application, h *handler.Handler) {
 
 	// ── Tag ───────────────────────────────────────────────────
 	protected.PartyFunc("/tags", func(t iris.Party) {
-		t.Post("/list", h.Tag.List)
 		t.Post("/create", middleware.RequirePermission(model.PermPostCreate), h.Tag.Create)
 		t.Post("/{id}/update", middleware.RequirePermission(model.PermPostCreate), h.Tag.Update)
 		t.Post("/{id}/delete", middleware.RequirePermission(model.PermPostDelete), h.Tag.Delete)

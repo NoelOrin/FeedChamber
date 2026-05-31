@@ -1,4 +1,4 @@
-import type { ApiResponse } from './types'
+import type { ApiResponse, PaginatedResponse } from './types'
 
 const BASE =
   typeof window === 'undefined'
@@ -30,12 +30,42 @@ async function request<T>(
   return json.data as T
 }
 
+async function requestPaginated<T>(
+  path: string,
+  options: RequestInit = {},
+): Promise<{ data: T; pagination: NonNullable<PaginatedResponse['pagination']> }> {
+  const token = getToken()
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string>),
+  }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+
+  const res = await fetch(`${BASE}${path}`, { ...options, headers })
+  const json: PaginatedResponse<T> = await res.json()
+
+  if (json.code !== 0 && json.code !== 200) {
+    throw new Error(json.msg || 'request failed')
+  }
+  return {
+    data: json.data as T,
+    pagination: json.pagination!,
+  }
+}
+
 export function get<T>(path: string): Promise<T> {
   return request<T>(path, { method: 'GET' })
 }
 
 export function post<T>(path: string, body?: unknown): Promise<T> {
   return request<T>(path, {
+    method: 'POST',
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+}
+
+export function postPaginated<T>(path: string, body?: unknown): Promise<{ data: T; pagination: NonNullable<PaginatedResponse['pagination']> }> {
+  return requestPaginated<T>(path, {
     method: 'POST',
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })

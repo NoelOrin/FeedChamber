@@ -69,7 +69,7 @@ export default function ScrollPaginator(props: ScrollPaginatorProps) {
           <Match when={props.isLoading}>
             {props.loadingComponent ?? <DefaultLoading />}
           </Match>
-          <Match when={!props.hasMore && !props.isLoading}>
+          <Match when={!props.hasMore}>
             <div class="text-center font-bold py-3">没有更多了</div>
           </Match>
         </Switch>

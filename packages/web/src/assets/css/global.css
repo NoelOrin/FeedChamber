@@ -164,7 +164,6 @@ nav {
 
 /* Sidebar */
 #sidebar-left {
-  padding: 0.5rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -176,7 +175,6 @@ nav {
     z-index: 50;
     height: 100%;
     overflow-y: auto;
-    border-right-width: 1px;
     border-color: rgb(229 231 235);
     user-select: none;
   }

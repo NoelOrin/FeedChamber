@@ -1,15 +1,23 @@
 /// <reference types="vite/client" />
-import { createRootRoute, HeadContent, Scripts } from '@tanstack/solid-router'
+import { createRootRoute, HeadContent, Scripts, Outlet } from '@tanstack/solid-router'
 import type * as Solid from 'solid-js'
 import { HydrationScript } from 'solid-js/web'
 import ErrorComponent from '~/components/ErrorComponent'
 import NotFound from '~/components/NotFound'
 import Layout from '~/layouts/layout'
 import styles from '~/styles.css?url'
+import { categoryService, tagService } from '~/api'
 
 export const Route = createRootRoute({
   notFoundComponent: NotFound,
   errorComponent: ErrorComponent,
+  loader: async () => {
+    const [catResult, tagResult] = await Promise.all([
+      categoryService.list({ page: 1, pageSize: 50 }),
+      tagService.list({ page: 1, pageSize: 50 })
+    ])
+    return { categories: catResult.data ?? [], tags: tagResult.data ?? [] }
+  },
   head: () => ({
     meta: [
       { charset: 'utf-8' },
@@ -24,8 +32,13 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/favicon.ico' },
     ],
   }),
+  component: RootComponent,
   shellComponent: RootDocument,
 })
+
+function RootComponent() {
+  return <Outlet />
+}
 
 function DarkModeScript() {
   const code = `(function(){var t=localStorage.getItem('theme');var m=t||'system';var isDark=m==='dark'||(m!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches);document.documentElement.setAttribute('data-theme-mode',m);document.documentElement.classList.toggle('dark',isDark);document.documentElement.setAttribute('data-theme',isDark?'dark':'light')})();`
@@ -42,7 +55,7 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
         <title>OrinForum</title>
         <DarkModeScript />
       </head>
-      <body class="layout-default-bg">
+      <body class="layout-default-bg relative">
         <Layout>
           {children}
         </Layout>

@@ -1,19 +1,20 @@
-import { get, post } from '../client'
+import { get, post, postPaginated } from '../client'
 import type { Post, PostListItem, Tag, ListParams } from '../types'
 
 export interface PostListParams extends ListParams {
-  categoryId?: string
+  categoryName?: string
+  tagName?: string
   authorId?: string
   status?: string
 }
 
 export const postService = {
   list(params: PostListParams) {
-    return post<PostListItem[]>('/posts/list', params)
+    return postPaginated<PostListItem[]>('/posts/list', params)
   },
 
   search(params: ListParams & { q: string }) {
-    return post<PostListItem[]>('/posts/search', params)
+    return postPaginated<PostListItem[]>('/posts/search', params)
   },
 
   getById(id: string) {
