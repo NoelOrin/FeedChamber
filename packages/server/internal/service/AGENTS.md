@@ -8,6 +8,7 @@
 - 构造函数 `NewXxxService(repo XxxRepo) XxxService`
 - 错误用 `pkg.NewAppError(pkg.XXX, msg...)` 返回
 - 分页逻辑在 service 层处理 (page/pageSize → offset/limit)
+- 列表方法返回三元组 `(items, totalItems, error)`，handler 层据此构造分页响应
 - UUID 生成在 service 层 (`uuid.NewString()`)
 - 密码哈希在 service 层 (`bcrypt.GenerateFromPassword`)
 
@@ -17,12 +18,16 @@
 |------|------|------|
 | auth.go | AuthService | UserRepository |
 | user.go | UserService | UserRepository |
-| forum.go | PostService, CategoryService, CommentService | PostRepository, CategoryRepository, CommentRepository |
+| forum.go | PostService, CategoryService, ContentService | PostRepository, CategoryRepository, ContentRepository |
 | permission.go | PermissionService | PermissionRepository (带线程安全内存缓存) |
 | tag.go | TagService | TagRepository |
 | like.go | LikeService | LikeRepository |
 | favorite.go | FavoriteService | FavoriteRepository |
 | follow.go | FollowService | FollowRepository |
+| upload.go | UploadService | UploadRepository |
+| notification.go | NotificationService | NotificationRepository |
+| report.go | ReportService | ReportRepository |
+| setting.go | SettingService | SettingRepository |
 
 ## PermissionService 特殊说明
 

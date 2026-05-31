@@ -6,27 +6,36 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 
 - 每个文件定义 `XxxHandler` 接口 + 私有实现 struct
 - 构造函数 `newXxxHandler(svc XxxService) XxxHandler`
-- 响应统一用 `pkg.Success(ctx, data)` 和 `pkg.HandleError(ctx, err)`
+- 分页列表用 `pkg.SuccessPaginated(ctx, data, page, pageSize, total)` 返回
+- 非分页响应用 `pkg.Success(ctx, data)` 返回
+- 错误统一用 `pkg.HandleError(ctx, err)`
 - 参数获取：路径参数 `ctx.Params().Get("id")`，查询参数 `ctx.URLParam("q")`，请求体 `ctx.ReadJSON(&req)`
+- 分页参数通过 `readListParams(ctx)` 获取，返回 `ListParams{Page, PageSize}`
+- 时间范围通过 `readTimeRange(ctx, p)` 获取
 - 当前用户从 JWT context 获取：`ctx.Values().GetString("user_uuid")`
 - 每个方法上方必须有 swag 注解 (@Summary, @Description, @Tags, @Param, @Success, @Router, @Security)
 
 ## 文件列表
 
-| 文件 | Handler | 方法数 |
-|------|---------|--------|
+| 文件 | Handler | 方法 |
+|------|---------|------|
 | handler.go | Handler (聚合) + Health | 所有 handler 的依赖注入 |
-| auth.go | AuthHandler | 8: Register, Login, Logout, RefreshToken, GetRefreshToken, ChangePassword, FirstChangePassword, ResetPassword |
-| user.go | UserHandler | 6: GetProfile, GetByID, List, UpdateProfile, UpdateRole, Delete |
-| post.go | PostHandler | 6: List, GetByID, Create, Update, Delete, Search |
-| comment.go | CommentHandler | 3: ListByPost, Create, Delete |
-| category.go | CategoryHandler | 3: List, Create, Delete |
-| tag.go | TagHandler | 5: List, Create, Delete, GetPostTags, SetPostTags |
-| like.go | LikeHandler | 4: TogglePostLike, ToggleCommentLike, GetPostLikeStatus, GetCommentLikeStatus |
-| favorite.go | FavoriteHandler | 3: Toggle, GetStatus, ListByUser |
-| follow.go | FollowHandler | 6: Follow, Unfollow, GetStatus, GetFollowers, GetFollowing, GetCounts |
-| role.go | RoleHandler | 3: List, Create, Delete |
-| permission.go | PermissionHandler | 3: ListPermissions, GetRolePermissions, SyncRolePermissions |
+| auth.go | AuthHandler | Register, Login, Logout, RefreshToken, GetRefreshToken, ChangePassword, FirstChangePassword, ResetPassword |
+| user.go | UserHandler | GetProfile, GetByID, List, Search, UpdateProfile, UpdateRole, Delete |
+| post.go | PostHandler | List, GetByID, Create, Update, Delete, Search, TogglePin, ToggleLock |
+| content.go | ContentHandler | ListByPost, ListReplies, Create, Update, Delete |
+| category.go | CategoryHandler | List, Create, Update, Delete |
+| tag.go | TagHandler | List, Create, Update, Delete, GetPostTags, SetPostTags |
+| like.go | LikeHandler | ToggleContentLike, GetContentLikeStatus |
+| favorite.go | FavoriteHandler | Toggle, GetStatus, ListByUser |
+| follow.go | FollowHandler | Follow, Unfollow, GetStatus, GetFollowers, GetFollowing, GetCounts |
+| role.go | RoleHandler | List, Create, Delete |
+| permission.go | PermissionHandler | ListPermissions, GetRolePermissions, SyncRolePermissions |
+| upload.go | UploadHandler | Upload, List, GetFile, Delete |
+| notification.go | NotificationHandler | List, CountUnread, MarkRead, MarkAllRead, Delete |
+| report.go | ReportHandler | Create, List, UpdateStatus, Delete |
+| admin.go | AdminHandler | GetStats |
+| setting.go | SettingHandler | Get, GetAll, GetPublic, Set, Delete |
 
 ## 添加新 Handler
 
