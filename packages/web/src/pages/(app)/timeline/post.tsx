@@ -8,13 +8,34 @@ import CommentList from "./-modules/CommentList";
 
 export const Route = createFileRoute("/(app)/timeline/post")({
   component: RouteComponent,
+  head: (props) => {
+    const post = (props.loaderData as any)?.post;
+    const title = post?.title ? `${post.title} - OrinForum` : "OrinForum";
+    const description = post?.content_digest || "OrinForum 社区论坛";
+    const url = typeof window !== "undefined" ? window.location.href : "";
+    // console.log(props);
+    // console.log(post, title, description, url);
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "article" },
+        ...(url ? [{ property: "og:url", content: url }] : []),
+        { name: "twitter:card", content: "summary" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+      ],
+    };
+  },
+
   loader: async ({ location }) => {
     const { id } = location.search as Record<string, string>;
     const [post, contents] = await Promise.all([
       postService.getById(id),
       contentService.list(id, { page: 1, pageSize: 20 }),
     ]);
-
     return {
       post: post ?? ({} as PostListItem),
       contents: contents ?? [],
@@ -24,11 +45,13 @@ export const Route = createFileRoute("/(app)/timeline/post")({
 });
 
 function RouteComponent() {
-  const loaderData = Route.useLoaderData();
-  const post = () => loaderData().post as PostListItem;
-  const contents = () => loaderData().contents as ContentListItem[];
-    console.log(post(), contents());
-    console.log(contents()[0]);
+  const loaderData = Route.useLoaderData() as () => {
+    post: PostListItem;
+    contents: ContentListItem[];
+    hasMore: boolean;
+  };
+  const post = () => loaderData().post;
+  const contents = () => loaderData().contents;
   return (
     <div class="w-full px-4 py-6 card">
       <PostHeader post={post()} />

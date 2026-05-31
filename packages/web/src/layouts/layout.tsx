@@ -13,9 +13,9 @@ export default function Layout(props: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = createSignal(false);
 
   return (
-    <div>
+    <>
       <Nav onToggleSidebar={() => setSidebarOpen(!sidebarOpen())} />
-      <div class="mx-auto mt-10 flex-col justify-between py-1.5 min-h-[90vh] sm:max-w-[1080px] xl:max-w-[1080px] 2xl:max-w-[1248px]">
+      <div class="mx-auto mt-10 flex-col justify-between py-1.5 min-h-[90vh]]">
         <div class="flex w-full h-full max-w-full">
           <Sidebar
             isOpen={sidebarOpen()}
@@ -28,6 +28,6 @@ export default function Layout(props: LayoutProps) {
         </div>
       </div>
       <Footer />
-    </div>
+    </>
   );
 }

@@ -3,7 +3,7 @@
 @plugin "daisyui" {
   /* themes: false; */
   exclude: a, button;
- themes: light --default, dark --prefersdark;
+  themes: light --default, dark;
 };
 @theme {
   --color-theme-main: var(--themeColorMain);

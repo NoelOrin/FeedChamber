@@ -28,7 +28,7 @@ export const Route = createRootRoute({
 })
 
 function DarkModeScript() {
-  const code = `(function(){if(document.documentElement.classList.contains('dark'))return;var t=localStorage.getItem('theme');var d=(!t&&window.matchMedia('(prefers-color-scheme:dark)').matches)||t==='dark';if(d)document.documentElement.classList.add('dark')})();`
+  const code = `(function(){var t=localStorage.getItem('theme');var d=t==='dark'||(t!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches);if(d){document.documentElement.classList.add('dark');document.documentElement.setAttribute('data-theme','dark')}else{document.documentElement.setAttribute('data-theme','light')}})();`
   return <script>{code}</script>
 }
 

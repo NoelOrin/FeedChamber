@@ -1,22 +1,31 @@
-import { createSignal } from 'solid-js'
+import { createSignal, onCleanup } from 'solid-js'
 
-type ThemeMode = 'light' | 'dark'
+export type ThemeMode = 'light' | 'dark' | 'system'
+type ResolvedTheme = 'light' | 'dark'
 
 const STORAGE_KEY = 'theme'
 
-function getSystemTheme(): ThemeMode {
+function getSystemTheme(): ResolvedTheme {
   if (typeof window === 'undefined') return 'light'
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
 
 function getInitialTheme(): ThemeMode {
-  if (typeof localStorage === 'undefined') return 'light'
-  return (localStorage.getItem(STORAGE_KEY) as ThemeMode) || getSystemTheme()
+  if (typeof localStorage === 'undefined') return 'system'
+  const saved = localStorage.getItem(STORAGE_KEY) as ThemeMode | null
+  if (saved === 'light' || saved === 'dark' || saved === 'system') return saved
+  return 'system'
+}
+
+function resolveTheme(mode: ThemeMode): ResolvedTheme {
+  return mode === 'system' ? getSystemTheme() : mode
 }
 
 function applyTheme(mode: ThemeMode) {
   if (typeof document === 'undefined') return
-  document.documentElement.classList.toggle('dark', mode === 'dark')
+  const resolved = resolveTheme(mode)
+  document.documentElement.classList.toggle('dark', resolved === 'dark')
+  document.documentElement.setAttribute('data-theme', resolved)
 }
 
 export function initTheme() {
@@ -36,15 +45,33 @@ export function useTheme() {
   const themeMode = _themeMode!
   const setThemeMode = _setThemeMode!
 
-  return {
-    themeMode,
-    themeTitle: () => (themeMode() === 'dark' ? '切换亮色模式' : '切换暗色模式'),
-    toggleTheme: () => {
-      const next: ThemeMode = themeMode() === 'dark' ? 'light' : 'dark'
-      setThemeMode(next)
-      localStorage.setItem(STORAGE_KEY, next)
-      applyTheme(next)
-    },
+  // 监听系统主题变化，仅在 system 模式下生效
+  if (typeof window !== 'undefined') {
+    const mql = window.matchMedia('(prefers-color-scheme: dark)')
+    const handler = () => {
+      if (themeMode() === 'system') applyTheme('system')
+    }
+    mql.addEventListener('change', handler)
+    onCleanup(() => mql.removeEventListener('change', handler))
   }
+
+  const themeTitle = () => {
+    const titles: Record<ThemeMode, string> = {
+      light: '切换暗色模式',
+      dark: '跟随系统',
+      system: '切换亮色模式',
+    }
+    return titles[themeMode()]
+  }
+
+  const cycleTheme = () => {
+    const order: ThemeMode[] = ['light', 'dark', 'system']
+    const next = order[(order.indexOf(themeMode()) + 1) % 3]
+    setThemeMode(next)
+    localStorage.setItem(STORAGE_KEY, next)
+    applyTheme(next)
+  }
+
+  return { themeMode, themeTitle, toggleTheme: cycleTheme }
 }
 
