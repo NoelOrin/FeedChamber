@@ -32,6 +32,7 @@ function DarkModeScript() {
   return <script>{code}</script>
 }
 
+
 function RootDocument({ children }: { children: Solid.JSX.Element }) {
   return (
     <html lang="zh-CN">

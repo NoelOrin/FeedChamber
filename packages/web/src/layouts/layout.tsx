@@ -1,7 +1,7 @@
 import type { JSX } from "solid-js/jsx-runtime";
 import { createSignal } from "solid-js";
 import Nav from "~/components/layout/nav/Nav";
-import Sidebar from "~/components/S/Sidebar";
+import Sidebar from "~/components/aside/Sidebar";
 import BackToTop from "~/components/lc/BackToTop";
 import Footer from "~/components/layout/Footer";
 
@@ -20,7 +20,9 @@ export default function Layout(props: LayoutProps) {
           <Sidebar
             isOpen={sidebarOpen()}
             onClose={() => setSidebarOpen(false)}
-          />
+          >
+
+          </Sidebar>
           <main class="mx-0 flex flex-1 flex-col p-2 min-w-0">
             {props.children}
           </main>
