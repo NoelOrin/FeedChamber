@@ -1,4 +1,4 @@
-import { createSignal, onMount } from 'solid-js'
+import { createSignal } from 'solid-js'
 
 type ThemeMode = 'light' | 'dark'
 
@@ -10,11 +10,9 @@ function getSystemTheme(): ThemeMode {
 }
 
 function getInitialTheme(): ThemeMode {
-  if (typeof window === 'undefined') return 'light'
+  if (typeof localStorage === 'undefined') return 'light'
   return (localStorage.getItem(STORAGE_KEY) as ThemeMode) || getSystemTheme()
 }
-
-const [themeMode, setThemeMode] = createSignal<ThemeMode>(getInitialTheme())
 
 function applyTheme(mode: ThemeMode) {
   if (typeof document === 'undefined') return
@@ -22,10 +20,22 @@ function applyTheme(mode: ThemeMode) {
 }
 
 export function initTheme() {
-  applyTheme(themeMode())
+  applyTheme(getInitialTheme())
 }
 
+let _themeMode: (() => ThemeMode) | null = null
+let _setThemeMode: ((v: ThemeMode) => void) | null = null
+
 export function useTheme() {
+  if (!_themeMode) {
+    const [mode, setMode] = createSignal<ThemeMode>(getInitialTheme())
+    _themeMode = mode
+    _setThemeMode = setMode
+  }
+
+  const themeMode = _themeMode!
+  const setThemeMode = _setThemeMode!
+
   return {
     themeMode,
     themeTitle: () => (themeMode() === 'dark' ? '切换亮色模式' : '切换暗色模式'),
@@ -37,3 +47,4 @@ export function useTheme() {
     },
   }
 }
+

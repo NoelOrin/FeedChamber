@@ -69,6 +69,10 @@ func Start(env Env) {
 	seedSettings(store)
 	ensureMockData(store)
 
+	// inject setting reader into middleware for dynamic auth gates
+	settingRepo := repository.NewSettingRepository(store)
+	middleware.SetSettingReader(service.NewSettingService(settingRepo))
+
 	app := iris.New()
 
 	if env == Dev {

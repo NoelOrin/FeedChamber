@@ -16,6 +16,7 @@ import { Route as appTimelineRouteRouteImport } from './pages/(app)/timeline/rou
 import { Route as appHomeRouteRouteImport } from './pages/(app)/home/route'
 import { Route as appCategoryRouteRouteImport } from './pages/(app)/category/route'
 import { Route as appTimelineIndexRouteImport } from './pages/(app)/timeline/index'
+import { Route as appTimelinePostRouteImport } from './pages/(app)/timeline/post'
 
 const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
@@ -51,6 +52,11 @@ const appTimelineIndexRoute = appTimelineIndexRouteImport.update({
   path: '/',
   getParentRoute: () => appTimelineRouteRoute,
 } as any)
+const appTimelinePostRoute = appTimelinePostRouteImport.update({
+  id: '/post',
+  path: '/post',
+  getParentRoute: () => appTimelineRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/category': typeof appCategoryRouteRoute
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/timeline': typeof appTimelineRouteRouteWithChildren
   '/login': typeof authLoginRouteRoute
   '/oauth': typeof authOauthRouteRoute
+  '/timeline/post': typeof appTimelinePostRoute
   '/timeline/': typeof appTimelineIndexRoute
 }
 export interface FileRoutesByTo {
@@ -65,6 +72,7 @@ export interface FileRoutesByTo {
   '/home': typeof appHomeRouteRoute
   '/login': typeof authLoginRouteRoute
   '/oauth': typeof authOauthRouteRoute
+  '/timeline/post': typeof appTimelinePostRoute
   '/timeline': typeof appTimelineIndexRoute
 }
 export interface FileRoutesById {
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   '/(app)/timeline': typeof appTimelineRouteRouteWithChildren
   '/(auth)/login': typeof authLoginRouteRoute
   '/(auth)/oauth': typeof authOauthRouteRoute
+  '/(app)/timeline/post': typeof appTimelinePostRoute
   '/(app)/timeline/': typeof appTimelineIndexRoute
 }
 export interface FileRouteTypes {
@@ -85,9 +94,16 @@ export interface FileRouteTypes {
     | '/timeline'
     | '/login'
     | '/oauth'
+    | '/timeline/post'
     | '/timeline/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/category' | '/home' | '/login' | '/oauth' | '/timeline'
+  to:
+    | '/category'
+    | '/home'
+    | '/login'
+    | '/oauth'
+    | '/timeline/post'
+    | '/timeline'
   id:
     | '__root__'
     | '/(app)'
@@ -96,6 +112,7 @@ export interface FileRouteTypes {
     | '/(app)/timeline'
     | '/(auth)/login'
     | '/(auth)/oauth'
+    | '/(app)/timeline/post'
     | '/(app)/timeline/'
   fileRoutesById: FileRoutesById
 }
@@ -156,14 +173,23 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof appTimelineIndexRouteImport
       parentRoute: typeof appTimelineRouteRoute
     }
+    '/(app)/timeline/post': {
+      id: '/(app)/timeline/post'
+      path: '/post'
+      fullPath: '/timeline/post'
+      preLoaderRoute: typeof appTimelinePostRouteImport
+      parentRoute: typeof appTimelineRouteRoute
+    }
   }
 }
 
 interface appTimelineRouteRouteChildren {
+  appTimelinePostRoute: typeof appTimelinePostRoute
   appTimelineIndexRoute: typeof appTimelineIndexRoute
 }
 
 const appTimelineRouteRouteChildren: appTimelineRouteRouteChildren = {
+  appTimelinePostRoute: appTimelinePostRoute,
   appTimelineIndexRoute: appTimelineIndexRoute,
 }
 

@@ -11,8 +11,9 @@ import (
 func Register(app *iris.Application, h *handler.Handler) {
 	v1 := app.Party("/api/v1")
 
-	// ── Public ────────────────────────────────────────────────
+	// ── Public (no JWT required) ──────────────────────────────
 	v1.Get("/health", handler.Health)
+	v1.Post("/settings/public", h.Setting.GetPublic)
 
 	v1.PartyFunc("/auth", func(auth iris.Party) {
 		auth.Post("/register", h.Auth.Register)
@@ -74,26 +75,30 @@ func Register(app *iris.Application, h *handler.Handler) {
 	})
 
 	// ── Post ──────────────────────────────────────────────────
+	// list/search/get are public by default; gates enforce auth when setting is enabled
+	v1.PartyFunc("/posts", func(p iris.Party) {
+		p.Use(middleware.OptionalJWTAuth())
+		p.Post("/list", middleware.PostAuthGate(), h.Post.List)
+		p.Post("/search", middleware.PostAuthGate(), h.Post.Search)
+		p.Get("/{id}", middleware.PostAuthGate(), h.Post.GetByID)
+
+		p.Post("/{postId}/contents/list", middleware.CommentAuthGate(), h.Content.ListByPost)
+		p.Post("/{postId}/tags", h.Tag.GetPostTags)
+	})
+
 	protected.PartyFunc("/posts", func(p iris.Party) {
-		p.Post("/list", h.Post.List)
-		p.Post("/search", h.Post.Search)
-		p.Get("/{id}", h.Post.GetByID)
 		p.Post("/create", middleware.RequirePermission(model.PermPostCreate), h.Post.Create)
 		p.Post("/{id}/update", middleware.RequirePermission(model.PermPostUpdate), h.Post.Update)
 		p.Post("/{id}/delete", middleware.RequirePermission(model.PermPostDelete), h.Post.Delete)
 		p.Post("/{id}/pin", middleware.RequirePermission(model.PermPostPin), h.Post.TogglePin)
 		p.Post("/{id}/lock", middleware.RequirePermission(model.PermPostLock), h.Post.ToggleLock)
 
-		p.Post("/{postId}/tags", h.Tag.GetPostTags)
 		p.Post("/{postId}/tags/set", middleware.RequirePermission(model.PermPostCreate), h.Tag.SetPostTags)
 
-		// ── Content (comments/replies) ────────────────────────
-		p.Post("/{postId}/contents/list", h.Content.ListByPost)
 		p.Post("/{postId}/contents/create", middleware.RequirePermission(model.PermCommentCreate), h.Content.Create)
 		p.Post("/{postId}/contents/{id}/update", middleware.RequirePermission(model.PermCommentCreate), h.Content.Update)
 		p.Post("/{postId}/contents/{id}/delete", middleware.RequirePermission(model.PermCommentDelete), h.Content.Delete)
 
-		// ── Favorite ──────────────────────────────────────────
 		p.Post("/{postId}/favorite", h.Favorite.Toggle)
 		p.Post("/{postId}/favorite/status", h.Favorite.GetStatus)
 	})

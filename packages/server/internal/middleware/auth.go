@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"context"
 	"strings"
 
 	"orinforum/internal/model"
@@ -8,6 +9,71 @@ import (
 
 	"github.com/kataras/iris/v12"
 )
+
+// settingReader is injected at startup to read community settings.
+type settingReader interface {
+	Get(ctx context.Context, key string) (string, error)
+}
+
+var settingSvc settingReader
+
+// SetSettingReader injects the setting service (called at startup).
+func SetSettingReader(s settingReader) {
+	settingSvc = s
+}
+
+func isAuthRequired(key string) bool {
+	if settingSvc == nil {
+		return false
+	}
+	val, err := settingSvc.Get(context.Background(), key)
+	if err != nil {
+		return false
+	}
+	return val == "true"
+}
+
+// OptionalJWTAuth parses the token if present but never blocks the request.
+// Sets the same context values as JWTAuth when a valid token is provided.
+func OptionalJWTAuth() iris.Handler {
+	return func(ctx iris.Context) {
+		auth := ctx.GetHeader("Authorization")
+		if auth != "" {
+			tokenStr := strings.TrimPrefix(auth, "Bearer ")
+			if claims, err := pkg.ParseToken(tokenStr); err == nil && !pkg.IsTokenExpired(claims) {
+				ctx.Values().Set("username", claims.Username)
+				ctx.Values().Set("user_uuid", claims.UserUUID)
+				ctx.Values().Set("user_role", claims.Role)
+				ctx.Values().Set("claims", claims)
+			}
+		}
+		ctx.Next()
+	}
+}
+
+// PostAuthGate blocks unauthenticated requests when post_auth_required=true.
+func PostAuthGate() iris.Handler {
+	return func(ctx iris.Context) {
+		if isAuthRequired(model.SettingPostAuthRequired) && ctx.Values().GetString("user_uuid") == "" {
+			pkg.Fail(ctx, pkg.TOKEN_NOT_EXIST)
+			ctx.StopExecution()
+			return
+		}
+		ctx.Next()
+	}
+}
+
+// CommentAuthGate blocks unauthenticated requests when comment_auth_required=true.
+func CommentAuthGate() iris.Handler {
+	return func(ctx iris.Context) {
+		if isAuthRequired(model.SettingCommentAuthRequired) && ctx.Values().GetString("user_uuid") == "" {
+			pkg.Fail(ctx, pkg.TOKEN_NOT_EXIST)
+			ctx.StopExecution()
+			return
+		}
+		ctx.Next()
+	}
+}
 
 // permissionChecker 抽象权限查询，便于测试和解耦。
 type permissionChecker interface {

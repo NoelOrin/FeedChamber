@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import viteSolid from 'vite-plugin-solid'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { nitro } from 'nitro/vite'
 import path from 'node:path'
@@ -19,11 +18,6 @@ export default defineConfig({
         quoteStyle: 'single',
         semicolons: false,
         routeFileIgnorePrefix: '-',
-      },
-      nitro: {
-        routeRules: {
-          '/api/v1/**': { proxy: 'http://localhost:8080/api/v1/**' },
-        },
       },
     }),
     viteSolid({ ssr: true }),

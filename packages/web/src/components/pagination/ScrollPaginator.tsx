@@ -1,7 +1,13 @@
-import { createSignal, createEffect, onCleanup, Show, JSX } from "solid-js";
+import {
+  createSignal,
+  createEffect,
+  onCleanup,
+  Switch,
+  Match,
+  JSX,
+} from "solid-js";
 
 interface ScrollPaginatorProps {
-//   children: JSX.Element;
   hasMore: boolean;
   isLoading: boolean;
   onLoadMore: () => void;
@@ -10,44 +16,71 @@ interface ScrollPaginatorProps {
 }
 
 export default function ScrollPaginator(props: ScrollPaginatorProps) {
-  const [sentinelRef, setSentinelRef] = createSignal<HTMLDivElement | null>(null);
-  const threshold = () => props.threshold ?? 100;
+  const [sentinelRef, setSentinelRef] = createSignal<HTMLDivElement | null>(
+    null,
+  );
+  let observer: IntersectionObserver | null = null;
+
+  const startObserving = () => {
+    const sentinel = sentinelRef();
+    if (!sentinel || !observer) return;
+    observer.unobserve(sentinel);
+    observer.observe(sentinel);
+  };
 
   createEffect(() => {
-    const sentinel = sentinelRef();
-    if (!sentinel) return;
+    if (typeof IntersectionObserver === "undefined") return;
 
-    const observer = new IntersectionObserver(
+    observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry.isIntersecting && props.hasMore && !props.isLoading) {
-          props.onLoadMore();
-        }
+        if (!entry.isIntersecting) return;
+        if (!props.hasMore || props.isLoading) return;
+        // unobserve to prevent duplicate triggers while loading
+        observer?.unobserve(entry.target);
+        props.onLoadMore();
       },
-      {
-        rootMargin: `${threshold()}px`,
-      }
+      { threshold: 1, rootMargin: `-${props.threshold ?? 110}px` },
     );
 
-    observer.observe(sentinel);
-
-    onCleanup(() => observer.disconnect());
+    startObserving();
+    onCleanup(() => observer?.disconnect());
   });
 
-  const defaultLoading = (
-    <div class="flex justify-center py-4">
-      <div class="loading loading-spinner loading-sm" />
-    </div>
-  );
+  // Re-observe after loading finishes or hasMore changes,
+  // so the next batch can be triggered once all items are rendered.
+  createEffect(() => {
+    // reading these signals makes the effect re-run when they change
+    props.isLoading;
+    props.hasMore;
+    const sentinel = sentinelRef();
+    if (!sentinel || !observer) return;
+    observer.unobserve(sentinel);
+    if (!props.isLoading && props.hasMore) {
+      // give the browser a frame to lay out new items before re-observing
+      requestAnimationFrame(() => startObserving());
+    }
+  });
 
   return (
-    <div>
+    <div class="w-full minh-[32px]">
       <div ref={setSentinelRef} class="py-4">
-        <Show when={props.isLoading}>{props.loadingComponent ?? defaultLoading}</Show>
-        <Show when={!props.hasMore && !props.isLoading}>
-          <div class="text-center text-gray-400 py-4">没有更多了</div>
-        </Show>
+        <Switch>
+          <Match when={props.isLoading}>
+            {props.loadingComponent ?? <DefaultLoading />}
+          </Match>
+          <Match when={!props.hasMore && !props.isLoading}>
+            <div class="text-center font-bold py-3">没有更多了</div>
+          </Match>
+        </Switch>
       </div>
     </div>
   );
 }
+
+const DefaultLoading = () => (
+  <div class="flex items-center justify-centerpy-4 flex-col space-y-2">
+    <div class="text-center font-bold">加载中...</div>
+    <div class="loading loading-spinner loading-sm" />
+  </div>
+);

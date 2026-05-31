@@ -1,6 +1,9 @@
 import type { ApiResponse } from './types'
 
-const BASE = '/api/v1'
+const BASE =
+  typeof window === 'undefined'
+    ? `${import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8080'}/api/v1`
+    : '/api/v1'
 
 function getToken(): string | null {
   if (typeof localStorage === 'undefined') return null

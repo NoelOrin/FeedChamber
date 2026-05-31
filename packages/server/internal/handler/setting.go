@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"orinforum/internal/model"
 	"orinforum/internal/pkg"
 	"orinforum/internal/service"
 
@@ -9,6 +10,7 @@ import (
 
 type SettingHandler interface {
 	GetAll(ctx iris.Context)
+	GetPublic(ctx iris.Context)
 	Get(ctx iris.Context)
 	Set(ctx iris.Context)
 	Delete(ctx iris.Context)
@@ -20,6 +22,28 @@ type settingHandler struct {
 
 func newSettingHandler(svc service.SettingService) SettingHandler {
 	return &settingHandler{svc: svc}
+}
+
+// GetPublic 获取公开设置
+// @Summary      获取公开设置
+// @Description  获取无需鉴权即可读取的社区设置
+// @Tags         系统设置
+// @Produce      json
+// @Success      200  {object}  pkg.Response{data=map[string]string}
+// @Router       /settings/public [post]
+func (h *settingHandler) GetPublic(ctx iris.Context) {
+	all, err := h.svc.GetAll(ctx.Request().Context())
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	public := make(map[string]string, len(model.PublicSettingKeys))
+	for _, key := range model.PublicSettingKeys {
+		if v, ok := all[key]; ok {
+			public[key] = v
+		}
+	}
+	pkg.Success(ctx, public)
 }
 
 // GetAll 获取所有系统设置
