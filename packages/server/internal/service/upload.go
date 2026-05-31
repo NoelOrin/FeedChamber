@@ -13,8 +13,6 @@ import (
 	"orinforum/internal/model"
 	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
-
-	"github.com/google/uuid"
 )
 
 const (
@@ -94,7 +92,7 @@ func (s *uploadService) Save(ctx context.Context, userID string, fileHeader *mul
 			ext = ".webp"
 		}
 	}
-	storedName := uuid.NewString() + ext
+	storedName := pkg.NewID() + ext
 	relativePath := filepath.Join(uploadsDir, storedName)
 
 	// Write file to disk
@@ -113,7 +111,7 @@ func (s *uploadService) Save(ctx context.Context, userID string, fileHeader *mul
 	}
 
 	upload := &model.Upload{
-		ID:         uuid.NewString(),
+		ID:         pkg.NewID(),
 		FileName:   fileHeader.Filename,
 		StoredName: storedName,
 		Path:       relativePath,

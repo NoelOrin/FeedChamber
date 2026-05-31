@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+@plugin "daisyui" {
+  /* themes: false; */
+  exclude: a, button;
+ themes: light --default, dark --prefersdark;
+};
 @theme {
   --color-theme-main: var(--themeColorMain);
 }

@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"orinforum/internal/db"
 	"orinforum/internal/model"
+	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -30,11 +30,11 @@ func seedMockData(store db.Store) {
 	userIDs := make([]string, len(users))
 
 	for i, u := range users {
-		id := uuid.NewString()
+		id := pkg.NewID()
 		userIDs[i] = id
 		user := &model.User{
 			ID:        id,
-			UUID:      uuid.NewString(),
+			UUID:      pkg.NewID(),
 			Username:  u.username,
 			Email:     u.email,
 			Password:  string(hash),
@@ -61,7 +61,7 @@ func seedMockData(store db.Store) {
 	}
 	catIDs := make([]string, len(categories))
 	for i, c := range categories {
-		id := uuid.NewString()
+		id := pkg.NewID()
 		catIDs[i] = id
 		cat := &model.Category{ID: id, Name: c.name, Description: c.desc, CreatedAt: time.Now()}
 		if store.SQL() != nil {
@@ -93,8 +93,8 @@ func seedMockData(store db.Store) {
 
 	for i, p := range posts {
 		now := time.Now().Add(-time.Duration(len(posts)-i) * 6 * time.Hour)
-		contentID := uuid.NewString()
-		postID := uuid.NewString()
+		contentID := pkg.NewID()
+		postID := pkg.NewID()
 		contentIDs[i] = contentID
 		postIDs[i] = postID
 
@@ -157,7 +157,7 @@ func seedMockData(store db.Store) {
 
 	commentIDs := make([]string, len(comments))
 	for i, c := range comments {
-		id := uuid.NewString()
+		id := pkg.NewID()
 		commentIDs[i] = id
 		now := time.Now().Add(-time.Duration(len(comments)-i) * 30 * time.Minute)
 		content := &model.Content{
@@ -189,7 +189,7 @@ func seedMockData(store db.Store) {
 	for i, r := range replies {
 		now := time.Now().Add(-time.Duration(len(replies)-i) * 15 * time.Minute)
 		content := &model.Content{
-			ID:        uuid.NewString(),
+			ID:        pkg.NewID(),
 			AuthorID:  userIDs[r.userIdx],
 			Body:      r.body,
 			RootID:    contentIDs[r.postIdx],
@@ -210,7 +210,7 @@ func seedMockData(store db.Store) {
 	}
 	for _, lp := range likePairs {
 		like := &model.ContentLike{
-			ID:        uuid.NewString(),
+			ID:        pkg.NewID(),
 			ContentID: contentIDs[lp.contentIdx],
 			UserID:    userIDs[lp.userIdx],
 			CreatedAt: time.Now(),

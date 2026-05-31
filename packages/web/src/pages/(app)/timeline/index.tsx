@@ -1,7 +1,6 @@
-import { createFileRoute } from "@tanstack/solid-router";
-import { createSignal, For } from "solid-js";
+import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { createSignal, For, onMount } from "solid-js";
 import ScrollPaginator from "~/components/pagination/ScrollPaginator";
-import ClientOnly from "~/components/ClientOnly";
 import { postService } from "~/api";
 import type { PostListItem } from "~/api";
 
@@ -25,7 +24,7 @@ function Home() {
   const loaderData = Route.useLoaderData();
   const [posts, setPosts] = createSignal<PostListItem[]>(loaderData().items);
   const [page, setPage] = createSignal(2);
-  const [pageSize, setPageSize] = createSignal(DEFAULT_PAGE_SIZE);
+  const [pageSize, _setPageSize] = createSignal(DEFAULT_PAGE_SIZE);
   const [hasMore, setHasMore] = createSignal(loaderData().hasMore);
   const [isLoading, setIsLoading] = createSignal(false);
 
@@ -46,31 +45,35 @@ function Home() {
   };
 
   return (
-    <div class="w-full h-full flex flex-col">
+    <div class="w-full h-full flex flex-col pb-32">
       <div class="grid gap-4 lg:grid-cols-1 xl:grid-cols-2">
-        <For each={posts()}>
-          {(post) => (
-            <div class="card p-4">
-              <div class="font-bold text-lg">{post.title}</div>
-              <div class="text-sm text-remark mt-1 line-clamp-2">
-                {post.contentDigest}
-              </div>
-              <div class="mt-2 text-xs text-remark flex gap-3">
-                <span>{post.authorName}</span>
-                <span>{post.categoryName}</span>
-                <span>{post.commentCount} 评论</span>
-              </div>
-            </div>
-          )}
-        </For>
+        <For each={posts()}>{(post) => <PostItem post={post} />}</For>
       </div>
-      <ClientOnly>
-        <ScrollPaginator
-          hasMore={hasMore()}
-          isLoading={isLoading()}
-          onLoadMore={loadMore}
-        />
-      </ClientOnly>
+      <ScrollPaginator
+        hasMore={hasMore()}
+        isLoading={isLoading()}
+        onLoadMore={loadMore}
+        // threshold={-205}
+      />
     </div>
   );
 }
+
+const PostItem = ({ post }: { post: PostListItem }) => {
+  const navigate = useNavigate();
+  const navigateToPost = () =>
+    navigate({ to: `/timeline/post`, search: { id: post.id } });
+  return (
+    <div class="card p-4 cursor-pointer" onClick={navigateToPost}>
+      <div class="font-bold text-lg">{post.title}</div>
+      <div class="text-sm text-remark mt-1 line-clamp-2">
+        {post.content_digest}
+      </div>
+      <div class="mt-2 text-xs text-remark flex gap-3">
+        <span>{post.author_name}</span>
+        <span>{post.category_name}</span>
+        <span>{post.comment_count} 评论</span>
+      </div>
+    </div>
+  );
+};

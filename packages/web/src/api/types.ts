@@ -19,126 +19,124 @@ export interface User {
   avatar: string
   bio: string
   role: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Post {
   id: string
   title: string
-  contentId: string
-  contentDigest: string
-  authorId: string
-  categoryId: string
+  content_id: string
+  content_digest: string
+  author_id: string
+  category_id: string
   status: string
   pinned: boolean
   locked: boolean
-  viewCount: number
-  commentCount: number
-  likeCount: number
-  favoriteCount: number
-  deletedAt?: string
-  createdAt: string
-  updatedAt: string
+  view_count: number
+  comment_count: number
+  like_count: number
+  favorite_count: number
+  deleted_at?: string
+  created_at: string
+  updated_at: string
 }
 
 export interface PostListItem {
   id: string
   title: string
-  contentDigest: string
-  authorId: string
-  authorName: string
-  authorAvatar: string
-  categoryId: string
-  categoryName: string
+  content_digest: string
+  author_id: string
+  author_name: string
+  author_avatar: string
+  category_id: string
+  category_name: string
   status: string
   pinned: boolean
   locked: boolean
-  viewCount: number
-  commentCount: number
-  likeCount: number
-  favoriteCount: number
-  createdAt: string
-  updatedAt: string
+  view_count: number
+  comment_count: number
+  like_count: number
+  favorite_count: number
+  created_at: string
+  updated_at: string
 }
 
 export interface Content {
   id: string
-  postId: string
-  authorId: string
+  author_id: string
   body: string
-  rootId: string
-  parentId: string
-  likeCount: number
-  deletedAt?: string
-  createdAt: string
-  updatedAt: string
+  root_id: string
+  parent_id: string
+  like_count: number
+  deleted_at?: string
+  created_at: string
+  updated_at: string
 }
 
 export interface ContentListItem {
   id: string
-  postId: string
-  authorId: string
-  authorName: string
-  authorAvatar: string
+  author_id: string
+  author_name: string
+  author_avatar: string
   body: string
-  rootId: string
-  parentId: string
-  likeCount: number
-  createdAt: string
-  updatedAt: string
+  root_id: string
+  parent_id: string
+  like_count: number
+  created_at: string
+  updated_at: string
 }
 
 export interface Category {
   id: string
   name: string
   description: string
-  createdAt: string
+  created_at: string
 }
 
 export interface Tag {
   id: string
   name: string
-  createdAt: string
+  created_at: string
 }
 
 export interface Notification {
   id: string
-  userId: string
+  user_id: string
   type: string
   content: string
-  referenceId: string
-  senderId: string
-  isRead: boolean
-  createdAt: string
+  reference_id: string
+  sender_id: string
+  is_read: boolean
+  created_at: string
 }
 
 export interface Upload {
   id: string
-  fileName: string
-  storedName: string
+  file_name: string
+  stored_name: string
   path: string
   size: number
-  mimeType: string
-  uploaderId: string
-  createdAt: string
+  mime_type: string
+  uploader_id: string
+  created_at: string
 }
 
 export interface Report {
   id: string
-  reporterId: string
-  targetType: string
-  targetId: string
+  reporter_id: string
+  target_type: string
+  target_id: string
   reason: string
   status: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 export interface Role {
   id: string
   name: string
-  createdAt: string
+  created_at: string
 }
 
 export interface AdminStats {

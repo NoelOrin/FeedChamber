@@ -6,8 +6,6 @@ import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 type ReportService interface {
@@ -30,7 +28,7 @@ func (s *reportService) Create(ctx context.Context, reporterID, targetType, targ
 		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "targetType must be 'post' or 'comment'")
 	}
 	report := &model.Report{
-		ID:         uuid.NewString(),
+		ID:         pkg.NewID(),
 		ReporterID: reporterID,
 		TargetType: targetType,
 		TargetID:   targetID,

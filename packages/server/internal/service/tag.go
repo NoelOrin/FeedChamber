@@ -8,7 +8,6 @@ import (
 	"orinforum/internal/repository"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -36,7 +35,7 @@ func (s *tagService) List(ctx context.Context) ([]model.Tag, error) {
 
 func (s *tagService) Create(ctx context.Context, name string) (*model.Tag, error) {
 	tag := &model.Tag{
-		ID:        uuid.NewString(),
+		ID:        pkg.NewID(),
 		Name:      name,
 		CreatedAt: time.Now(),
 	}
@@ -69,7 +68,7 @@ func (s *tagService) SetPostTags(ctx context.Context, postID string, tagNames []
 	}
 	for _, name := range tagNames {
 		tag := &model.Tag{
-			ID:        uuid.NewString(),
+			ID:        pkg.NewID(),
 			Name:      name,
 			CreatedAt: time.Now(),
 		}

@@ -1,4 +1,4 @@
-import { createSignal, createEffect, For } from 'solid-js'
+import { createMemo, For } from 'solid-js'
 import remarkParse from 'remark-parse'
 import remarkGfm from 'remark-gfm'
 import { unified } from 'unified'
@@ -104,17 +104,13 @@ function renderNode(node: MdNode): any {
 }
 
 export default function MarkdownRenderer(props: MarkdownRendererProps) {
-  const [ast, setAst] = createSignal<MdNode[]>([])
-
-  createEffect(() => {
-    const text = props.mdText
-    if (text) {
-      try {
-        setAst(parseMarkdown(text))
-      } catch (e) {
-        console.error('Markdown parse error:', e)
-        setAst([])
-      }
+  const ast = createMemo<MdNode[]>(() => {
+    if (!props.mdText) return []
+    try {
+      return parseMarkdown(props.mdText)
+    } catch (e) {
+      console.error('Markdown parse error:', e)
+      return []
     }
   })
 

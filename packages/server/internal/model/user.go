@@ -3,26 +3,27 @@ package model
 import (
 	"time"
 
-	"github.com/google/uuid"
+	"orinforum/internal/pkg"
+
 	"gorm.io/gorm"
 )
 
 type User struct {
-	ID        string    `gorm:"primaryKey" bson:"_id"`
-	UUID      string    `gorm:"type:uuid;uniqueIndex" bson:"uuid"`
-	Username  string    `gorm:"uniqueIndex;not null" bson:"username"`
-	Email     string    `gorm:"uniqueIndex;not null" bson:"email"`
+	ID        string    `gorm:"primaryKey" json:"id" bson:"_id"`
+	UUID      string    `gorm:"uniqueIndex" json:"uuid" bson:"uuid"`
+	Username  string    `gorm:"uniqueIndex;not null" json:"username" bson:"username"`
+	Email     string    `gorm:"uniqueIndex;not null" json:"email" bson:"email"`
 	Password  string    `json:"-" bson:"password"`
-	Avatar    string    `bson:"avatar"`
-	Bio       string    `gorm:"size:500" bson:"bio"`
-	Role      string    `gorm:"default:user" bson:"role"`
-	CreatedAt time.Time `bson:"created_at"`
-	UpdatedAt time.Time `bson:"updated_at"`
+	Avatar    string    `json:"avatar" bson:"avatar"`
+	Bio       string    `gorm:"size:500" json:"bio" bson:"bio"`
+	Role      string    `gorm:"default:user" json:"role" bson:"role"`
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" bson:"updated_at"`
 }
 
 func (u *User) BeforeCreate(_ *gorm.DB) error {
 	if u.UUID == "" {
-		u.UUID = uuid.New().String()
+		u.UUID = pkg.NewID()
 	}
 	return nil
 }

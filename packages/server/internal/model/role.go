@@ -4,9 +4,9 @@ import "time"
 
 // Role 角色表，启动时 seeds 写入默认角色 admin/user/ban
 type Role struct {
-	ID        string    `gorm:"primaryKey" bson:"_id"`
-	Name      string    `gorm:"uniqueIndex" bson:"name"`
-	CreatedAt time.Time `bson:"created_at"`
+	ID        string    `gorm:"primaryKey" json:"id" bson:"_id"`
+	Name      string    `gorm:"uniqueIndex" json:"name" bson:"name"`
+	CreatedAt time.Time `json:"created_at" bson:"created_at"`
 }
 
 var DefaultRoles = []Role{

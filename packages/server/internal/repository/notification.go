@@ -4,9 +4,9 @@ import (
 	"context"
 	"orinforum/internal/db"
 	"orinforum/internal/model"
+	"orinforum/internal/pkg"
 	"time"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -34,7 +34,7 @@ type sqlNotificationRepo struct{ db db.SQLStore }
 
 func (r *sqlNotificationRepo) Create(ctx context.Context, n *model.Notification) error {
 	if n.ID == "" {
-		n.ID = uuid.New().String()
+		n.ID = pkg.NewID()
 	}
 	if n.CreatedAt.IsZero() {
 		n.CreatedAt = time.Now()
@@ -92,7 +92,7 @@ type mongoNotificationRepo struct{ store db.MongoStore }
 
 func (r *mongoNotificationRepo) Create(ctx context.Context, n *model.Notification) error {
 	if n.ID == "" {
-		n.ID = uuid.New().String()
+		n.ID = pkg.NewID()
 	}
 	if n.CreatedAt.IsZero() {
 		n.CreatedAt = time.Now()

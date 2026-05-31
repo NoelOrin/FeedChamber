@@ -4,10 +4,10 @@ go 1.25.0
 
 require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
-	github.com/google/uuid v1.6.0
 	github.com/iris-contrib/swagger v0.0.0-20230820002204-56b041d3471a
 	github.com/joho/godotenv v1.5.1
 	github.com/kataras/iris/v12 v12.2.11
+	github.com/oklog/ulid/v2 v2.1.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.10.1
 	github.com/swaggo/swag v1.16.6
@@ -43,6 +43,7 @@ require (
 	github.com/go-sql-driver/mysql v1.7.0 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/gomarkdown/markdown v0.0.0-20240328165702-4d01890c35c0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/iris-contrib/schema v0.0.6 // indirect

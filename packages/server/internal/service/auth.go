@@ -11,7 +11,6 @@ import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
 
-	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
@@ -65,7 +64,7 @@ func (s *authService) Register(ctx context.Context, req *RegisterRequest) (*Auth
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
 
-	userUUID := uuid.New().String()
+	userUUID := pkg.NewID()
 	user = &model.User{
 		ID:        userUUID,
 		UUID:      userUUID,

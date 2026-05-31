@@ -8,6 +8,7 @@ import (
 	"orinforum/internal/handler"
 	"orinforum/internal/middleware"
 	"orinforum/internal/model"
+	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
 	"orinforum/internal/router"
 	"orinforum/internal/service"
@@ -15,7 +16,6 @@ import (
 
 	_ "orinforum/docs"
 
-	"github.com/google/uuid"
 	irisSwagger "github.com/iris-contrib/swagger"
 	"github.com/iris-contrib/swagger/swaggerFiles"
 	"github.com/joho/godotenv"
@@ -117,7 +117,7 @@ func seedRoles(store db.Store) {
 
 	for _, role := range model.DefaultRoles {
 		r := role
-		r.ID = uuid.New().String()
+		r.ID = pkg.NewID()
 		r.CreatedAt = time.Now()
 		_ = roleRepo.CreateIfNotExists(ctx, &r)
 	}
@@ -140,7 +140,7 @@ func seedAdmin(store db.Store) {
 
 	hash, _ := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
 	admin := &model.User{
-		ID:        uuid.New().String(),
+		ID:        pkg.NewID(),
 		Username:  "admin",
 		Email:     "admin@orinforum.local",
 		Password:  string(hash),

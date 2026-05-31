@@ -5,9 +5,9 @@ import (
 	"errors"
 	"orinforum/internal/db"
 	"orinforum/internal/model"
+	"orinforum/internal/pkg"
 	"time"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"gorm.io/gorm"
@@ -47,7 +47,7 @@ func (r *sqlFollowRepo) Follow(ctx context.Context, followerID, followingID stri
 	}
 
 	follow := &model.UserFollow{
-		ID:          uuid.New().String(),
+		ID:          pkg.NewID(),
 		FollowerID:  followerID,
 		FollowingID: followingID,
 		CreatedAt:   time.Now(),
@@ -125,7 +125,7 @@ func (r *mongoFollowRepo) Follow(ctx context.Context, followerID, followingID st
 	}
 
 	follow := &model.UserFollow{
-		ID:          uuid.New().String(),
+		ID:          pkg.NewID(),
 		FollowerID:  followerID,
 		FollowingID: followingID,
 		CreatedAt:   time.Now(),

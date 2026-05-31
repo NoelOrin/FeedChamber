@@ -9,7 +9,6 @@ import (
 	"orinforum/internal/repository"
 	"time"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -140,7 +139,7 @@ func (s *categoryService) List(ctx context.Context) ([]model.Category, error) {
 
 func (s *categoryService) Create(ctx context.Context, name, description string) (*model.Category, error) {
 	cat := &model.Category{
-		ID:          uuid.NewString(),
+		ID:          pkg.NewID(),
 		Name:        name,
 		Description: description,
 		CreatedAt:   time.Now(),
@@ -201,7 +200,7 @@ func (s *contentService) Create(ctx context.Context, postID, authorID, body, par
 	}
 
 	c := &model.Content{
-		ID:        uuid.NewString(),
+		ID:        pkg.NewID(),
 		AuthorID:  authorID,
 		Body:      body,
 		RootID:    post.ContentID,

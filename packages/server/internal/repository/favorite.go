@@ -4,9 +4,9 @@ import (
 	"context"
 	"orinforum/internal/db"
 	"orinforum/internal/model"
+	"orinforum/internal/pkg"
 	"time"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 )
@@ -43,7 +43,7 @@ func (r *sqlFavRepo) Toggle(ctx context.Context, postID, userID string) (bool, e
 	}
 	// not found → create
 	fav = model.PostFavorite{
-		ID:        uuid.NewString(),
+		ID:        pkg.NewID(),
 		PostID:    postID,
 		UserID:    userID,
 		CreatedAt: time.Now(),
@@ -101,7 +101,7 @@ func (r *mongoFavRepo) Toggle(ctx context.Context, postID, userID string) (bool,
 
 	// not found → create
 	fav := model.PostFavorite{
-		ID:        uuid.NewString(),
+		ID:        pkg.NewID(),
 		PostID:    postID,
 		UserID:    userID,
 		CreatedAt: time.Now(),

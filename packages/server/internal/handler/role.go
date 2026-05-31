@@ -5,7 +5,6 @@ import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
 
-	"github.com/google/uuid"
 	"github.com/kataras/iris/v12"
 )
 
@@ -66,7 +65,7 @@ func (h *roleHandler) Create(ctx iris.Context) {
 		return
 	}
 	role := &model.Role{
-		ID:   uuid.New().String(),
+		ID:   pkg.NewID(),
 		Name: req.Name,
 	}
 	if err := h.repo.Create(ctx.Request().Context(), role); err != nil {

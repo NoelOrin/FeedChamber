@@ -7,7 +7,6 @@ import (
 	"orinforum/internal/pkg"
 	"orinforum/internal/repository"
 
-	"github.com/google/uuid"
 	"time"
 )
 
@@ -30,7 +29,7 @@ func NewNotificationService(repo repository.NotificationRepository) Notification
 
 func (s *notificationService) Create(ctx context.Context, userID, notifType, content, referenceID, senderID string) error {
 	n := &model.Notification{
-		ID:          uuid.New().String(),
+		ID:          pkg.NewID(),
 		UserID:      userID,
 		Type:        notifType,
 		Content:     content,

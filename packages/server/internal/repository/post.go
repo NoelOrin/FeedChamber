@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"orinforum/internal/db"
 	"orinforum/internal/model"
+	"orinforum/internal/pkg"
 	"regexp"
 	"time"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"gorm.io/gorm"
@@ -579,7 +579,7 @@ func DigestBody(body string, maxLen int) string {
 // CreatePostWithContent is a helper to create post + content atomically.
 func CreatePostWithContent(ctx context.Context, store db.Store, authorID, title, body, categoryID string) (*model.Post, *model.Content, error) {
 	now := time.Now()
-	contentID := uuid.NewString()
+	contentID := pkg.NewID()
 
 	content := &model.Content{
 		ID:        contentID,
@@ -592,7 +592,7 @@ func CreatePostWithContent(ctx context.Context, store db.Store, authorID, title,
 	}
 
 	post := &model.Post{
-		ID:            uuid.NewString(),
+		ID:            pkg.NewID(),
 		Title:         title,
 		ContentID:     contentID,
 		ContentDigest: DigestBody(body, 200),

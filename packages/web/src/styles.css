@@ -1,12 +1,6 @@
 @import "./assets/css/global.css";
 @import "./assets/css/tailwind.css";
 
-@import "tailwindcss";
-@plugin "daisyui" {
-  themes: false;
-  exclude: a, button;
-};
-
 
 @font-face {
   font-family: 'BlackItalic';

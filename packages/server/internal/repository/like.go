@@ -4,9 +4,9 @@ import (
 	"context"
 	"orinforum/internal/db"
 	"orinforum/internal/model"
+	"orinforum/internal/pkg"
 	"time"
 
-	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/v2/bson"
 )
 
@@ -34,7 +34,7 @@ func (r *sqlLikeRepo) ToggleContentLike(ctx context.Context, contentID, userID s
 		r.db.DB().WithContext(ctx).Delete(&like)
 		return false, nil
 	}
-	like = model.ContentLike{ID: uuid.NewString(), ContentID: contentID, UserID: userID, CreatedAt: time.Now()}
+	like = model.ContentLike{ID: pkg.NewID(), ContentID: contentID, UserID: userID, CreatedAt: time.Now()}
 	if err := r.db.DB().WithContext(ctx).Create(&like).Error; err != nil {
 		return false, err
 	}
@@ -66,7 +66,7 @@ func (r *mongoLikeRepo) ToggleContentLike(ctx context.Context, contentID, userID
 	if res.DeletedCount > 0 {
 		return false, nil
 	}
-	like := model.ContentLike{ID: uuid.NewString(), ContentID: contentID, UserID: userID, CreatedAt: time.Now()}
+	like := model.ContentLike{ID: pkg.NewID(), ContentID: contentID, UserID: userID, CreatedAt: time.Now()}
 	_, err = r.store.Collection("content_likes").InsertOne(ctx, like)
 	if err != nil {
 		return false, err

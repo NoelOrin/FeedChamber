@@ -7,15 +7,15 @@ import (
 )
 
 type Content struct {
-	ID        string         `gorm:"primaryKey" bson:"_id"`
-	AuthorID  string         `gorm:"not null;index" bson:"author_id"`
-	Body      string         `gorm:"type:text;not null" bson:"body"`
-	RootID    string         `gorm:"not null;index" bson:"root_id"`    // points to post's content_id; self-referencing for post body
-	ParentID  string         `gorm:"index" bson:"parent_id"`           // direct parent content; empty for post body
-	LikeCount int64          `gorm:"default:0" bson:"like_count"`
-	DeletedAt gorm.DeletedAt `gorm:"index" bson:"deleted_at" swaggertype:"string"`
-	CreatedAt time.Time      `bson:"created_at"`
-	UpdatedAt time.Time      `bson:"updated_at"`
+	ID        string         `gorm:"primaryKey" json:"id" bson:"_id"`
+	AuthorID  string         `gorm:"not null;index" json:"author_id" bson:"author_id"`
+	Body      string         `gorm:"type:text;not null" json:"body" bson:"body"`
+	RootID    string         `gorm:"not null;index" json:"root_id" bson:"root_id"`
+	ParentID  string         `gorm:"index" json:"parent_id" bson:"parent_id"`
+	LikeCount int64          `gorm:"default:0" json:"like_count" bson:"like_count"`
+	DeletedAt gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty" bson:"deleted_at" swaggertype:"string"`
+	CreatedAt time.Time      `json:"created_at" bson:"created_at"`
+	UpdatedAt time.Time      `json:"updated_at" bson:"updated_at"`
 }
 
 func (Content) TableName() string { return "contents" }
@@ -23,13 +23,13 @@ func (Content) TableName() string { return "contents" }
 // ContentListItem is the DTO for content with author info.
 type ContentListItem struct {
 	ID           string    `json:"id"`
-	AuthorID     string    `json:"authorId"`
-	AuthorName   string    `json:"authorName"`
-	AuthorAvatar string    `json:"authorAvatar"`
+	AuthorID     string    `json:"author_id"`
+	AuthorName   string    `json:"author_name"`
+	AuthorAvatar string    `json:"author_avatar"`
 	Body         string    `json:"body"`
-	RootID       string    `json:"rootId"`
-	ParentID     string    `json:"parentId"`
-	LikeCount    int64     `json:"likeCount"`
-	CreatedAt    time.Time `json:"createdAt"`
-	UpdatedAt    time.Time `json:"updatedAt"`
+	RootID       string    `json:"root_id"`
+	ParentID     string    `json:"parent_id"`
+	LikeCount    int64     `json:"like_count"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }

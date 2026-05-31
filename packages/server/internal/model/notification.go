@@ -3,14 +3,14 @@ package model
 import "time"
 
 type Notification struct {
-	ID          string    `gorm:"primaryKey" bson:"_id"`
-	UserID      string    `gorm:"index;not null" bson:"user_id"`       // recipient
-	Type        string    `gorm:"size:32;not null" bson:"type"`         // "reply", "like", "follow", "mention"
-	Content     string    `gorm:"size:500" bson:"content"`              // display text
-	ReferenceID string    `gorm:"index" bson:"reference_id"`            // post_id, comment_id, or user_id depending on type
-	SenderID    string    `gorm:"index" bson:"sender_id"`               // who triggered the notification
-	IsRead      bool      `gorm:"default:false" bson:"is_read"`
-	CreatedAt   time.Time `bson:"created_at"`
+	ID          string    `gorm:"primaryKey" json:"id" bson:"_id"`
+	UserID      string    `gorm:"index;not null" json:"user_id" bson:"user_id"`
+	Type        string    `gorm:"size:32;not null" json:"type" bson:"type"`
+	Content     string    `gorm:"size:500" json:"content" bson:"content"`
+	ReferenceID string    `gorm:"index" json:"reference_id" bson:"reference_id"`
+	SenderID    string    `gorm:"index" json:"sender_id" bson:"sender_id"`
+	IsRead      bool      `gorm:"default:false" json:"is_read" bson:"is_read"`
+	CreatedAt   time.Time `json:"created_at" bson:"created_at"`
 }
 
 func (Notification) TableName() string { return "notifications" }
