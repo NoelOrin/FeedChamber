@@ -19,9 +19,13 @@ export default defineConfig({
         quoteStyle: 'single',
         semicolons: false,
         routeFileIgnorePrefix: '-',
-      }
-    }
-    ),
+      },
+      nitro: {
+        routeRules: {
+          '/api/v1/**': { proxy: 'http://localhost:8080/api/v1/**' },
+        },
+      },
+    }),
     viteSolid({ ssr: true }),
     nitro(),
   ],

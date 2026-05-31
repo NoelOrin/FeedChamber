@@ -36,7 +36,7 @@ export default function ScrollPaginator(props: ScrollPaginatorProps) {
 
   const defaultLoading = (
     <div class="flex justify-center py-4">
-      <span class="loading loading-spinner loading-lg text-primary"></span>
+      <div class="loading loading-spinner loading-sm" />
     </div>
   );
 
