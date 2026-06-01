@@ -50,6 +50,9 @@ export default function Paginator(props: PaginatorProps) {
     return pages;
   });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pageSearch = (p: number) => ({ page: p }) as any;
+
   return (
     <div id="pagination" class="select-none pt-8">
       <div class="flex items-center justify-between gap-2 w-full">
@@ -58,7 +61,7 @@ export default function Paginator(props: PaginatorProps) {
           <Show when={currentPage() > 1}>
             <Link
               to="."
-              search={{ page: currentPage() - 1 }}
+              search={pageSearch(currentPage() - 1)}
               onClick={scrollToTop}
             >
               <svg
@@ -89,15 +92,15 @@ export default function Paginator(props: PaginatorProps) {
         {/* 页码 */}
         <div class="hidden md:flex flex-1 justify-center w-full">
           <For each={renderPageLinks()}>
-            {(page) => (
+            {(p) => (
               <Link
                 to="."
-                search={{ page }}
+                search={pageSearch(p)}
                 onClick={scrollToTop}
-                classList={{ current: page === currentPage() }}
+                classList={{ current: p === currentPage() }}
                 class="rounded hover:bg-gray-100 dark:hover:bg-zinc-700"
               >
-                {page}
+                {p}
               </Link>
             )}
           </For>
@@ -111,7 +114,7 @@ export default function Paginator(props: PaginatorProps) {
           <Show when={currentPage() !== totalPages()}>
             <Link
               to="."
-              search={{ page: currentPage() + 1 }}
+              search={pageSearch(currentPage() + 1)}
               onClick={scrollToTop}
             >
               <svg

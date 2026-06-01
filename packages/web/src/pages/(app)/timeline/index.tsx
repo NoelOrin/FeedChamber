@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router";
 import { createSignal, For, createEffect, on } from "solid-js";
 import ScrollPaginator from "~/components/pagination/ScrollPaginator";
 import { postService } from "~/api";
@@ -35,6 +35,8 @@ export const Route = createFileRoute("/(app)/timeline/")({
 
 function Home() {
   const loaderData = Route.useLoaderData();
+  const search = useSearch({ from: "/(app)/timeline/" });
+  const deps = Route.useLoaderDeps();
   const [posts, setPosts] = createSignal<PostListItem[]>(loaderData().items);
   const [page, setPage] = createSignal(2);
   const [pageSize] = createSignal(DEFAULT_PAGE_SIZE);
@@ -73,7 +75,6 @@ function Home() {
     if (isLoading() || !hasMore()) return;
     setIsLoading(true);
     try {
-      const deps = Route.useLoaderDeps();
       const result = await postService.list({
         page: page(),
         pageSize: DEFAULT_PAGE_SIZE,
