@@ -11,6 +11,11 @@ export const Route = createFileRoute("/(app)/timeline/post")({
   validateSearch: (search: Record<string, unknown>) => ({
     id: (search.id as string) || "",
   }),
+  loaderDeps: ({ search: { id } }) => ({ id }),
+  staleTime: 0,
+  pendingMs: 0,
+  pendingMinMs: 0,
+  pendingComponent: Pending,
   head: (props) => {
     const post = (props.loaderData as any)?.post;
     const title = post?.title ? `${post.title} - OrinForum` : "OrinForum";
@@ -31,14 +36,13 @@ export const Route = createFileRoute("/(app)/timeline/post")({
     };
   },
 
-  loader: async ({ location }) => {
-    const { id } = location.search as { id: string };
+  loader: async ({ deps: { id } }) => {
     const [post, contentsResult] = await Promise.all([
       postService.getById(id),
       contentService.list(id, { page: 1, pageSize: 30 }),
     ]);
     const contents = contentsResult.data ?? [];
-    const total = contentsResult.total;
+    const total = contentsResult.pagination?.total ?? 0;
     return {
       post: post ?? ({} as PostListItem),
       contents,
@@ -48,6 +52,10 @@ export const Route = createFileRoute("/(app)/timeline/post")({
   },
 });
 
+function Pending() {
+  return <div class="w-full flex justify-center py-12 text-remark">加载中...</div>;
+}
+
 function RouteComponent() {
   const loaderData = Route.useLoaderData() as () => {
     post: PostListItem;
@@ -55,8 +63,10 @@ function RouteComponent() {
     total: number;
     hasMore: boolean;
   };
+
   const post = () => loaderData().post;
   const contents = () => loaderData().contents;
+  
   return (
     <div class="w-full flex">
       <div class="w-full px-4 py-6 card">

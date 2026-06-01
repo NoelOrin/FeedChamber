@@ -3,10 +3,12 @@ import { Link, useLocation } from "@tanstack/solid-router";
 
 interface PaginatorProps {
   pageNum: number;
-  totalPages: number;
+  pageSize: number;
+  total: number;
 }
 
 export default function Paginator(props: PaginatorProps) {
+  const totalPages = () => Math.ceil(props.total / props.pageSize) || 1;
   const [currentPage, setCurrentPage] = createSignal(1);
   const location = useLocation();
   const page = createMemo(
@@ -24,7 +26,7 @@ export default function Paginator(props: PaginatorProps) {
   const renderPageLinks = createMemo(() => {
     const pages: number[] = [];
     const current = currentPage();
-    const total = props.totalPages;
+    const total = totalPages();
 
     if (total <= 11) {
       for (let i = 1; i <= total; i++) pages.push(i);
@@ -102,11 +104,11 @@ export default function Paginator(props: PaginatorProps) {
         </div>
 
         <div class="flex items-center justify-center md:hidden">
-          {currentPage()} / {props.totalPages}
+          {currentPage()} / {totalPages()}
         </div>
         {/* 下一页 */}
         <div class="flip">
-          <Show when={currentPage() !== props.totalPages}>
+          <Show when={currentPage() !== totalPages()}>
             <Link
               to="."
               search={{ page: currentPage() + 1 }}

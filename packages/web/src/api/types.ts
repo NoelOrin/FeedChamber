@@ -8,7 +8,9 @@ export interface PaginatedResponse<T = unknown> {
   code: number
   msg: string
   data: T | null
-  total: number
+  pagination: {
+    total: number
+  } | null
 }
 
 export interface ListParams {

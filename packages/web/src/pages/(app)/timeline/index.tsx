@@ -1,5 +1,5 @@
-import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router";
-import { createSignal, For, on, createEffect } from "solid-js";
+import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { createSignal, For, createEffect, on } from "solid-js";
 import ScrollPaginator from "~/components/pagination/ScrollPaginator";
 import { postService } from "~/api";
 import type { PostListItem } from "~/api";
@@ -16,27 +16,25 @@ export const Route = createFileRoute("/(app)/timeline/")({
       tag: !category && tag ? tag : undefined,
     };
   },
-  loader: async ({ location }) => {
-    const category = (location.search as Record<string, string>).category;
-    const tag = (location.search as Record<string, string>).tag;
+  loaderDeps: ({ search: { category, tag } }) => ({ category, tag }),
+  loader: async ({ deps }) => {
     const result = await postService.list({
       page: 1,
       pageSize: DEFAULT_PAGE_SIZE,
-      categoryName: category,
-      tagName: tag,
+      categoryName: deps.category,
+      tagName: deps.tag,
     });
     const items = result.data ?? [];
     return {
       items,
-      total: result.total,
-      hasMore: items.length < result.total,
+      total: result.pagination?.total ?? 0,
+      hasMore: items.length < (result.pagination?.total ?? 0),
     };
   },
 });
 
 function Home() {
   const loaderData = Route.useLoaderData();
-  const search = useSearch({ from: "/(app)/timeline/" });
   const [posts, setPosts] = createSignal<PostListItem[]>(loaderData().items);
   const [page, setPage] = createSignal(2);
   const [pageSize] = createSignal(DEFAULT_PAGE_SIZE);
@@ -59,8 +57,8 @@ function Home() {
           const items = result.data ?? [];
           setPosts(items);
           setPage(2);
-          setTotal(result.total);
-          setHasMore(items.length < result.total);
+          setTotal(result.pagination?.total ?? 0);
+          setHasMore(items.length < (result.pagination?.total ?? 0));
         } catch {
           setHasMore(false);
         } finally {
@@ -75,12 +73,12 @@ function Home() {
     if (isLoading() || !hasMore()) return;
     setIsLoading(true);
     try {
-      const s = search();
+      const deps = Route.useLoaderDeps();
       const result = await postService.list({
         page: page(),
-        pageSize: pageSize(),
-        categoryName: s.category,
-        tagName: s.tag,
+        pageSize: DEFAULT_PAGE_SIZE,
+        categoryName: deps().category,
+        tagName: deps().tag,
       });
       const items = result.data ?? [];
       setPosts((prev) => [...prev, ...items]);
@@ -111,6 +109,7 @@ const PostItem = ({ post }: { post: PostListItem }) => {
   const navigate = useNavigate();
   const navigateToPost = () =>
     navigate({ to: `/timeline/post`, search: { id: post.id } });
+
   return (
     <div class="card p-4 cursor-pointer" onClick={navigateToPost}>
       <div class="font-bold text-lg">{post.title}</div>

@@ -27,15 +27,17 @@ export default function CommentList(props: CommentListProps) {
     if (isLoading() || !hasMore()) return;
     setIsLoading(true);
     try {
+      const fetchedPage = page();
       const result = await contentService.list(props.postId, {
-        page: page(),
+        page: fetchedPage,
         pageSize: PAGE_SIZE,
       });
       const items = result.data ?? [];
+      const p = result.pagination;
       setContents((prev) => [...prev, ...items]);
-      setPage((v) => v + 1);
-      setTotal(result.total);
-      if (contents().length >= result.total) setHasMore(false);
+      setPage(fetchedPage + 1);
+      setTotal(p?.total ?? 0);
+      if (p && fetchedPage * PAGE_SIZE >= p.total) setHasMore(false);
     } catch {
       setHasMore(false);
     } finally {
