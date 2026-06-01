@@ -43,7 +43,7 @@ func (h *tagHandler) List(ctx iris.Context) {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.SuccessPaginated(ctx, tags, body.Page, body.PageSize, total)
+	pkg.SuccessPaginated(ctx, tags, total)
 }
 
 // Create 创建标签

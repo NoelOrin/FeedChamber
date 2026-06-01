@@ -51,7 +51,7 @@ func (h *postHandler) List(ctx iris.Context) {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.SuccessPaginated(ctx, posts, body.Page, body.PageSize, total)
+	pkg.SuccessPaginated(ctx, posts, total)
 }
 
 // GetByID 获取帖子详情
@@ -191,7 +191,7 @@ func (h *postHandler) Search(ctx iris.Context) {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.SuccessPaginated(ctx, posts, body.Page, body.PageSize, total)
+	pkg.SuccessPaginated(ctx, posts, total)
 }
 
 // TogglePin 切换帖子置顶

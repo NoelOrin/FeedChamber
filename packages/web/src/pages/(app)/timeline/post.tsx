@@ -38,11 +38,12 @@ export const Route = createFileRoute("/(app)/timeline/post")({
       contentService.list(id, { page: 1, pageSize: 30 }),
     ]);
     const contents = contentsResult.data ?? [];
-    const p = contentsResult.pagination;
+    const total = contentsResult.total;
     return {
       post: post ?? ({} as PostListItem),
       contents,
-      hasMore: p ? p.currentPage < p.totalPages : false,
+      total,
+      hasMore: contents.length < total,
     };
   },
 });
@@ -51,6 +52,7 @@ function RouteComponent() {
   const loaderData = Route.useLoaderData() as () => {
     post: PostListItem;
     contents: ContentListItem[];
+    total: number;
     hasMore: boolean;
   };
   const post = () => loaderData().post;
@@ -67,6 +69,7 @@ function RouteComponent() {
           postId={post().id}
           initialContents={contents().slice(1)}
           initialHasMore={loaderData().hasMore}
+          initialTotal={loaderData().total}
           totalCount={post().comment_count}
         />
       </div>

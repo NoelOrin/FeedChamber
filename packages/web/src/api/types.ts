@@ -8,12 +8,7 @@ export interface PaginatedResponse<T = unknown> {
   code: number
   msg: string
   data: T | null
-  pagination: {
-    currentPage: number
-    pageSize: number
-    totalItems: number
-    totalPages: number
-  } | null
+  total: number
 }
 
 export interface ListParams {

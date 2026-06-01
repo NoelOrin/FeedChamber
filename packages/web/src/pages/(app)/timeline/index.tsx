@@ -25,10 +25,11 @@ export const Route = createFileRoute("/(app)/timeline/")({
       categoryName: category,
       tagName: tag,
     });
-    const p = result.pagination;
+    const items = result.data ?? [];
     return {
-      items: result.data ?? [],
-      hasMore: p ? p.currentPage < p.totalPages : false,
+      items,
+      total: result.total,
+      hasMore: items.length < result.total,
     };
   },
 });
@@ -39,6 +40,7 @@ function Home() {
   const [posts, setPosts] = createSignal<PostListItem[]>(loaderData().items);
   const [page, setPage] = createSignal(2);
   const [pageSize] = createSignal(DEFAULT_PAGE_SIZE);
+  const [total, setTotal] = createSignal(loaderData().total);
   const [hasMore, setHasMore] = createSignal(loaderData().hasMore);
   const [isLoading, setIsLoading] = createSignal(false);
 
@@ -55,10 +57,10 @@ function Home() {
             tagName: s.tag,
           });
           const items = result.data ?? [];
-          const p = result.pagination;
           setPosts(items);
           setPage(2);
-          setHasMore(p ? p.currentPage < p.totalPages : false);
+          setTotal(result.total);
+          setHasMore(items.length < result.total);
         } catch {
           setHasMore(false);
         } finally {
@@ -81,10 +83,9 @@ function Home() {
         tagName: s.tag,
       });
       const items = result.data ?? [];
-      const p = result.pagination;
       setPosts((prev) => [...prev, ...items]);
       setPage((p) => p + 1);
-      if (p && p.currentPage >= p.totalPages) setHasMore(false);
+      if (posts().length >= total()) setHasMore(false);
     } catch {
       setHasMore(false);
     } finally {

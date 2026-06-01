@@ -33,7 +33,7 @@ async function request<T>(
 async function requestPaginated<T>(
   path: string,
   options: RequestInit = {},
-): Promise<{ data: T; pagination: NonNullable<PaginatedResponse['pagination']> }> {
+): Promise<{ data: T; total: number }> {
   const token = getToken()
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
@@ -49,7 +49,7 @@ async function requestPaginated<T>(
   }
   return {
     data: json.data as T,
-    pagination: json.pagination!,
+    total: json.total,
   }
 }
 
@@ -64,7 +64,7 @@ export function post<T>(path: string, body?: unknown): Promise<T> {
   })
 }
 
-export function postPaginated<T>(path: string, body?: unknown): Promise<{ data: T; pagination: NonNullable<PaginatedResponse['pagination']> }> {
+export function postPaginated<T>(path: string, body?: unknown): Promise<{ data: T; total: number }> {
   return requestPaginated<T>(path, {
     method: 'POST',
     body: body !== undefined ? JSON.stringify(body) : undefined,

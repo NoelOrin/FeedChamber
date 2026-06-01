@@ -41,7 +41,7 @@ func (h *categoryHandler) List(ctx iris.Context) {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.SuccessPaginated(ctx, cats, body.Page, body.PageSize, total)
+	pkg.SuccessPaginated(ctx, cats, total)
 }
 
 // Create 创建分类

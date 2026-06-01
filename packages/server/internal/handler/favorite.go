@@ -95,5 +95,5 @@ func (h *favoriteHandler) ListByUser(ctx iris.Context) {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.SuccessPaginated(ctx, ids, p.Page, p.PageSize, total)
+	pkg.SuccessPaginated(ctx, ids, total)
 }

@@ -41,7 +41,7 @@ func (h *contentHandler) ListByPost(ctx iris.Context) {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.SuccessPaginated(ctx, contents, p.Page, p.PageSize, total)
+	pkg.SuccessPaginated(ctx, contents, total)
 }
 
 // ListReplies 子回复列表
@@ -63,7 +63,7 @@ func (h *contentHandler) ListReplies(ctx iris.Context) {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.SuccessPaginated(ctx, contents, p.Page, p.PageSize, total)
+	pkg.SuccessPaginated(ctx, contents, total)
 }
 
 // Create 创建评论/回复

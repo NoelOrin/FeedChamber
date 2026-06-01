@@ -8,6 +8,7 @@ interface CommentListProps {
   postId: string;
   initialContents: ContentListItem[];
   initialHasMore: boolean;
+  initialTotal: number;
   totalCount: number;
 }
 
@@ -16,6 +17,7 @@ export default function CommentList(props: CommentListProps) {
     props.initialContents,
   );
   const [page, setPage] = createSignal(2);
+  const [total, setTotal] = createSignal(props.initialTotal);
   const [hasMore, setHasMore] = createSignal(props.initialHasMore);
   const [isLoading, setIsLoading] = createSignal(false);
 
@@ -30,10 +32,10 @@ export default function CommentList(props: CommentListProps) {
         pageSize: PAGE_SIZE,
       });
       const items = result.data ?? [];
-      const p = result.pagination;
       setContents((prev) => [...prev, ...items]);
       setPage((v) => v + 1);
-      if (p && p.currentPage >= p.totalPages) setHasMore(false);
+      setTotal(result.total);
+      if (contents().length >= result.total) setHasMore(false);
     } catch {
       setHasMore(false);
     } finally {
