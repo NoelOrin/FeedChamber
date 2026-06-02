@@ -1,5 +1,6 @@
 import { createSignal, onMount } from 'solid-js'
 import { formatSmartDate } from '../../utils/formatSmartDate'
+import { Route } from "~/pages/__root"
 
 interface Blog {
   title: string
@@ -13,6 +14,8 @@ interface CCProps {
 
 export default function CC(props: CCProps) {
   const [fullURL, setFullURL] = createSignal('')
+  const settings = Route.useLoaderData()().settings ?? {};
+  const siteName = settings.site_name || "OrinForum";
 
   onMount(() => {
     setFullURL(window.location.href)
@@ -31,7 +34,7 @@ export default function CC(props: CCProps) {
       <div class="flex space-x-[18px] whitespace-nowrap items-start">
         <div class="flex flex-col space-y-[4px]">
           <span class="text-[12px] opacity-75">作者</span>
-          <span>NoelOrin</span>
+          <span>{siteName}</span>
         </div>
         <div class="flex flex-col space-y-[4px]">
           <span class="text-[12px] opacity-75">发布时间</span>

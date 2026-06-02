@@ -8,6 +8,7 @@ import (
 
 	"go.mongodb.org/mongo-driver/v2/bson"
 	"go.mongodb.org/mongo-driver/v2/mongo/options"
+	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -15,6 +16,7 @@ type SettingRepository interface {
 	Get(ctx context.Context, key string) (*model.Setting, error)
 	GetAll(ctx context.Context) (map[string]string, error)
 	Set(ctx context.Context, key, value string) error
+	BatchSet(ctx context.Context, settings map[string]string) error
 	Delete(ctx context.Context, key string) error
 }
 
@@ -60,6 +62,24 @@ func (r *sqlSettingRepo) Set(ctx context.Context, key, value string) error {
 		Value:     value,
 		UpdatedAt: time.Now(),
 	}).Error
+}
+
+func (r *sqlSettingRepo) BatchSet(ctx context.Context, settings map[string]string) error {
+	return r.db.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		for key, value := range settings {
+			if err := tx.Clauses(clause.OnConflict{
+				Columns:   []clause.Column{{Name: "key"}},
+				DoUpdates: clause.AssignmentColumns([]string{"value", "updated_at"}),
+			}).Create(&model.Setting{
+				Key:       key,
+				Value:     value,
+				UpdatedAt: time.Now(),
+			}).Error; err != nil {
+				return err
+			}
+		}
+		return nil
+	})
 }
 
 func (r *sqlSettingRepo) Delete(ctx context.Context, key string) error {
@@ -109,4 +129,19 @@ func (r *mongoSettingRepo) Set(ctx context.Context, key, value string) error {
 func (r *mongoSettingRepo) Delete(ctx context.Context, key string) error {
 	_, err := r.store.Collection("settings").DeleteOne(ctx, bson.M{"_id": key})
 	return err
+}
+
+func (r *mongoSettingRepo) BatchSet(ctx context.Context, settings map[string]string) error {
+	for key, value := range settings {
+		opts := options.UpdateOne().SetUpsert(true)
+		if _, err := r.store.Collection("settings").UpdateOne(
+			ctx,
+			bson.M{"_id": key},
+			bson.M{"$set": bson.M{"value": value, "updated_at": time.Now()}},
+			opts,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }

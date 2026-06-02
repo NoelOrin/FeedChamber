@@ -66,7 +66,7 @@ func Start(env Env) {
 	seedRoles(store)
 	seedAdmin(store)
 	permSvc := seedPermissions(store)
-	seedSettings(store)
+	ensureSettings(store)
 	ensureMockData(store)
 
 	// inject setting reader into middleware for dynamic auth gates
@@ -182,16 +182,4 @@ func seedPermissions(store db.Store) service.PermissionService {
 	middleware.SetPermissionChecker(permSvc)
 
 	return permSvc
-}
-
-func seedSettings(store db.Store) {
-	settingRepo := repository.NewSettingRepository(store)
-	ctx := context.Background()
-
-	for key, value := range model.DefaultSettings {
-		if err := settingRepo.Set(ctx, key, value); err != nil {
-			logrus.Warnf("seed setting %s: %v", key, err)
-		}
-	}
-	logrus.Info("seeded default settings")
 }

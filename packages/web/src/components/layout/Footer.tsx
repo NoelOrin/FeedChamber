@@ -1,4 +1,8 @@
+import { Route } from "~/pages/__root";
+
 export default function Footer() {
+  const settings = Route.useLoaderData()().settings ?? {};
+  const siteName = settings.site_name || "OrinForum";
   return (
     <footer class="bottom-0 absolute flex w-full cursor-default items-center justify-center text-sm text-remark">
       <div class="flex w-full items-center p-4">
@@ -33,11 +37,11 @@ export default function Footer() {
               </div>
             </div>
             <div class="flex flex-col sm:items-center lg:items-end sm:mb-[8px]">
-              <div class="footer_title">NoelOrin.Top © 2025</div>
+              <div class="footer_title">{siteName}</div>
               <div class="flex flex-col items-end space-y-1">
                 <div class="flex sm:flex-col md:flex-row items-center whitespace-nowrap">
                   <span>
-                    <span class="mx-1 footer_title">NoelOrin</span>
+                    <span class="mx-1 footer_title">{siteName}</span>
                     <span>All rights reserved</span>
                   </span>
                   <span class="mx-1 font-bold sm:hidden md:block"> | </span>

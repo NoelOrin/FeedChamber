@@ -18,6 +18,10 @@ export const adminService = {
     return post<null>(`/admin/settings/${key}/update`, { value })
   },
 
+  batchUpdateSettings(settings: Record<string, string>) {
+    return post<null>('/admin/settings/batch', { settings })
+  },
+
   deleteSetting(key: string) {
     return post<null>(`/admin/settings/${key}/delete`)
   },

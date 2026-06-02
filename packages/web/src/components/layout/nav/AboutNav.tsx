@@ -1,8 +1,11 @@
 import { useTheme, initTheme } from '~/utils/theme'
 import { onMount } from 'solid-js'
+import { Route } from "~/pages/__root";
 
 export default function AboutNav() {
   const { themeMode, themeTitle, toggleTheme } = useTheme()
+  const settings = Route.useLoaderData()().settings ?? {};
+  const siteName = settings.site_name || "OrinForum";
 
   onMount(() => {
     initTheme()
@@ -15,7 +18,7 @@ export default function AboutNav() {
           <a href="/" class="pointer-events-auto">
             <div id="_logo" class="ml-0 select-none">
               <div id="site-name" style="font-family: 'Segoe UI',Arial,'Microsoft Yahei',sans-serif;">
-                NoelOrin's Blog
+                {siteName}
               </div>
             </div>
           </a>

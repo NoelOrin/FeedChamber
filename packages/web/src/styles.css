@@ -92,3 +92,9 @@
   inherits: false;
   initial-value: #52525b;
 }
+
+/* Theme icon visibility — controlled by data-theme-mode on <html>, set by DarkModeScript before hydration */
+[data-theme-mode] [data-theme-icon] { display: none; }
+[data-theme-mode="light"] [data-theme-icon="light"] { display: block; }
+[data-theme-mode="dark"] [data-theme-icon="dark"] { display: block; }
+[data-theme-mode="system"] [data-theme-icon="system"] { display: block; }

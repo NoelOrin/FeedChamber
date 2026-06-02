@@ -1,6 +1,6 @@
 import { Show } from "solid-js";
 import { createFileRoute } from "@tanstack/solid-router";
-import { postService, contentService } from "~/api";
+import { postService, contentService, settingService } from "~/api";
 import type { ContentListItem, PostListItem } from "~/api";
 import PostHeader from "./-modules/PostHeader";
 import CommentList from "./-modules/CommentList";
@@ -17,9 +17,13 @@ export const Route = createFileRoute("/(app)/timeline/post")({
   pendingMinMs: 0,
   pendingComponent: Pending,
   head: (props) => {
-    const post = (props.loaderData as any)?.post;
-    const title = post?.title ? `${post.title} - OrinForum` : "OrinForum";
-    const description = post?.content_digest || "OrinForum 社区论坛";
+    const loaderData = props.loaderData as any;
+    const post = loaderData?.post;
+    const settings = loaderData?.settings ?? {};
+    const siteName = settings.site_name || "OrinForum";
+    const siteDesc = settings.site_description || "OrinForum 社区论坛";
+    const title = post?.title ? `${post.title} - ${siteName}` : siteName;
+    const description = post?.content_digest || siteDesc;
     const url = typeof window !== "undefined" ? window.location.href : "";
     return {
       meta: [
@@ -37,9 +41,10 @@ export const Route = createFileRoute("/(app)/timeline/post")({
   },
 
   loader: async ({ deps: { id } }) => {
-    const [post, contentsResult] = await Promise.all([
+    const [post, contentsResult, settings] = await Promise.all([
       postService.getById(id),
       contentService.list(id, { page: 1, pageSize: 30 }),
+      settingService.getPublic(),
     ]);
     const contents = contentsResult.data ?? [];
     const total = contentsResult.pagination?.total ?? 0;
@@ -48,6 +53,7 @@ export const Route = createFileRoute("/(app)/timeline/post")({
       contents,
       total,
       hasMore: contents.length < total,
+      settings: settings ?? {},
     };
   },
 });

@@ -13,6 +13,7 @@ type SettingHandler interface {
 	GetPublic(ctx iris.Context)
 	Get(ctx iris.Context)
 	Set(ctx iris.Context)
+	BatchSet(ctx iris.Context)
 	Delete(ctx iris.Context)
 }
 
@@ -113,6 +114,38 @@ func (h *settingHandler) Set(ctx iris.Context) {
 		return
 	}
 	if err := h.svc.Set(ctx.Request().Context(), key, req.Value); err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, nil)
+}
+
+// BatchSet 批量设置系统设置
+// @Summary      批量设置系统设置
+// @Description  批量创建或更新系统设置
+// @Tags         系统设置
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object{settings=object}  true  "设置键值对"
+// @Success      200  {object}  pkg.Response
+// @Failure      400  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Failure      403  {object}  pkg.Response
+// @Router       /admin/settings/batch [post]
+func (h *settingHandler) BatchSet(ctx iris.Context) {
+	var req struct {
+		Settings map[string]string `json:"settings"`
+	}
+	if err := ctx.ReadJSON(&req); err != nil {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
+		return
+	}
+	if len(req.Settings) == 0 {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "settings is required")
+		return
+	}
+	if err := h.svc.BatchSet(ctx.Request().Context(), req.Settings); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}

@@ -12,7 +12,6 @@ import (
 )
 
 func seedMockData(store db.Store) {
-	// ── Users ──────────────────────────────────────────────────
 	users := []struct {
 		username string
 		email    string
@@ -49,7 +48,21 @@ func seedMockData(store db.Store) {
 	logrus.Info(fmt.Sprintf("mock data seeded: %d users", len(users)))
 }
 
-// ensurePostExists checks if any users exist; if not, seeds mock data.
+func seedSettings(store db.Store) {
+	now := time.Now()
+	for key, val := range model.DefaultSettings {
+		setting := &model.Setting{
+			Key:       key,
+			Value:     val,
+			UpdatedAt: now,
+		}
+		if store.SQL() != nil {
+			store.SQL().DB().Where("key = ?", key).FirstOrCreate(setting)
+		}
+	}
+	logrus.Info(fmt.Sprintf("default settings seeded: %d keys", len(model.DefaultSettings)))
+}
+
 func ensureMockData(store db.Store) {
 	if store.SQL() == nil {
 		return
@@ -58,5 +71,16 @@ func ensureMockData(store db.Store) {
 	store.SQL().DB().Model(&model.User{}).Count(&count)
 	if count == 0 {
 		seedMockData(store)
+	}
+}
+
+func ensureSettings(store db.Store) {
+	if store.SQL() == nil {
+		return
+	}
+	var count int64
+	store.SQL().DB().Model(&model.Setting{}).Count(&count)
+	if count == 0 {
+		seedSettings(store)
 	}
 }

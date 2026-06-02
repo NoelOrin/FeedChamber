@@ -157,6 +157,7 @@ func Register(app *iris.Application, h *handler.Handler) {
 		a.Use(middleware.RequirePermission(model.PermRoleManage))
 		a.Post("/stats", h.Admin.GetStats)
 		a.Post("/settings", h.Setting.GetAll)
+		a.Post("/settings/batch", h.Setting.BatchSet)
 		a.Post("/settings/{key}", h.Setting.Get)
 		a.Post("/settings/{key}/update", h.Setting.Set)
 		a.Post("/settings/{key}/delete", h.Setting.Delete)

@@ -17,6 +17,13 @@ function getInitialTheme(): ThemeMode {
   return 'system'
 }
 
+function readDomThemeMode(): ThemeMode {
+  if (typeof document === 'undefined') return 'system'
+  const mode = document.documentElement.getAttribute('data-theme-mode')
+  if (mode === 'light' || mode === 'dark' || mode === 'system') return mode
+  return 'system'
+}
+
 function resolveTheme(mode: ThemeMode): ResolvedTheme {
   return mode === 'system' ? getSystemTheme() : mode
 }
@@ -38,11 +45,10 @@ let _setThemeMode: ((v: ThemeMode) => void) | null = null
 
 export function useTheme() {
   if (!_themeMode) {
-    const initial = getInitialTheme()
+    const initial = readDomThemeMode()
     const [mode, setMode] = createSignal<ThemeMode>(initial)
     _themeMode = mode
     _setThemeMode = setMode
-    applyTheme(initial)
   }
 
   const themeMode = _themeMode!

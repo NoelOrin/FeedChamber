@@ -1,4 +1,9 @@
+import { Route } from "~/pages/__root";
+
 export default function SiteName() {
+  const settings = Route.useLoaderData()().settings ?? {};
+  const siteName = settings.site_name || "OrinForum";
+
   return (
     <div class="sm:block xl:hidden group/sitename relative">
       <a href="/">
@@ -7,7 +12,7 @@ export default function SiteName() {
             id="site-name"
             style="font-family: 'Segoe UI',Arial,'Microsoft Yahei',sans-serif;"
           >
-            NoelOrin's Blog
+            {siteName}
           </div>
           <div class="absolute flex icon py-1.5">
             {/** biome-ignore lint/a11y/noSvgWithoutTitle: <explanation> */}
@@ -29,17 +34,6 @@ export default function SiteName() {
           </div>
         </div>
       </a>
-      {/* Popover content for mobile - shown on hover via CSS group */}
-      {/* <div
-        class="hidden sm:flex space-x-[8px] xl:hidden select-none box-border items-center -mt-[6px] card absolute z-50 px-[10px] py-[6px]
-               opacity-0 pointer-events-none group-hover/sitename:opacity-100 group-hover/sitename:pointer-events-auto
-               transition-opacity duration-200"
-        style="font-family:'Segoe UI',Arial,'Microsoft Yahei',sans-serif;"
-      >
-        <a href="/about" class="link fontExtraBold">关于</a>
-        <a href="/friends" class="link fontExtraBold">友链</a>
-        <a href="/contact" class="link fontExtraBold">联系我</a>
-      </div> */}
     </div>
   )
 }

@@ -10,6 +10,7 @@ type SettingService interface {
 	Get(ctx context.Context, key string) (string, error)
 	GetAll(ctx context.Context) (map[string]string, error)
 	Set(ctx context.Context, key, value string) error
+	BatchSet(ctx context.Context, settings map[string]string) error
 	Delete(ctx context.Context, key string) error
 }
 
@@ -35,6 +36,10 @@ func (s *settingService) GetAll(ctx context.Context) (map[string]string, error) 
 
 func (s *settingService) Set(ctx context.Context, key, value string) error {
 	return s.repo.Set(ctx, key, value)
+}
+
+func (s *settingService) BatchSet(ctx context.Context, settings map[string]string) error {
+	return s.repo.BatchSet(ctx, settings)
 }
 
 func (s *settingService) Delete(ctx context.Context, key string) error {
