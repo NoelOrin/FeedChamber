@@ -11,14 +11,27 @@ interface LayoutProps {
 }
 
 export default function Layout(props: LayoutProps) {
-  const [sidebarOpen, setSidebarOpen] = createSignal(false);
+  const [desktopCollapsed, setDesktopCollapsed] = createSignal(false);
+  const [mobileOpen, setMobileOpen] = createSignal(false);
+
+  const handleToggle = () => {
+    if (typeof window !== "undefined" && window.innerWidth >= 1280) {
+      setDesktopCollapsed((v) => !v);
+    } else {
+      setMobileOpen((v) => !v);
+    }
+  };
 
   return (
     <>
-      <Nav onToggleSidebar={() => setSidebarOpen(!sidebarOpen())} />
+      <Nav onToggleSidebar={handleToggle} />
       <div class="mx-auto mt-12 py-1.5 min-h-[100vh]">
         <div class="flex w-full h-full justify-between px-2 space-x-2">
-          <Sidebar isOpen={sidebarOpen()} onClose={() => setSidebarOpen(false)}>
+          <Sidebar
+            desktopCollapsed={desktopCollapsed()}
+            mobileOpen={mobileOpen()}
+            onClose={() => setMobileOpen(false)}
+          >
             <SidebarContent />
           </Sidebar>
           <main class="mx-0 flex flex-1 flex-col min-w-0">
