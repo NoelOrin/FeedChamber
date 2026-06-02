@@ -10,7 +10,7 @@ export default function ContentItem(props: ContentItemProps) {
   // console.log(props.content);
   return (
     <>
-      <div class={`rounded flex gap-2 min-h-36 ${props.class}`}>
+      <div class={`rounded flex gap-2 min-h-30 ${props.class}`}>
         {/* 左侧头像 */}
         <div class="">
           <img

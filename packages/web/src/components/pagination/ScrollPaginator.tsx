@@ -8,6 +8,7 @@ import {
 } from "solid-js";
 
 interface ScrollPaginatorProps {
+  class?: string;
   hasMore: boolean;
   isLoading: boolean;
   onLoadMore: () => void;
@@ -63,8 +64,8 @@ export default function ScrollPaginator(props: ScrollPaginatorProps) {
   });
 
   return (
-    <div class="w-full minh-[32px]">
-      <div ref={setSentinelRef} class="py-4">
+    <div class={`w-full min-h-[32px] ${props.class}`}>
+      <div ref={setSentinelRef} class="py-2">
         <Switch>
           <Match when={props.isLoading}>
             {props.loadingComponent ?? <DefaultLoading />}

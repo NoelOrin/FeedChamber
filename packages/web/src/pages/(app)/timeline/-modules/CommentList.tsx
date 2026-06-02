@@ -51,6 +51,7 @@ export default function CommentList(props: CommentListProps) {
         {(content) => <ContentItem content={content} />}
       </For>
       <ScrollPaginator
+        class="mt-4"
         hasMore={hasMore()}
         isLoading={isLoading()}
         onLoadMore={loadMore}

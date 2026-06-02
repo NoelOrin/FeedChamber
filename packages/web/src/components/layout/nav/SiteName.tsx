@@ -1,3 +1,4 @@
+import { Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import { Route } from "~/pages/__root";
 
@@ -8,10 +9,14 @@ export default function SiteName() {
 
   return (
     <div class="group/sitename relative">
-      <a href="/">
+      <Link to="/">
         <div id="logo" class="ml-0 select-none flex items-center gap-2">
           <Show when={siteLogo}>
-            <img src={siteLogo} alt={siteName} class="h-8 w-8 object-contain flex-shrink-0" />
+            <img
+              src={siteLogo}
+              alt={siteName}
+              class="h-8 w-8 object-contain shrink-0"
+            />
           </Show>
           <div
             id="site-name"
@@ -25,8 +30,8 @@ export default function SiteName() {
             <svg
               fill="none"
               height="24"
-              viewBox="0 0 48 48"
               width="24"
+              viewBox="0 0 48 48"
               xmlns="http://www.w3.org/2000/svg"
             >
               <path
@@ -34,12 +39,12 @@ export default function SiteName() {
                 fill="none"
                 stroke="#ffffff"
                 stroke-linejoin="round"
-                stroke-width="5"
+                stroke-width="4"
               />
             </svg>
           </div>
         </div>
-      </a>
+      </Link>
     </div>
-  )
+  );
 }

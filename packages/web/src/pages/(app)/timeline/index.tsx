@@ -116,10 +116,10 @@ const PostItem = ({ post }: { post: PostListItem }) => {
   return (
     <div class="card p-4 cursor-pointer" onClick={navigateToPost}>
       <div class="font-bold text-lg">{post.title}</div>
-      <div class="text-sm text-remark mt-1 line-clamp-2">
+      {/* <div class="text-sm text-remark mt-1 line-clamp-2">
         {post.content_digest}
-      </div>
-      <div class="mt-2 text-xs text-remark flex gap-3">
+      </div> */}
+      <div class="mt-1.5 text-xs text-remark flex gap-3">
         <span>{post.author_name}</span>
         <span>{post.category_name}</span>
         <span>{post.comment_count} 评论</span>

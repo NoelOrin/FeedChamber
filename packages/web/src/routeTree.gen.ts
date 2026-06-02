@@ -17,7 +17,9 @@ import { Route as appTimelineRouteRouteImport } from './pages/(app)/timeline/rou
 import { Route as appHomeRouteRouteImport } from './pages/(app)/home/route'
 import { Route as appCategoryRouteRouteImport } from './pages/(app)/category/route'
 import { Route as appTimelineIndexRouteImport } from './pages/(app)/timeline/index'
+import { Route as appTimelineTagRouteImport } from './pages/(app)/timeline/tag'
 import { Route as appTimelinePostRouteImport } from './pages/(app)/timeline/post'
+import { Route as appTimelineCategoryRouteImport } from './pages/(app)/timeline/category'
 
 const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
@@ -58,9 +60,19 @@ const appTimelineIndexRoute = appTimelineIndexRouteImport.update({
   path: '/',
   getParentRoute: () => appTimelineRouteRoute,
 } as any)
+const appTimelineTagRoute = appTimelineTagRouteImport.update({
+  id: '/tag',
+  path: '/tag',
+  getParentRoute: () => appTimelineRouteRoute,
+} as any)
 const appTimelinePostRoute = appTimelinePostRouteImport.update({
   id: '/post',
   path: '/post',
+  getParentRoute: () => appTimelineRouteRoute,
+} as any)
+const appTimelineCategoryRoute = appTimelineCategoryRouteImport.update({
+  id: '/category',
+  path: '/category',
   getParentRoute: () => appTimelineRouteRoute,
 } as any)
 
@@ -71,7 +83,9 @@ export interface FileRoutesByFullPath {
   '/login': typeof authLoginRouteRoute
   '/oauth': typeof authOauthRouteRoute
   '/': typeof appIndexRoute
+  '/timeline/category': typeof appTimelineCategoryRoute
   '/timeline/post': typeof appTimelinePostRoute
+  '/timeline/tag': typeof appTimelineTagRoute
   '/timeline/': typeof appTimelineIndexRoute
 }
 export interface FileRoutesByTo {
@@ -80,7 +94,9 @@ export interface FileRoutesByTo {
   '/login': typeof authLoginRouteRoute
   '/oauth': typeof authOauthRouteRoute
   '/': typeof appIndexRoute
+  '/timeline/category': typeof appTimelineCategoryRoute
   '/timeline/post': typeof appTimelinePostRoute
+  '/timeline/tag': typeof appTimelineTagRoute
   '/timeline': typeof appTimelineIndexRoute
 }
 export interface FileRoutesById {
@@ -92,7 +108,9 @@ export interface FileRoutesById {
   '/(auth)/login': typeof authLoginRouteRoute
   '/(auth)/oauth': typeof authOauthRouteRoute
   '/(app)/': typeof appIndexRoute
+  '/(app)/timeline/category': typeof appTimelineCategoryRoute
   '/(app)/timeline/post': typeof appTimelinePostRoute
+  '/(app)/timeline/tag': typeof appTimelineTagRoute
   '/(app)/timeline/': typeof appTimelineIndexRoute
 }
 export interface FileRouteTypes {
@@ -104,7 +122,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/oauth'
     | '/'
+    | '/timeline/category'
     | '/timeline/post'
+    | '/timeline/tag'
     | '/timeline/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -113,7 +133,9 @@ export interface FileRouteTypes {
     | '/login'
     | '/oauth'
     | '/'
+    | '/timeline/category'
     | '/timeline/post'
+    | '/timeline/tag'
     | '/timeline'
   id:
     | '__root__'
@@ -124,7 +146,9 @@ export interface FileRouteTypes {
     | '/(auth)/login'
     | '/(auth)/oauth'
     | '/(app)/'
+    | '/(app)/timeline/category'
     | '/(app)/timeline/post'
+    | '/(app)/timeline/tag'
     | '/(app)/timeline/'
   fileRoutesById: FileRoutesById
 }
@@ -192,6 +216,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof appTimelineIndexRouteImport
       parentRoute: typeof appTimelineRouteRoute
     }
+    '/(app)/timeline/tag': {
+      id: '/(app)/timeline/tag'
+      path: '/tag'
+      fullPath: '/timeline/tag'
+      preLoaderRoute: typeof appTimelineTagRouteImport
+      parentRoute: typeof appTimelineRouteRoute
+    }
     '/(app)/timeline/post': {
       id: '/(app)/timeline/post'
       path: '/post'
@@ -199,16 +230,27 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof appTimelinePostRouteImport
       parentRoute: typeof appTimelineRouteRoute
     }
+    '/(app)/timeline/category': {
+      id: '/(app)/timeline/category'
+      path: '/category'
+      fullPath: '/timeline/category'
+      preLoaderRoute: typeof appTimelineCategoryRouteImport
+      parentRoute: typeof appTimelineRouteRoute
+    }
   }
 }
 
 interface appTimelineRouteRouteChildren {
+  appTimelineCategoryRoute: typeof appTimelineCategoryRoute
   appTimelinePostRoute: typeof appTimelinePostRoute
+  appTimelineTagRoute: typeof appTimelineTagRoute
   appTimelineIndexRoute: typeof appTimelineIndexRoute
 }
 
 const appTimelineRouteRouteChildren: appTimelineRouteRouteChildren = {
+  appTimelineCategoryRoute: appTimelineCategoryRoute,
   appTimelinePostRoute: appTimelinePostRoute,
+  appTimelineTagRoute: appTimelineTagRoute,
   appTimelineIndexRoute: appTimelineIndexRoute,
 }
 
