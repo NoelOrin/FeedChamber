@@ -9,20 +9,17 @@ export default function SiteName() {
   return (
     <div class="group/sitename relative">
       <a href="/">
-        <div id="logo" class="ml-0 select-none">
-          <Show
-            when={siteLogo}
-            fallback={
-              <div
-                id="site-name"
-                style="font-family: 'Segoe UI',Arial,'Microsoft Yahei',sans-serif;"
-              >
-                {siteName}
-              </div>
-            }
-          >
-            <img src={siteLogo} alt={siteName} class="h-8 object-contain" />
+        <div id="logo" class="ml-0 select-none flex items-center gap-2">
+          <Show when={siteLogo}>
+            <img src={siteLogo} alt={siteName} class="h-8 w-8 object-contain flex-shrink-0" />
           </Show>
+          <div
+            id="site-name"
+            class={siteLogo ? "hidden lg:block" : "block"}
+            style="font-family: 'Segoe UI',Arial,'Microsoft Yahei',sans-serif;"
+          >
+            {siteName}
+          </div>
           <div class="absolute flex icon py-1.5">
             {/** biome-ignore lint/a11y/noSvgWithoutTitle: <explanation> */}
             <svg
