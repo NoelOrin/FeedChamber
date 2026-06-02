@@ -68,9 +68,7 @@ function RootDocument({ children }: { children: Solid.JSX.Element }) {
         <DarkModeScript />
       </head>
       <body class="layout-default-bg relative">
-        <Layout>
           {children}
-        </Layout>
         <Scripts />
       </body>
     </html>

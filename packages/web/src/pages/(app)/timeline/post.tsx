@@ -1,10 +1,12 @@
-import { Show } from "solid-js";
+import { Show, For } from "solid-js";
+import { createSignal } from "solid-js";
 import { createFileRoute } from "@tanstack/solid-router";
 import { postService, contentService, settingService } from "~/api";
 import type { ContentListItem, PostListItem } from "~/api";
 import PostHeader from "./-modules/PostHeader";
 import CommentList from "./-modules/CommentList";
 import ContentItem from "./-modules/ContentItem";
+import Reply from "./-modules/Reply";
 
 export const Route = createFileRoute("/(app)/timeline/post")({
   component: RouteComponent,
@@ -72,15 +74,17 @@ function RouteComponent() {
 
   const post = () => loaderData().post;
   const contents = () => loaderData().contents;
-  
+  const rootContent = () => contents()[0];
+  const [newComments, setNewComments] = createSignal<ContentListItem[]>([]);
+
   return (
-    <div class="w-full flex">
-      <div class="w-full px-4 py-6 card">
+    <div class="w-full flex flex-col gap-2">
+      <div class="w-full px-4 py-6 card space-y-4">
         <PostHeader post={post()} />
-        <Show when={contents().length > 0}>
-          {/* <PostContent body={contents()[0].body} /> */}
-          <ContentItem class="pt-6" content={contents()[0]} />
+        <Show when={rootContent()}>
+          <ContentItem class="pt-6" content={rootContent()} />
         </Show>
+        <For each={newComments()}>{(c) => <ContentItem content={c} />}</For>
         <CommentList
           postId={post().id}
           initialContents={contents().slice(1)}
@@ -89,6 +93,11 @@ function RouteComponent() {
           totalCount={post().comment_count}
         />
       </div>
+      <Reply
+        postId={post().id}
+        rootContentId={rootContent()?.id ?? ""}
+        onSuccess={(item) => setNewComments((prev) => [item, ...prev])}
+      />
     </div>
   );
 }

@@ -73,14 +73,40 @@ export function useTheme() {
     return titles[themeMode()]
   }
 
-  const cycleTheme = () => {
+  const cycleTheme = (event?: MouseEvent) => {
     const order: ThemeMode[] = ['light', 'dark', 'system']
     const next = order[(order.indexOf(themeMode()) + 1) % 3]
-    setThemeMode(next)
-    localStorage.setItem(STORAGE_KEY, next)
-    applyTheme(next)
+
+    const doApply = () => {
+      setThemeMode(next)
+      localStorage.setItem(STORAGE_KEY, next)
+      applyTheme(next)
+    }
+
+    // View Transitions API 圆形扩散动画
+    const supportsVT = typeof document !== 'undefined' && 'startViewTransition' in document
+    if (!supportsVT || !event || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      doApply()
+      return
+    }
+
+    const x = event.clientX
+    const y = event.clientY
+    const endRadius = Math.hypot(
+      Math.max(x, window.innerWidth - x),
+      Math.max(y, window.innerHeight - y),
+    )
+
+    const transition = (document as any).startViewTransition(doApply)
+    transition.ready.then(() => {
+      document.documentElement.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${endRadius}px at ${x}px ${y}px)`] },
+        { duration: 400, easing: 'ease-in-out', pseudoElement: '::view-transition-new(root)' },
+      )
+    })
   }
 
   return { themeMode, themeTitle, toggleTheme: cycleTheme }
 }
+
 

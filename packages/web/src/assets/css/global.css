@@ -55,7 +55,7 @@ body.layout-default-bg {
 }
 
 .card {
-  background-color: #fff9;
+  background-color: rgba(255, 255, 255, 0.7);
   border-radius: 0.18rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
   transition: box-shadow 0.3s ease;
@@ -66,7 +66,7 @@ body.layout-default-bg {
 }
 
 .dark .card {
-  background-color: #3e3e44ad;
+  background-color: rgba(62, 62, 68, 0.7);
 }
 
 .btn {
@@ -560,4 +560,35 @@ mark {
 /* Button SVG pointer */
 button svg {
   pointer-events: none;
+}
+
+/* Toast animation */
+.toast-item-enter {
+  animation: toast-slide-in 0.3s cubic-bezier(0.21, 1.02, 0.73, 1) forwards;
+}
+
+.toast-item-exit {
+  animation: toast-slide-out 0.2s ease-in forwards;
+}
+
+@keyframes toast-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-1rem) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-slide-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-0.5rem) scale(0.95);
+  }
 }

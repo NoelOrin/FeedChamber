@@ -5,6 +5,7 @@ import {
   Switch,
   Match,
   JSX,
+  splitProps,
 } from "solid-js";
 
 interface ScrollPaginatorProps {
@@ -14,12 +15,15 @@ interface ScrollPaginatorProps {
   onLoadMore: () => void;
   loadingComponent?: JSX.Element;
   threshold?: number;
+  showHasMore?: boolean;
 }
 
 export default function ScrollPaginator(props: ScrollPaginatorProps) {
   const [sentinelRef, setSentinelRef] = createSignal<HTMLDivElement | null>(
     null,
   );
+
+  const _showHasMore = props.showHasMore ?? true;
   let observer: IntersectionObserver | null = null;
 
   const startObserving = () => {
@@ -64,13 +68,13 @@ export default function ScrollPaginator(props: ScrollPaginatorProps) {
   });
 
   return (
-    <div class={`w-full min-h-[32px] ${props.class}`}>
-      <div ref={setSentinelRef} class="py-2">
+    <div class={`w-full ${props.class}`}>
+      <div ref={setSentinelRef}>
         <Switch>
           <Match when={props.isLoading}>
             {props.loadingComponent ?? <DefaultLoading />}
           </Match>
-          <Match when={!props.hasMore}>
+          <Match when={!props.hasMore && _showHasMore}>
             <div class="text-center font-bold py-3">没有更多了</div>
           </Match>
         </Switch>
@@ -80,7 +84,7 @@ export default function ScrollPaginator(props: ScrollPaginatorProps) {
 }
 
 const DefaultLoading = () => (
-  <div class="flex items-center justify-centerpy-4 flex-col space-y-2">
+  <div class="flex items-center justify-center py-4 flex-col space-y-2 min-h-8">
     <div class="text-center font-bold">加载中...</div>
     <div class="loading loading-spinner loading-sm" />
   </div>

@@ -1,9 +1,14 @@
-import { createFileRoute, Outlet } from '@tanstack/solid-router'
+import { createFileRoute, Outlet } from "@tanstack/solid-router";
+import Layout from "~/layouts/layout";
 
-export const Route = createFileRoute('/(app)')({
+export const Route = createFileRoute("/(app)")({
   component: RouteComponent,
-})
+});
 
 function RouteComponent() {
-  return <Outlet />
+  return (
+    <Layout>
+      <Outlet />
+    </Layout>
+  );
 }

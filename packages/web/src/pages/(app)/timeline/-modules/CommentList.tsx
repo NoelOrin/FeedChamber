@@ -55,7 +55,12 @@ export default function CommentList(props: CommentListProps) {
         hasMore={hasMore()}
         isLoading={isLoading()}
         onLoadMore={loadMore}
+        showHasMore={false}
       />
+      {/* <div class="text-center font-bold py-3">
+        共 {props.totalCount} 条评论
+      </div> */}
+      {/* < */}
     </div>
   );
 }

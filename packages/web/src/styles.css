@@ -98,3 +98,16 @@
 [data-theme-mode="light"] [data-theme-icon="light"] { display: block; }
 [data-theme-mode="dark"] [data-theme-icon="dark"] { display: block; }
 [data-theme-mode="system"] [data-theme-icon="system"] { display: block; }
+
+/* View Transition: disable default cross-fade, use custom clip-path animation */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+  z-index: 1;
+}
+::view-transition-new(root) {
+  z-index: 9999;
+}
