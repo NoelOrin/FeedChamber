@@ -40,7 +40,7 @@ export default function TagsAside(props: TagsProps) {
           </span>
         </div>
       </div>
-      <div class="text-sm card-body p-2 mt-1.5">
+      <div class="text-sm card-body p-2 mt-0.5">
         <Show when={props.tags}>
           <div class="flex flex-wrap gap-2">
             <For each={props.tags}>

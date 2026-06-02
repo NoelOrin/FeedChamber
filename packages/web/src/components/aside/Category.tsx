@@ -41,7 +41,7 @@ export default function CategoryAside(props: CategoryProps) {
           </span>
         </div>
       </div>
-      <div class="text-sm card-body p-2 mt-1.5">
+      <div class="text-sm card-body p-2">
         <Show when={props.categories}>
           <ul>
             <For each={props.categories}>
