@@ -1,19 +1,28 @@
+import { Show } from "solid-js";
 import { Route } from "~/pages/__root";
 
 export default function SiteName() {
   const settings = Route.useLoaderData()().settings ?? {};
   const siteName = settings.site_name || "OrinForum";
+  const siteLogo = settings.site_logo || "";
 
   return (
-    <div class="sm:block xl:hidden group/sitename relative">
+    <div class="group/sitename relative">
       <a href="/">
         <div id="logo" class="ml-0 select-none">
-          <div
-            id="site-name"
-            style="font-family: 'Segoe UI',Arial,'Microsoft Yahei',sans-serif;"
+          <Show
+            when={siteLogo}
+            fallback={
+              <div
+                id="site-name"
+                style="font-family: 'Segoe UI',Arial,'Microsoft Yahei',sans-serif;"
+              >
+                {siteName}
+              </div>
+            }
           >
-            {siteName}
-          </div>
+            <img src={siteLogo} alt={siteName} class="h-8 object-contain" />
+          </Show>
           <div class="absolute flex icon py-1.5">
             {/** biome-ignore lint/a11y/noSvgWithoutTitle: <explanation> */}
             <svg

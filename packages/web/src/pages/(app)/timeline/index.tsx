@@ -2,9 +2,10 @@ import { createFileRoute, useNavigate, useSearch } from "@tanstack/solid-router"
 import { createSignal, For, createEffect, on } from "solid-js";
 import ScrollPaginator from "~/components/pagination/ScrollPaginator";
 import { postService } from "~/api";
+import { Route as RootRoute } from "~/pages/__root";
 import type { PostListItem } from "~/api";
 
-const DEFAULT_PAGE_SIZE = 10;
+const FALLBACK_PAGE_SIZE = 10;
 
 export const Route = createFileRoute("/(app)/timeline/")({
   component: Home,
@@ -20,7 +21,7 @@ export const Route = createFileRoute("/(app)/timeline/")({
   loader: async ({ deps }) => {
     const result = await postService.list({
       page: 1,
-      pageSize: DEFAULT_PAGE_SIZE,
+      pageSize: FALLBACK_PAGE_SIZE,
       categoryName: deps.category,
       tagName: deps.tag,
     });
@@ -34,12 +35,13 @@ export const Route = createFileRoute("/(app)/timeline/")({
 });
 
 function Home() {
+  const rootData = RootRoute.useLoaderData();
   const loaderData = Route.useLoaderData();
   const search = useSearch({ from: "/(app)/timeline/" });
   const deps = Route.useLoaderDeps();
+  const pageSize = () => parseInt(rootData()?.settings?.article_page_size ?? '', 10) || FALLBACK_PAGE_SIZE;
   const [posts, setPosts] = createSignal<PostListItem[]>(loaderData().items);
   const [page, setPage] = createSignal(2);
-  const [pageSize] = createSignal(DEFAULT_PAGE_SIZE);
   const [total, setTotal] = createSignal(loaderData().total);
   const [hasMore, setHasMore] = createSignal(loaderData().hasMore);
   const [isLoading, setIsLoading] = createSignal(false);
@@ -77,7 +79,7 @@ function Home() {
     try {
       const result = await postService.list({
         page: page(),
-        pageSize: DEFAULT_PAGE_SIZE,
+        pageSize: pageSize(),
         categoryName: deps().category,
         tagName: deps().tag,
       });

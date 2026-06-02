@@ -48,14 +48,14 @@ export default function Nav(props: NavProps) {
     <div class="flex w-full">
       <nav
         class={clsx(
-          'flex justify-center items-center w-full duration-200!',
+          'flex items-center w-full duration-200!',
           props.transparent
             ? 'scrolled-to-top'
             : isScrolledToTop() && 'scrolled-to-top',
         )}
       >
         <div class="flex w-full flex-wrap items-center justify-between py-1.5 px-2">
-          <div class="flex sm:flex-1 xl:flex-[0_0_auto] justify-center items-center">
+          <div class="flex sm:flex-1 xl:flex-[0_0_auto] justify-start items-center">
             <button
               class="mx-1 p-2 duration-200 btn"
               onClick={toggleSidebar}
@@ -68,7 +68,7 @@ export default function Nav(props: NavProps) {
             </button>
           </div>
 
-          <div class="flex xl:justify-start sm:justify-center sm:flex-[0_0_auto]">
+          <div class="flex xl:justify-start sm:justify-center sm:flex-[0_0_auto] xl:flex-1">
             <SiteName />
           </div>
 
