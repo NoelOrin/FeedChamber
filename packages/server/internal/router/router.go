@@ -130,6 +130,8 @@ func Register(app *iris.Application, h *handler.Handler) {
 	// ── Upload ────────────────────────────────────────────────
 	protected.PartyFunc("/upload", func(u iris.Party) {
 		u.Post("/", h.Upload.Upload)
+		u.Post("/presign", h.Upload.Presign)
+		u.Post("/confirm", h.Upload.Confirm)
 		u.Post("/list", h.Upload.List)
 		u.Get("/{id}", h.Upload.GetFile)
 		u.Post("/{id}/delete", h.Upload.Delete)

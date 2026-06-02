@@ -5,6 +5,7 @@ import (
 	"orinforum/internal/db"
 	"orinforum/internal/repository"
 	"orinforum/internal/service"
+	"orinforum/internal/storage"
 
 	"github.com/kataras/iris/v12"
 )
@@ -40,7 +41,7 @@ func Health(ctx iris.Context) {
 	ctx.JSON(iris.Map{"status": "ok"})
 }
 
-func New(store db.Store, cfg config.Config, permSvc service.PermissionService) *Handler {
+func New(store db.Store, cfg config.Config, permSvc service.PermissionService, st storage.Provider) *Handler {
 	userRepo := repository.NewUserRepository(store)
 	roleRepo := repository.NewRoleRepository(store)
 	postRepo := repository.NewPostRepository(store)
@@ -62,7 +63,7 @@ func New(store db.Store, cfg config.Config, permSvc service.PermissionService) *
 	followSvc := service.NewFollowService(followRepo, userRepo)
 
 	uploadRepo := repository.NewUploadRepository(store)
-	uploadSvc := service.NewUploadService(uploadRepo)
+	uploadSvc := service.NewUploadService(uploadRepo, st)
 
 	notifRepo := repository.NewNotificationRepository(store)
 	notifSvc := service.NewNotificationService(notifRepo)

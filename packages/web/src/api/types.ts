@@ -124,11 +124,20 @@ export interface Upload {
   id: string
   file_name: string
   stored_name: string
+  key: string
   path: string
+  url: string
   size: number
   mime_type: string
   uploader_id: string
   created_at: string
+}
+
+export interface UploadPresignData {
+  uploadId: string
+  url: string
+  fields: Record<string, string>
+  fileUrl: string
 }
 
 export interface Report {

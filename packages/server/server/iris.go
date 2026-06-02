@@ -12,6 +12,7 @@ import (
 	"orinforum/internal/repository"
 	"orinforum/internal/router"
 	"orinforum/internal/service"
+	"orinforum/internal/storage"
 	"time"
 
 	_ "orinforum/docs"
@@ -70,6 +71,12 @@ func Start(env Env) {
 	ensureMockData(store)
 	reseedPostsAndContents(store)
 
+	// 创建存储 Provider
+	st, err := storage.New(cfg.Storage)
+	if err != nil {
+		panic(fmt.Sprintf("failed to initialize storage: %v", err))
+	}
+
 	// inject setting reader into middleware for dynamic auth gates
 	settingRepo := repository.NewSettingRepository(store)
 	middleware.SetSettingReader(service.NewSettingService(settingRepo))
@@ -91,7 +98,7 @@ func Start(env Env) {
 	)
 	app.Get("/swagger/{any:path}", swaggerUI)
 
-	h := handler.New(store, cfg, permSvc)
+	h := handler.New(store, cfg, permSvc, st)
 	router.Register(app, h)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)

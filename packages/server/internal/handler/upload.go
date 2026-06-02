@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"orinforum/internal/pkg"
 	"orinforum/internal/service"
 
@@ -10,6 +9,8 @@ import (
 
 type UploadHandler interface {
 	Upload(ctx iris.Context)
+	Presign(ctx iris.Context)
+	Confirm(ctx iris.Context)
 	GetFile(ctx iris.Context)
 	List(ctx iris.Context)
 	Delete(ctx iris.Context)
@@ -21,9 +22,9 @@ func newUploadHandler(svc service.UploadService) UploadHandler {
 	return &uploadHandler{svc: svc}
 }
 
-// Upload 上传文件
+// Upload 上传文件（服务端代理模式，本地存储使用）
 // @Summary      上传文件
-// @Description  上传图片文件（jpg/png/gif/webp），最大 10MB
+// @Description  通过服务端代理上传图片文件（jpg/png/gif/webp），最大 10MB
 // @Tags         文件上传
 // @Accept       multipart/form-data
 // @Produce      json
@@ -55,7 +56,96 @@ func (h *uploadHandler) Upload(ctx iris.Context) {
 	ctx.StatusCode(iris.StatusCreated)
 	pkg.Success(ctx, iris.Map{
 		"id":       upload.ID,
-		"url":      fmt.Sprintf("/api/v1/upload/%s", upload.ID),
+		"url":      upload.URL,
+		"fileName": upload.FileName,
+		"size":     upload.Size,
+	})
+}
+
+// Presign 获取预签名 POST 上传信息（前端直传模式）
+// @Summary      获取预签名上传信息
+// @Description  返回预签名 POST URL 和字段，前端直接上传文件到对象存储
+// @Tags         文件上传
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body  object{fileName=string,contentType=string}  true  "文件信息"
+// @Success      200   {object}  pkg.Response{data=object{uploadId=string,url=string,urlMap=map,fileName=string}}
+// @Failure      400   {object}  pkg.Response
+// @Failure      401   {object}  pkg.Response
+// @Router       /upload/presign [post]
+func (h *uploadHandler) Presign(ctx iris.Context) {
+	userID := ctx.Values().GetString("user_uuid")
+	if userID == "" {
+		pkg.Fail(ctx, pkg.TOKEN_NOT_EXIST)
+		return
+	}
+
+	var body struct {
+		FileName    string `json:"fileName"`
+		ContentType string `json:"contentType"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil || body.FileName == "" || body.ContentType == "" {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "fileName and contentType are required")
+		return
+	}
+
+	post, upload, err := h.svc.Presign(ctx.Request().Context(), userID, body.FileName, body.ContentType)
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+
+	pkg.Success(ctx, iris.Map{
+		"uploadId": upload.ID,
+		"url":      post.URL,
+		"fields":   post.Fields,
+		"fileUrl":  upload.URL,
+	})
+}
+
+// Confirm 确认直传完成，返回文件元数据
+// @Summary      确认上传完成
+// @Description  前端直传完成后回调，返回文件信息
+// @Tags         文件上传
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body  object{uploadId=string}  true  "上传 ID"
+// @Success      200   {object}  pkg.Response{data=object{id=string,url=string,fileName=string,size=int}}
+// @Failure      400   {object}  pkg.Response
+// @Failure      401   {object}  pkg.Response
+// @Router       /upload/confirm [post]
+func (h *uploadHandler) Confirm(ctx iris.Context) {
+	userID := ctx.Values().GetString("user_uuid")
+	if userID == "" {
+		pkg.Fail(ctx, pkg.TOKEN_NOT_EXIST)
+		return
+	}
+
+	var body struct {
+		UploadID string `json:"uploadId"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil || body.UploadID == "" {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "uploadId is required")
+		return
+	}
+
+	upload, err := h.svc.Confirm(ctx.Request().Context(), body.UploadID)
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+
+	// 确认上传属于当前用户
+	if upload.UploaderID != userID {
+		pkg.Fail(ctx, pkg.FORBIDDEN)
+		return
+	}
+
+	pkg.Success(ctx, iris.Map{
+		"id":       upload.ID,
+		"url":      upload.URL,
 		"fileName": upload.FileName,
 		"size":     upload.Size,
 	})
@@ -79,7 +169,12 @@ func (h *uploadHandler) GetFile(ctx iris.Context) {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	ctx.ServeFile(upload.Path)
+	if upload.URL != "" {
+		ctx.Redirect(upload.URL, iris.StatusFound)
+		return
+	}
+	ctx.StatusCode(iris.StatusNotFound)
+	pkg.Fail(ctx, pkg.NOT_FOUND, "file not accessible")
 }
 
 // List 上传列表
