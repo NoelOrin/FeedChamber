@@ -20,7 +20,10 @@ export default function Sidebar(props: SidebarProps) {
       {/* Mobile < xl: 点击汉堡按钮后以 drawer 展开 */}
       <Show when={props.mobileOpen}>
         <div class="select-none">
-          <div id="mask" class="active" onClick={props.onClose} />
+          <div
+            class="fixed inset-0 z-40 bg-white/60 dark:bg-zinc-700/50 backdrop-blur-[8px]"
+            onClick={props.onClose}
+          />
           <aside
             id="sidebar-left"
             class="drawer-active sidebar-left-pop w-64 xl:hidden block"

@@ -134,8 +134,9 @@ nav {
   justify-content: center;
   border-radius: 0.5rem;
   font-weight: 900;
-  height: 36px;
-  width: 160px;
+  height: 32px;
+  width: max-content;
+  padding: 0 1.25rem;
   transition: background-color ease-in-out 0.25s;
 }
 
@@ -240,29 +241,6 @@ nav {
 
 .dark #sectionNav .card-body > ul > li ul {
   border-color: rgb(82 82 91);
-}
-
-/* Mask overlay */
-#mask {
-  visibility: hidden;
-  position: fixed;
-  top: 0;
-  z-index: 40;
-  height: 100%;
-  width: 100%;
-  background-color: rgba(255, 255, 255, 0.6);
-  opacity: 0;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dark #mask {
-  background-color: rgba(63, 63, 70, 0.5);
-}
-
-#mask.active {
-  visibility: visible;
-  opacity: 1;
-  backdrop-filter: blur(8px);
 }
 
 /* Footer */
