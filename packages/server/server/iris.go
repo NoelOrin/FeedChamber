@@ -68,6 +68,7 @@ func Start(env Env) {
 	permSvc := seedPermissions(store)
 	ensureSettings(store)
 	ensureMockData(store)
+	reseedPostsAndContents(store)
 
 	// inject setting reader into middleware for dynamic auth gates
 	settingRepo := repository.NewSettingRepository(store)
