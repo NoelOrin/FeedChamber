@@ -27,6 +27,8 @@ type Handler struct {
 	Report       ReportHandler
 	Admin        AdminHandler
 	Setting      SettingHandler
+	Banned       BannedHandler
+	Announcement AnnouncementHandler
 }
 
 // Health 健康检查
@@ -77,6 +79,12 @@ func New(store db.Store, cfg config.Config, permSvc service.PermissionService, s
 	reportRepo := repository.NewReportRepository(store)
 	reportSvc := service.NewReportService(reportRepo)
 
+	bannedRepo := repository.NewBannedRepository(store)
+	bannedSvc := service.NewBannedService(bannedRepo)
+
+	announcementRepo := repository.NewAnnouncementRepository(store)
+	announcementSvc := service.NewAnnouncementService(announcementRepo)
+
 	return &Handler{
 		Auth:       newAuthHandler(authSvc),
 		User:       newUserHandler(userSvc),
@@ -94,5 +102,7 @@ func New(store db.Store, cfg config.Config, permSvc service.PermissionService, s
 		Report:       newReportHandler(reportSvc),
 		Admin:        newAdminHandler(adminSvc),
 		Setting:      newSettingHandler(settingSvc),
+		Banned:       newBannedHandler(bannedSvc),
+		Announcement: newAnnouncementHandler(announcementSvc),
 	}
 }

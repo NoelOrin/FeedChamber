@@ -2,7 +2,7 @@
 
 ## 描述
 
-当 agent 被命令进行测试时，必须将测试总结的结果以 Markdown 格式保存到 `agent_test_logs` 文件夹中。无特定要求时,报告为中文.
+使用项目根目录的 `orinforum_test.sh` 脚本进行 API 接口测试，并将测试结果以 Markdown 格式保存到 `agent_test_logs/` 文件夹。
 
 ## 触发条件
 
@@ -10,87 +10,106 @@
 - 用户要求测试功能
 - 用户要求验证系统行为
 - 用户要求执行测试用例
+- 用户要求全量测试 / 接口回归测试 / smoke test
+
+## 测试脚本
+
+项目根目录的 `orinforum_test.sh` 是唯一的 API 测试入口，支持模块化测试。
+
+### 启动服务器
+
+```bash
+cd packages/server
+DB_TYPE=sqlite DB_DSN=/tmp/of_test.db go run main.go &
+sleep 4
+```
+
+建议使用干净的 SQLite 数据库文件以获得稳定的测试结果。
+
+### 运行全量测试
+
+```bash
+bash orinforum_test.sh -all
+```
+
+### 按模块测试
+
+| 参数 | 测试内容 |
+|------|---------|
+| `-public` | 公共端点：健康检查、公共设置、分类列表、标签列表、帖子列表/搜索 |
+| `-auth` | 认证：注册、登录、密码重置 + 认证流程（刷新token、登出、修改密码） |
+| `-post` | 帖子：帖子列表/详情、评论、点赞、收藏、CRUD |
+| `-user` | 用户：个人资料、搜索、列表 |
+| `-role` | 角色 & 权限：列表、查询、同步 |
+| `-cat` | 分类 CRUD |
+| `-tags` | 标签 CRUD |
+| `-follow` | 关注/粉丝 |
+| `-fav` | 收藏列表 |
+| `-notif` | 通知列表/计数/已读 |
+| `-upload` | 上传文件列表 |
+| `-report` | 举报创建/列表 |
+| `-admin` | 统计信息、系统设置 CRUD |
+
+### 组合测试
+
+```bash
+bash orinforum_test.sh -public -auth -post
+```
+
+### 使用自定义 BASE_URL
+
+```bash
+BASE_URL=http://staging:8080/api/v1 bash orinforum_test.sh -all
+```
+
+### 新增接口时的处理
+
+1. 打开项目根目录 `orinforum_test.sh`
+2. 找到对应模块函数或在文件末尾新增函数
+3. 使用 `check` 函数添加测试项（格式：`check "描述" METHOD "/path" '{"body":""}' "$TOKEN" EXPECTED`）
+4. 在 `run_tests()` 中添加模块分发
+5. 在文件末尾的命令行参数解析部分添加新的 flag 映射
 
 ## 执行流程
 
 ### 1. 准备阶段
 
 1. 确认测试目标和范围
-2. 确保服务器已启动 (`cd packages/server && go run main.go dev`)
-3. 准备测试数据和 token
+2. 启动服务器（如未运行）
+3. 准备测试数据（脚本自动处理）
 
-### 2. 任务拆分与并发执行
+### 2. 执行测试
 
-当测试项数量 >= 3 时，应使用 Agent 工具拆分为多个 subagent 并发执行：
-
-**拆分策略：**
-1. 按 API 模块或功能域分组（如认证模块、用户模块、帖子模块、社交模块）
-2. 每个 subagent 负责一组测试项，共享同一份 token 和上下文
-3. 使用单条消息中的多个 Agent 工具调用实现真正并发
-
-**上下文共享：**
-- 将登录获取的 token、测试用户名密码等公共数据作为 prompt 的一部分传递给每个 subagent
-- 每个 subagent 的 prompt 必须自包含，不依赖其他 subagent 的输出
-- 最终由主 agent 汇总所有 subagent 的测试结果
-
-**示例拆分：**
-```
-# 主 agent 同时发出多个 Agent 调用
-Agent(description="测试认证API", prompt="使用 token xxx 测试以下接口：登录/登出/刷新token...")
-Agent(description="测试用户API", prompt="使用 token xxx 测试以下接口：用户列表/个人资料/修改角色...")
-Agent(description="测试帖子API", prompt="使用 token xxx 测试以下接口：帖子CRUD/搜索/标签...")
+```bash
+cd /path/to/OrinForum
+bash orinforum_test.sh -all    # 全量
+# 或
+bash orinforum_test.sh -auth -post  # 模块组合
 ```
 
-**汇总规则：**
-1. 收集所有 subagent 返回的测试结果
-2. 合并为统一的测试报告
-3. 按原始测试计划排序
+### 3. 生成报告
 
-### 3. 执行测试（顺序模式）
+将测试结果保存到 `agent_test_logs/` 目录。
 
-当测试项 < 3 或无法并行时，按以下流程执行：
-1. 按照测试计划逐项执行
-2. 记录每个测试项的请求和响应
-3. 验证测试结果是否符合预期
-4. 不要删除数据库
-
-### 4. 生成报告
-
-1. 使用统一的报告模板
-2. 填写测试概要和结果汇总
-3. 记录详细测试过程
-4. 总结问题和建议
-
-### 5. 保存报告
-
-1. 按照命名规范生成文件名
-2. 将报告保存到 `agent_test_logs/` 目录
-3. 确认文件已成功创建
-
-## 命名规范
+#### 命名规范
 
 文件名格式：`{测试内容}-{时间}.md`
 
-### 示例
-
 - `api-auth-test-2026-05-29.md`
-- `role-permission-test-2026-05-29.md`
+- `full-api-test-2026-05-29.md`
 - `post-crud-test-2026-05-29-14-30.md`
 
-### 规则
-
+规则：
 1. 使用小写字母和连字符（kebab-case）
-2. 测试内容简明扼要，体现测试范围
-3. 时间格式：`YYYY-MM-DD` 或 `YYYY-MM-DD-HH-MM`
-4. 必须以 `.md` 结尾
+2. 时间格式：`YYYY-MM-DD` 或 `YYYY-MM-DD-HH-MM`
+3. 必须以 `.md` 结尾
 
-## 报告模板
+#### 报告模板
 
 ```markdown
 # {测试标题}
 
 **测试时间**: YYYY-MM-DD HH:MM:SS
-**测试环境**: dev / prod
 **测试模型**: (当前使用的模型)
 
 ## 测试概要
@@ -104,25 +123,7 @@ Agent(description="测试帖子API", prompt="使用 token xxx 测试以下接口
 | 测试项1 | ✅ 通过 | 成功说明 |
 | 测试项2 | ❌ 失败 | 失败原因 |
 
-## 详细测试记录
-
-### 1. 测试项名称
-
-**请求**:
-```bash
-curl -X POST http://localhost:8080/api/v1/xxx
-```
-
-**响应**:
-```json
-{
-  "code": 0,
-  "msg": "success",
-  "data": { ... }
-}
-```
-
-**结论**: 测试通过/失败，原因说明。
+**总计**: N 通过, M 失败
 
 ## 问题与建议
 
@@ -133,95 +134,13 @@ curl -X POST http://localhost:8080/api/v1/xxx
 整体测试结论和下一步计划。
 ```
 
-## 测试状态标识
-
-- ✅ 通过 - 测试成功
-- ❌ 失败 - 测试失败
-- ⚠️ 警告 - 测试通过但存在问题
-- ⏭️ 跳过 - 测试被跳过
-
 ## 注意事项
 
-1. 测试前确保服务器已启动
-2. 测试数据应使用测试专用数据，避免影响生产数据
-3. 敏感信息（如 token）在报告中应适当截断
-4. 测试报告应及时生成，避免遗忘测试细节
-5. 失败的测试项必须记录失败原因和错误信息
-
-## API 模块参考
-
-### 认证模块 (Auth)
-```bash
-# 注册
-curl -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"testuser","email":"test@test.com","password":"123456"}'
-
-# 登录
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"login":"testuser","password":"123456"}'
-```
-
-### 用户模块 (User)
-```bash
-# 个人资料
-curl -X GET http://localhost:8080/api/v1/user/profile \
-  -H "Authorization: Bearer $TOKEN"
-
-# 更新资料
-curl -X PUT http://localhost:8080/api/v1/user/profile \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"bio":"hello world"}'
-
-# 用户列表 (需要 user:read 权限)
-curl -X GET "http://localhost:8080/api/v1/user/list?page=1&pageSize=10" \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### 帖子模块 (Post)
-```bash
-# 帖子列表
-curl -X GET "http://localhost:8080/api/v1/posts/?page=1&pageSize=10" \
-  -H "Authorization: Bearer $TOKEN"
-
-# 搜索帖子
-curl -X GET "http://localhost:8080/api/v1/posts/search?q=test&page=1&pageSize=10" \
-  -H "Authorization: Bearer $TOKEN"
-
-# 创建帖子
-curl -X POST http://localhost:8080/api/v1/posts/ \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"test post","content":"hello","categoryId":"xxx"}'
-```
-
-### 社交模块 (Like/Favorite/Follow)
-```bash
-# 点赞帖子
-curl -X POST http://localhost:8080/api/v1/posts/{postId}/like \
-  -H "Authorization: Bearer $TOKEN"
-
-# 收藏帖子
-curl -X POST http://localhost:8080/api/v1/posts/{postId}/favorite \
-  -H "Authorization: Bearer $TOKEN"
-
-# 关注用户
-curl -X POST http://localhost:8080/api/v1/users/{userId}/follow \
-  -H "Authorization: Bearer $TOKEN"
-```
-
-### 权限控制测试
-```bash
-# 普通用户尝试访问管理员接口
-curl -X DELETE http://localhost:8080/api/v1/user/{id} \
-  -H "Authorization: Bearer $USER_TOKEN"
-
-# 预期响应：403 Forbidden
-# {
-#   "code": 1013,
-#   "msg": "forbidden",
-#   "data": null
-# }
-```
+- 所有测试通过 `orinforum_test.sh` 进行，无需手动拼 curl
+- `-all` 模式建议在干净的数据库上运行
+- 认证模块使用时间戳后缀创建唯一用户，避免重复运行冲突
+- 测试脚本不修改生产数据库，但会创建测试数据（帖子、评论、分类等）
+- 修改密码测试会重置回原密码
+- 测试脚本自动创建和清理临时文件
+- 失败的测试项必须在报告中记录失败原因和错误信息
+- 敏感信息（如 token）在报告中应适当截断

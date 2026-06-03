@@ -25,6 +25,8 @@ func Register(app *iris.Application, h *handler.Handler) {
 	// Public category and tag lists
 	v1.Post("/categories/list", h.Category.List)
 	v1.Post("/tags/list", h.Tag.List)
+	v1.Post("/announcements/published", h.Announcement.ListPublished)
+	v1.Get("/announcements/{id}", h.Announcement.Get)
 
 	// ── Protected (require JWT) ───────────────────────────────
 	protected := v1.Party("")
@@ -46,6 +48,9 @@ func Register(app *iris.Application, h *handler.Handler) {
 		u.Get("/{id}", middleware.RequirePermission(model.PermUserRead), h.User.GetByID)
 		u.Post("/{id}/delete", middleware.RequirePermission(model.PermUserDelete), h.User.Delete)
 		u.Post("/{id}/role/update", middleware.RequirePermission(model.PermUserUpdate), h.User.UpdateRole)
+		u.Post("/{id}/banned", middleware.RequirePermission(model.PermUserUpdate), h.Banned.Ban)
+		u.Post("/{id}/unbanned", middleware.RequirePermission(model.PermUserUpdate), h.Banned.Unban)
+		u.Post("/{id}/banned/status", h.Banned.Get)
 	})
 
 	// ── Role ──────────────────────────────────────────────────
@@ -157,6 +162,18 @@ func Register(app *iris.Application, h *handler.Handler) {
 	// ── Admin ─────────────────────────────────────────────────
 	protected.PartyFunc("/admin", func(a iris.Party) {
 		a.Use(middleware.RequirePermission(model.PermRoleManage))
+
+		// ── Announcements ──────────────────────────────────────
+		a.Post("/announcements/list", h.Announcement.List)
+		a.Post("/announcements/create", h.Announcement.Create)
+		a.Post("/announcements/{id}/update", h.Announcement.Update)
+		a.Post("/announcements/{id}/delete", h.Announcement.Delete)
+		a.Post("/announcements/{id}/publish", h.Announcement.Publish)
+		a.Post("/announcements/{id}/unpublish", h.Announcement.Unpublish)
+
+		// ── Banned ─────────────────────────────────────────────
+		a.Post("/banned/list", h.Banned.List)
+
 		a.Post("/stats", h.Admin.GetStats)
 		a.Post("/settings", h.Setting.GetAll)
 		a.Post("/settings/batch", h.Setting.BatchSet)

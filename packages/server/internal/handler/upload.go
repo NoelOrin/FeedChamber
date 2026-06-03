@@ -70,7 +70,7 @@ func (h *uploadHandler) Upload(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        body  body  object{fileName=string,contentType=string}  true  "文件信息"
-// @Success      200   {object}  pkg.Response{data=object{uploadId=string,url=string,urlMap=map,fileName=string}}
+// @Success      200   {object}  pkg.Response{data=object{uploadId=string,url=string,urlMap=object,fileName=string}}
 // @Failure      400   {object}  pkg.Response
 // @Failure      401   {object}  pkg.Response
 // @Router       /upload/presign [post]

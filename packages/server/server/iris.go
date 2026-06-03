@@ -60,6 +60,8 @@ func Start(env Env) {
 		&model.Notification{},
 		&model.Report{},
 		&model.Setting{},
+		&model.Banned{},
+		&model.Announcement{},
 	); err != nil {
 		logrus.Warnf("AutoMigrate: %v", err)
 	}
