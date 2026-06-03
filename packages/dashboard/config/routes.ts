@@ -183,6 +183,23 @@ export default [
     ],
   },
   {
+    path: '/content',
+    name: 'content',
+    icon: 'read',
+    routes: [
+      {
+        path: '/content',
+        redirect: '/content/posts',
+      },
+      {
+        name: 'post-list',
+        icon: 'read',
+        path: '/content/posts',
+        component: './post-list',
+      },
+    ],
+  },
+  {
     path: '/profile',
     name: 'profile',
     icon: 'profile',

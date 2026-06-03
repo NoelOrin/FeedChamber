@@ -3,7 +3,6 @@ import type { RequestConfig } from '@umijs/max';
 import { getIntl } from '@umijs/max';
 import { message, notification } from 'antd';
 
-// 错误处理方案： 错误类型
 enum ErrorShowType {
   SILENT = 0,
   WARN_MESSAGE = 1,
@@ -11,13 +10,12 @@ enum ErrorShowType {
   NOTIFICATION = 3,
   REDIRECT = 9,
 }
-// 与后端约定的响应数据格式
-interface ResponseStructure {
-  success: boolean;
+// OrinForum 后端响应数据格式
+interface OrinForumResponse {
+  code: number;
+  msg: string;
   data: unknown;
-  errorCode?: number;
-  errorMessage?: string;
-  showType?: ErrorShowType;
+  pagination?: { total: number } | null;
 }
 
 /**
@@ -30,12 +28,12 @@ export const errorConfig: RequestConfig = {
   errorConfig: {
     // 错误抛出
     errorThrower: (res) => {
-      const { success, data, errorCode, errorMessage, showType } =
-        res as unknown as ResponseStructure;
-      if (!success) {
-        const error: any = new Error(errorMessage);
+      const { code, msg } = res as unknown as OrinForumResponse;
+      // OrinForum: code=0 表示成功
+      if (code !== 0 && code !== 200) {
+        const error: any = new Error(msg);
         error.name = 'BizError';
-        error.info = { errorCode, errorMessage, showType, data };
+        error.info = { code, msg };
         throw error; // 抛出自制的错误
       }
     },
@@ -44,30 +42,15 @@ export const errorConfig: RequestConfig = {
       if (opts?.skipErrorHandler) throw error;
       // 我们的 errorThrower 抛出的错误。
       if (error.name === 'BizError') {
-        const errorInfo: ResponseStructure | undefined = error.info;
+        const errorInfo = error.info;
         if (errorInfo) {
-          const { errorMessage, errorCode } = errorInfo;
-          switch (errorInfo.showType) {
-            case ErrorShowType.SILENT:
-              // do nothing
-              break;
-            case ErrorShowType.WARN_MESSAGE:
-              message.warning(errorMessage);
-              break;
-            case ErrorShowType.ERROR_MESSAGE:
-              message.error(errorMessage);
-              break;
-            case ErrorShowType.NOTIFICATION:
-              notification.open({
-                title: errorCode,
-                description: errorMessage,
-              });
-              break;
-            case ErrorShowType.REDIRECT:
+          const { code, msg } = errorInfo;
+          switch (code) {
+            case 1001: // 未登录
               window.location.href = '/user/login';
               break;
             default:
-              message.error(errorMessage);
+              message.error(msg || '请求失败');
           }
         }
       } else if (error.response) {
@@ -93,16 +76,27 @@ export const errorConfig: RequestConfig = {
   // 请求拦截器
   requestInterceptors: [
     (config: RequestOptions) => {
-      // 拦截请求配置，进行个性化处理。
-      // 示例：为请求附加 token（按需启用）
-      // const token = localStorage.getItem('token');
-      // if (token) {
-      //   config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
-      // }
+      // 为请求附加 access_token
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        config.headers = {
+          ...config.headers,
+          Authorization: `Bearer ${token}`,
+        };
+      }
       return config;
     },
   ],
 
   // 响应拦截器
-  responseInterceptors: [],
+  responseInterceptors: [
+    (response) => {
+      // 响应拦截，添加 token 到 localStorage
+      const token = response.headers['authorization'];
+      if (token) {
+        localStorage.setItem('access_token', token);
+      }
+      return response;
+    },
+  ],
 };

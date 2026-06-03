@@ -38,10 +38,30 @@ export async function getInitialState(): Promise<{
 }> {
   const fetchUserInfo = async () => {
     try {
-      const msg = await queryCurrentUser({
-        skipErrorHandler: true,
+      // OrinForum API: GET /api/v1/user/profile
+      const response = await fetch('/api/v1/user/profile', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
-      return msg.data;
+      const json = await response.json();
+      if (json.code === 0 && json.data) {
+        // 映射 OrinForum User 到 API.CurrentUser
+        return {
+          name: json.data.username,
+          avatar: json.data.avatar,
+          userid: json.data.id,
+          email: json.data.email,
+          signature: json.data.bio,
+          title: json.data.role,
+          group: json.data.role,
+          access: json.data.role === 'admin' ? 'admin' : 'user',
+          notifyCount: 0,
+          unreadCount: 0,
+        };
+      }
+      return undefined;
     } catch (_error) {
       const { pathname, search, hash } = history.location;
       history.replace(
@@ -190,7 +210,7 @@ export const layout: RunTimeLayoutConfig = ({
  * @doc https://umijs.org/docs/max/request#配置
  */
 export const request: RequestConfig = {
-  baseURL: isDev ? '' : 'https://pro-api.ant-design-demo.workers.dev',
+  baseURL: '/api/v1',
   ...errorConfig,
 };
 
