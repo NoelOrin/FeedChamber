@@ -6,6 +6,7 @@ import BackToTop from "~/components/lc/BackToTop";
 import Footer from "~/components/layout/Footer";
 import SidebarContent from "~/components/aside/SidebarContent";
 import ToastContainer from "~/components/ui/Toast";
+import AnnouncementOverlay from "~/components/announcement/AnnouncementOverlay";
 
 interface LayoutProps {
   children: JSX.Element;
@@ -42,6 +43,7 @@ export default function Layout(props: LayoutProps) {
       </div>
       <BackToTop />
       <Footer />
+      <AnnouncementOverlay />
       <ToastContainer />
     </>
   );
