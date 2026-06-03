@@ -1,6 +1,7 @@
 import { createSignal } from "solid-js";
 import { contentService } from "~/api";
 import type { ContentListItem } from "~/api";
+import MarkdownEditor from "~/components/ui/MarkdownEditor";
 
 interface ReplyProps {
   postId: string;
@@ -57,15 +58,14 @@ export default function Reply(props: ReplyProps) {
 
   return (
     <form onSubmit={handleSubmit} class="card p-4 space-y-3">
-      <textarea
+      <MarkdownEditor
         value={body()}
-        onInput={(e) => setBody(e.currentTarget.value)}
-        placeholder="写下你的回复..."
-        rows={3}
+        onChange={setBody}
+        placeholder="写下你的回复...支持 Markdown 语法"
+        minRows={3}
         disabled={submitting()}
-        class="w-full resize-none rounded-md border border-border bg-transparent px-3 py-2 text-sm outline-none focus:border-primary transition-colors disabled:opacity-50"
+        error={error()}
       />
-      {error() && <p class="text-xs text-red-500">{error()}</p>}
       <div class="flex justify-end">
         <button
           type="submit"
