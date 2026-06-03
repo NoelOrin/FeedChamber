@@ -43,7 +43,7 @@ func (h *uploadHandler) Upload(ctx iris.Context) {
 
 	_, fileHeader, err := ctx.FormFile("file")
 	if err != nil {
-		pkg.Fail(ctx, pkg.INVALID_PARAMS, "file is required")
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "请选择文件")
 		return
 	}
 
@@ -86,7 +86,7 @@ func (h *uploadHandler) Presign(ctx iris.Context) {
 		ContentType string `json:"contentType"`
 	}
 	if err := ctx.ReadJSON(&body); err != nil || body.FileName == "" || body.ContentType == "" {
-		pkg.Fail(ctx, pkg.INVALID_PARAMS, "fileName and contentType are required")
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "文件名和内容类型不能为空")
 		return
 	}
 
@@ -127,7 +127,7 @@ func (h *uploadHandler) Confirm(ctx iris.Context) {
 		UploadID string `json:"uploadId"`
 	}
 	if err := ctx.ReadJSON(&body); err != nil || body.UploadID == "" {
-		pkg.Fail(ctx, pkg.INVALID_PARAMS, "uploadId is required")
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "上传ID不能为空")
 		return
 	}
 
@@ -174,7 +174,7 @@ func (h *uploadHandler) GetFile(ctx iris.Context) {
 		return
 	}
 	ctx.StatusCode(iris.StatusNotFound)
-	pkg.Fail(ctx, pkg.NOT_FOUND, "file not accessible")
+	pkg.Fail(ctx, pkg.NOT_FOUND, "文件不可访问")
 }
 
 // List 上传列表

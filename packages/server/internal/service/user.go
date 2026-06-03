@@ -137,7 +137,7 @@ func (s *userService) UpdateRole(ctx context.Context, id, role string) error {
 	}
 
 	if !model.IsValidRole(role) {
-		return pkg.NewAppError(pkg.INVALID_PARAMS, "invalid role")
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "无效的角色")
 	}
 
 	user.Role = role

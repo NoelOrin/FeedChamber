@@ -158,7 +158,7 @@ func (s *authService) FirstChangePassword(ctx context.Context, username, newPass
 		return pkg.NewAppError(pkg.USER_NOT_FOUND)
 	}
 	if user.Role != "admin" {
-		return pkg.NewAppError(pkg.INVALID_PARAMS, "only admin supports first change password")
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "仅管理员支持首次修改密码")
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)

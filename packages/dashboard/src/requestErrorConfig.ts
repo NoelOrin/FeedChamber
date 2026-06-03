@@ -39,6 +39,11 @@ export const errorConfig: RequestConfig = {
     },
     // 错误接收及处理
     errorHandler: (error: any, opts: any) => {
+      if (error) {
+        console.error(error.response.data.msg || '请求失败');
+        message.error(error.response.data.msg || '请求失败');
+        return error;
+      }
       if (opts?.skipErrorHandler) throw error;
       // 我们的 errorThrower 抛出的错误。
       if (error.name === 'BizError') {

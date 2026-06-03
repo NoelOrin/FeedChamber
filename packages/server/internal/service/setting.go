@@ -25,7 +25,7 @@ func NewSettingService(repo repository.SettingRepository) SettingService {
 func (s *settingService) Get(ctx context.Context, key string) (string, error) {
 	setting, err := s.repo.Get(ctx, key)
 	if err != nil {
-		return "", pkg.NewAppError(pkg.NOT_FOUND, "setting not found")
+		return "", pkg.NewAppError(pkg.NOT_FOUND, "设置项不存在")
 	}
 	return setting.Value, nil
 }

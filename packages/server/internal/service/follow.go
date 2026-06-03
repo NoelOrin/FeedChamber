@@ -31,7 +31,7 @@ func NewFollowService(repo repository.FollowRepository, userRepo repository.User
 
 func (s *followService) Follow(ctx context.Context, followerID, followingID string) error {
 	if followerID == followingID {
-		return pkg.NewAppError(pkg.INVALID_PARAMS, "cannot follow yourself")
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "不能关注自己")
 	}
 	user, err := s.userRepo.FindByID(ctx, followingID)
 	if err != nil {

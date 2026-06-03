@@ -139,7 +139,7 @@ func (h *authHandler) GetRefreshToken(ctx iris.Context) {
 	}
 	claims, err := pkg.ParseToken(req.RefreshToken)
 	if err != nil {
-		pkg.Fail(ctx, pkg.TOKEN_WRONG, "invalid refresh token")
+		pkg.Fail(ctx, pkg.TOKEN_WRONG, "无效的刷新令牌")
 		return
 	}
 	newToken, err := h.svc.RefreshToken(ctx.Request().Context(), claims.Username, claims.UserUUID, claims.Role)

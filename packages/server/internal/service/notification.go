@@ -60,10 +60,10 @@ func (s *notificationService) MarkRead(ctx context.Context, id, userID string) e
 	// Fetch the notification and verify ownership
 	n, err := s.repo.FindByID(ctx, id)
 	if err != nil {
-		return pkg.NewAppError(pkg.NOT_FOUND, "notification not found")
+		return pkg.NewAppError(pkg.NOT_FOUND, "通知不存在")
 	}
 	if n.UserID != userID {
-		return pkg.NewAppError(pkg.NOT_FOUND, "notification not found")
+		return pkg.NewAppError(pkg.NOT_FOUND, "通知不存在")
 	}
 	return s.repo.MarkRead(ctx, id)
 }
@@ -75,10 +75,10 @@ func (s *notificationService) MarkAllRead(ctx context.Context, userID string) er
 func (s *notificationService) Delete(ctx context.Context, id, userID string) error {
 	n, err := s.repo.FindByID(ctx, id)
 	if err != nil {
-		return pkg.NewAppError(pkg.NOT_FOUND, "notification not found")
+		return pkg.NewAppError(pkg.NOT_FOUND, "通知不存在")
 	}
 	if n.UserID != userID {
-		return pkg.NewAppError(pkg.NOT_FOUND, "notification not found")
+		return pkg.NewAppError(pkg.NOT_FOUND, "通知不存在")
 	}
 	return s.repo.Delete(ctx, id)
 }

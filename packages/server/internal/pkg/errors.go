@@ -35,28 +35,28 @@ const (
 )
 
 var errMsg = map[ErrCode]string{
-	SUCCESS:         "success",
-	TOKEN_NOT_EXIST: "token does not exist",
-	TOKEN_WRONG:     "token is wrong",
-	TOKEN_EXPIRED:   "token has expired",
-	TOKEN_REVOKED:   "token has been revoked",
-	INVALID_PASSWORD: "invalid password",
-	USER_NOT_FOUND:  "user not found",
-	USERNAME_EXISTS: "username already exists",
-	EMAIL_EXISTS:    "email already exists",
-	FORBIDDEN:       "forbidden",
-	USER_BANNED:     "user has been banned",
-	INVALID_PARAMS:  "invalid parameters",
-	NOT_FOUND:       "resource not found",
-	ALREADY_EXISTS:  "resource already exists",
-	INTERNAL_ERROR:  "internal server error",
+	SUCCESS:         "成功",
+	TOKEN_NOT_EXIST: "令牌不存在",
+	TOKEN_WRONG:     "令牌错误",
+	TOKEN_EXPIRED:   "令牌已过期",
+	TOKEN_REVOKED:   "令牌已被撤销",
+	INVALID_PASSWORD: "密码错误",
+	USER_NOT_FOUND:  "用户不存在",
+	USERNAME_EXISTS: "用户名已存在",
+	EMAIL_EXISTS:    "邮箱已存在",
+	FORBIDDEN:       "禁止访问",
+	USER_BANNED:     "用户已被封禁",
+	INVALID_PARAMS:  "参数无效",
+	NOT_FOUND:       "资源不存在",
+	ALREADY_EXISTS:  "资源已存在",
+	INTERNAL_ERROR:  "服务器内部错误",
 }
 
 func GetErrMsg(code ErrCode) string {
 	if msg, ok := errMsg[code]; ok {
 		return msg
 	}
-	return "unknown error"
+	return "未知错误"
 }
 
 // AppError 业务错误，service 层直接返回

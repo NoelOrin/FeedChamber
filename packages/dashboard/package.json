@@ -1,9 +1,7 @@
 {
-  "name": "ant-design-pro",
+  "name": "@orinforum/dashboard",
   "version": "6.0.2",
   "private": true,
-  "description": "An out-of-box UI solution for enterprise applications",
-  "repository": "git@github.com:ant-design/ant-design-pro.git",
   "scripts": {
     "analyze": "cross-env ANALYZE=1 max build",
     "build": "max build",

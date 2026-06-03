@@ -182,7 +182,7 @@ func (h *postHandler) Search(ctx iris.Context) {
 		return
 	}
 	if body.Q == "" {
-		pkg.Fail(ctx, pkg.INVALID_PARAMS, "search keyword is required")
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "搜索关键词不能为空")
 		return
 	}
 	body.Normalize()

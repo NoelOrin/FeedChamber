@@ -50,12 +50,12 @@ func (s *postService) GetByID(ctx context.Context, id string) (*model.PostListIt
 	item, err := s.posts.FindByIDWithDetails(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, pkg.NewAppError(pkg.NOT_FOUND, "post not found")
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
 		}
 		return nil, err
 	}
 	if item == nil || item.ID == "" {
-		return nil, pkg.NewAppError(pkg.NOT_FOUND, "post not found")
+		return nil, pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
 	}
 	_ = s.posts.IncrementViewCount(ctx, id)
 	return item, nil
@@ -112,7 +112,7 @@ func (s *postService) TogglePin(ctx context.Context, id string) (*model.Post, er
 	post, err := s.posts.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, pkg.NewAppError(pkg.NOT_FOUND, "post not found")
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
 		}
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
@@ -125,7 +125,7 @@ func (s *postService) ToggleLock(ctx context.Context, id string) (*model.Post, e
 	post, err := s.posts.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, pkg.NewAppError(pkg.NOT_FOUND, "post not found")
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
 		}
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
@@ -175,7 +175,7 @@ func (s *categoryService) Update(ctx context.Context, id, name, description stri
 	cat, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, pkg.NewAppError(pkg.NOT_FOUND, "category not found")
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "分类不存在")
 		}
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
@@ -259,7 +259,7 @@ func (s *contentService) Update(ctx context.Context, postID, id, body string) (*
 	c, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, pkg.NewAppError(pkg.NOT_FOUND, "content not found")
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "评论不存在")
 		}
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
@@ -269,7 +269,7 @@ func (s *contentService) Update(ctx context.Context, postID, id, body string) (*
 		return nil, err
 	}
 	if c.RootID != post.ContentID {
-		return nil, pkg.NewAppError(pkg.NOT_FOUND, "content not found in this post")
+		return nil, pkg.NewAppError(pkg.NOT_FOUND, "该帖子下不存在此评论")
 	}
 
 	c.Body = body

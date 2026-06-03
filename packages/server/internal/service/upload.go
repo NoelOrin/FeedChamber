@@ -51,7 +51,7 @@ func NewUploadService(repo repository.UploadRepository, st storage.Provider) Upl
 
 func (s *uploadService) Save(ctx context.Context, userID string, fileHeader *multipart.FileHeader) (*model.Upload, error) {
 	if fileHeader.Size > maxUploadSize {
-		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "file size exceeds 10MB limit")
+		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "文件大小超过10MB限制")
 	}
 
 	mimeType, err := detectMIME(fileHeader)
@@ -64,7 +64,7 @@ func (s *uploadService) Save(ctx context.Context, userID string, fileHeader *mul
 
 	src, err := fileHeader.Open()
 	if err != nil {
-		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, "failed to open uploaded file")
+		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, "打开上传文件失败")
 	}
 	defer src.Close()
 
@@ -95,7 +95,7 @@ func (s *uploadService) Save(ctx context.Context, userID string, fileHeader *mul
 
 func (s *uploadService) Presign(ctx context.Context, userID, fileName, contentType string) (*storage.PresignedPost, *model.Upload, error) {
 	if !allowedImageTypes[contentType] {
-		return nil, nil, pkg.NewAppError(pkg.INVALID_PARAMS, "only image files (jpg, png, gif, webp) are allowed")
+		return nil, nil, pkg.NewAppError(pkg.INVALID_PARAMS, "仅允许图片文件(jpg, png, gif, webp)")
 	}
 
 	storedName := pkg.NewID() + extFromNameOrMIME(fileName, contentType)
@@ -128,7 +128,7 @@ func (s *uploadService) Presign(ctx context.Context, userID, fileName, contentTy
 func (s *uploadService) Confirm(ctx context.Context, uploadID string) (*model.Upload, error) {
 	upload, err := s.repo.FindByID(ctx, uploadID)
 	if err != nil {
-		return nil, pkg.NewAppError(pkg.NOT_FOUND, "upload not found")
+		return nil, pkg.NewAppError(pkg.NOT_FOUND, "上传记录不存在")
 	}
 	return upload, nil
 }
@@ -136,7 +136,7 @@ func (s *uploadService) Confirm(ctx context.Context, uploadID string) (*model.Up
 func (s *uploadService) GetByID(ctx context.Context, id string) (*model.Upload, error) {
 	upload, err := s.repo.FindByID(ctx, id)
 	if err != nil {
-		return nil, pkg.NewAppError(pkg.NOT_FOUND, "upload not found")
+		return nil, pkg.NewAppError(pkg.NOT_FOUND, "上传记录不存在")
 	}
 	return upload, nil
 }
@@ -155,7 +155,7 @@ func (s *uploadService) ListByUser(ctx context.Context, userID string, page, pag
 func (s *uploadService) Delete(ctx context.Context, id string) error {
 	upload, err := s.repo.FindByID(ctx, id)
 	if err != nil {
-		return pkg.NewAppError(pkg.NOT_FOUND, "upload not found")
+		return pkg.NewAppError(pkg.NOT_FOUND, "上传记录不存在")
 	}
 
 	if err := s.repo.Delete(ctx, id); err != nil {
@@ -171,14 +171,14 @@ func (s *uploadService) Delete(ctx context.Context, id string) error {
 func detectMIME(fh *multipart.FileHeader) (string, error) {
 	f, err := fh.Open()
 	if err != nil {
-		return "", pkg.NewAppError(pkg.INTERNAL_ERROR, "failed to open uploaded file")
+		return "", pkg.NewAppError(pkg.INTERNAL_ERROR, "打开上传文件失败")
 	}
 	defer f.Close()
 
 	buf := make([]byte, 512)
 	n, err := f.Read(buf)
 	if err != nil {
-		return "", pkg.NewAppError(pkg.INTERNAL_ERROR, "failed to read uploaded file")
+		return "", pkg.NewAppError(pkg.INTERNAL_ERROR, "读取上传文件失败")
 	}
 
 	mimeType := http.DetectContentType(buf[:n])
@@ -187,7 +187,7 @@ func detectMIME(fh *multipart.FileHeader) (string, error) {
 	}
 
 	if !allowedImageTypes[mimeType] {
-		return "", pkg.NewAppError(pkg.INVALID_PARAMS, "only image files (jpg, png, gif, webp) are allowed")
+		return "", pkg.NewAppError(pkg.INVALID_PARAMS, "仅允许图片文件(jpg, png, gif, webp)")
 	}
 	return mimeType, nil
 }

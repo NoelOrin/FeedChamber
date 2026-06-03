@@ -58,7 +58,7 @@ func (h *announcementHandler) Create(ctx iris.Context) {
 		return
 	}
 	if req.Title == "" || req.Content == "" {
-		pkg.Fail(ctx, pkg.INVALID_PARAMS, "title and content are required")
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "标题和内容不能为空")
 		return
 	}
 

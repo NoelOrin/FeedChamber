@@ -63,7 +63,7 @@ func (h *permissionHandler) GetRolePermissions(ctx iris.Context) {
 		req.Role = ctx.URLParam("role")
 	}
 	if req.Role == "" {
-		pkg.Fail(ctx, pkg.INVALID_PARAMS, "role is required")
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "角色不能为空")
 		return
 	}
 	codes := h.permSvc.GetRolePermissions(req.Role)
@@ -96,7 +96,7 @@ func (h *permissionHandler) SyncRolePermissions(ctx iris.Context) {
 		return
 	}
 	if req.Role == "" {
-		pkg.Fail(ctx, pkg.INVALID_PARAMS, "role is required")
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "角色不能为空")
 		return
 	}
 

@@ -76,7 +76,7 @@ func (s *bannedService) Unban(ctx context.Context, userID string) error {
 	_, err := s.bannedRepo.FindByUserID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return pkg.NewAppError(pkg.NOT_FOUND, "banned record not found")
+			return pkg.NewAppError(pkg.NOT_FOUND, "封禁记录不存在")
 		}
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
@@ -87,12 +87,12 @@ func (s *bannedService) GetByUserID(ctx context.Context, userID string) (*model.
 	banned, err := s.bannedRepo.FindByUserID(ctx, userID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, pkg.NewAppError(pkg.NOT_FOUND, "banned record not found")
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "封禁记录不存在")
 		}
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
 	if !banned.IsPermanent && banned.ExpiresAt != nil && banned.ExpiresAt.Before(time.Now()) {
-		return nil, pkg.NewAppError(pkg.NOT_FOUND, "banned record not found")
+		return nil, pkg.NewAppError(pkg.NOT_FOUND, "封禁记录不存在")
 	}
 	return banned, nil
 }

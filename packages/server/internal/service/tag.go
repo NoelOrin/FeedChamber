@@ -54,7 +54,7 @@ func (s *tagService) Update(ctx context.Context, id, name string) (*model.Tag, e
 	tag, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, pkg.NewAppError(pkg.NOT_FOUND, "tag not found")
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "标签不存在")
 		}
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}

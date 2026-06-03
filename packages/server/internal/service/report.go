@@ -25,7 +25,7 @@ func NewReportService(repo repository.ReportRepository) ReportService {
 
 func (s *reportService) Create(ctx context.Context, reporterID, targetType, targetID, reason string) (*model.Report, error) {
 	if targetType != "post" && targetType != "comment" {
-		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "targetType must be 'post' or 'comment'")
+		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "targetType必须为post或comment")
 	}
 	report := &model.Report{
 		ID:         pkg.NewID(),
@@ -50,7 +50,7 @@ func (s *reportService) List(ctx context.Context, status string, page, pageSize 
 
 func (s *reportService) UpdateStatus(ctx context.Context, id, status string) error {
 	if status != "pending" && status != "resolved" && status != "dismissed" {
-		return pkg.NewAppError(pkg.INVALID_PARAMS, "status must be 'pending', 'resolved', or 'dismissed'")
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "status必须为pending、resolved或dismissed")
 	}
 	return s.repo.UpdateStatus(ctx, id, status)
 }

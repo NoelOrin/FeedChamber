@@ -142,7 +142,7 @@ func (h *settingHandler) BatchSet(ctx iris.Context) {
 		return
 	}
 	if len(req.Settings) == 0 {
-		pkg.Fail(ctx, pkg.INVALID_PARAMS, "settings is required")
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "设置项不能为空")
 		return
 	}
 	if err := h.svc.BatchSet(ctx.Request().Context(), req.Settings); err != nil {

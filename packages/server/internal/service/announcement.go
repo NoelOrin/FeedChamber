@@ -58,16 +58,16 @@ func (s *announcementService) Update(ctx context.Context, ann *model.Announcemen
 	existing, err := s.repo.FindByID(ctx, ann.ID)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, pkg.NewAppError(pkg.NOT_FOUND, "announcement not found")
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "公告不存在")
 		}
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
 
 	if ann.DisplayType != 0 && !model.IsValidDisplayType(ann.DisplayType) {
-		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "invalid display_type")
+		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "无效的展示类型")
 	}
 	if ann.Position != "" && !model.IsValidPosition(ann.Position) {
-		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "invalid position")
+		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "无效的位置")
 	}
 
 	existing.Title = ann.Title
@@ -94,7 +94,7 @@ func (s *announcementService) Delete(ctx context.Context, id string) error {
 	_, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return pkg.NewAppError(pkg.NOT_FOUND, "announcement not found")
+			return pkg.NewAppError(pkg.NOT_FOUND, "公告不存在")
 		}
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
@@ -105,7 +105,7 @@ func (s *announcementService) GetByID(ctx context.Context, id string) (*model.An
 	ann, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, pkg.NewAppError(pkg.NOT_FOUND, "announcement not found")
+			return nil, pkg.NewAppError(pkg.NOT_FOUND, "公告不存在")
 		}
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
@@ -144,7 +144,7 @@ func (s *announcementService) Publish(ctx context.Context, id string) error {
 	ann, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return pkg.NewAppError(pkg.NOT_FOUND, "announcement not found")
+			return pkg.NewAppError(pkg.NOT_FOUND, "公告不存在")
 		}
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
@@ -157,7 +157,7 @@ func (s *announcementService) Unpublish(ctx context.Context, id string) error {
 	ann, err := s.repo.FindByID(ctx, id)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return pkg.NewAppError(pkg.NOT_FOUND, "announcement not found")
+			return pkg.NewAppError(pkg.NOT_FOUND, "公告不存在")
 		}
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}

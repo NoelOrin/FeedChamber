@@ -69,7 +69,7 @@ func (h *roleHandler) Create(ctx iris.Context) {
 		Name: req.Name,
 	}
 	if err := h.repo.Create(ctx.Request().Context(), role); err != nil {
-		pkg.Fail(ctx, pkg.ALREADY_EXISTS, "role already exists")
+		pkg.Fail(ctx, pkg.ALREADY_EXISTS, "角色已存在")
 		return
 	}
 	// Reload role cache

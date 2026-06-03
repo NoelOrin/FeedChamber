@@ -31,7 +31,7 @@ func (s *favoriteService) Toggle(ctx context.Context, postID, userID string) (bo
 		return false, err
 	}
 	if post == nil {
-		return false, pkg.NewAppError(pkg.NOT_FOUND, "post not found")
+		return false, pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
 	}
 	return s.repo.Toggle(ctx, postID, userID)
 }
