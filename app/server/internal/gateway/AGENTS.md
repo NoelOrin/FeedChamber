@@ -102,6 +102,7 @@ protected.Use(gw.Enforce())
 - **不要在任何 `routes_*.go` 里挂 `Use(gw.*)`**：Iris 在注册那一刻对 party 中间件做快照，兄弟 party 的 `Use` 会覆盖父切片空槽、改写邻居的链（2026-10-14 实测导致权限门整体失效）。`router` 包的 `TestGatewayStagesMountedOnlyInRegister` 会源码扫描禁止。
 - **ctx values 的键是跨包契约**：用 `pkg.CtxUserID` / `CtxUsername` / `CtxRole` / `CtxSession` / `CtxAuthMethod` / `CtxAPIKeyScopes` / `CtxClientScopes` 常量（`internal/pkg/ctxkey.go`），不要写字面量。`CtxUserID` 装的是 `User.ID`（ULID）。
 - **封禁返回 404 而非 403** 是刻意的：探测者无法区分「被禁」与「资源不存在」。改这个状态码等于改安全契约。
+- **吊销是一次性的，不能被缓存写回复活**。`sess:<sid>` 是 read-through 缓存，写入方（`Create` / `Lookup` 未命中路径 / `Touch` / `Extend`）都持有调用方快照，若无条件写回，并发请求就会把已吊销的会话重新塞回 KV，凭证在整个 TTL（最长 7 天）内继续有效。现约束：`revokeRow` **先删行、再删缓存**；`Touch` / `Extend` 以 `UPDATE` 的 `RowsAffected` 作为「行仍存在」的证明，为 0 时只删缓存不回写；`Lookup` 未命中路径写完缓存后再 `sessionExists` 复核，行已消失就丢弃并以 `ErrSessionNotFound` 返回。`session_store_test.go` 的 `TestSessionStore_RevokedSessionStaysDead*` 逐条钉住这些路径。
 - 新增测试优先用 `kvstub_test.go` 里的 KV 替身，别连真 NATS。
 
 ## 本文件何时更新

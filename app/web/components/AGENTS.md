@@ -65,7 +65,7 @@ lib/                      跨域基础设施（auth / query / api adapter / seo 
 ## 安全边界
 
 - **Markdown 渲染**：`content/markdown-renderer.tsx` 是唯一出口，统一走 `rehype-sanitize`。不要新增第二套渲染器。
-- **`dangerouslySetInnerHTML` 的受控例外只有两处**：`app/layout.tsx` 的首绘主题脚本、`components/seo/json-ld.tsx` 的 JSON-LD（输入是结构化对象、序列化后强制转义 `<`）。新增第三处前先扩展已有组件。
+- **`dangerouslySetInnerHTML` 的受控例外共五处**：`app/layout.tsx` 的首绘主题脚本、`components/seo/json-ld.tsx` 的 JSON-LD、以及站点自定义层的三处注入（均在根布局，见 `app/web/AGENTS.md`）。新增前先扩展已有组件。
 - **公告浮层**：`layout/announcement-overlay.tsx` 的 `iframe` 必须带 `sandbox`，且 `content` 为空时不渲染（空 `src` 会让浏览器重复下载整页）。
 
 ## 改这里要注意
@@ -74,6 +74,7 @@ lib/                      跨域基础设施（auth / query / api adapter / seo 
 - 改 `ui/` 下的原语先看外观：历史上有一个 `app/ui-showcase/` 原语对照台，**该目录已不存在**（`app/web/AGENTS.md` 仍在引用它，属文档漂移）。目前验证外观靠 `pnpm dev:web` 手动走查 + `scripts/axe-audit.mjs` 可访问性审计。
 - 删除/重命名域内组件时检查 `app/` 的引用；组件没有 index barrel，引用都是显式路径。
 - **发帖结果按 `status` 分流**：`post/create` 返回 `status === 'pending'` 时帖子不会进任何公开列表，`post/composer.tsx` 因此提示「已提交审核，通过后将公开展示」并跳到 `/timeline/post?id=<id>`（而不是跳列表，否则作者以为发丢了）；`approved` 才走原来的「发布成功」+ 回列表。详情页 `post/post-detail.tsx` 对 `pending` 渲染一条 `Alert variant="warning"` 的「审核中」说明（后端只对作者本人放行非公开帖，故无需再判身份）。
+- **主题切换带 toast 反馈**：提示在 `lib/theme.ts` 的 `useTheme().cycle()` 内发（`~/lib/toast` 的 `toast.success`），因此前台 `layout/theme-toggle.tsx` 与后台 `AdminShell` 的三个切换入口共用同一提示；不要在调用方各写一遍。文案按切换后 `<html>` 的真实明暗生成（system 模式附带解析结果），不要读 React 的 `resolved`——那是下一次渲染才更新的值。项目没有 sonner 依赖，提示一律走这套自建 toast（`lib/toast.ts` + `components/ui/toast.tsx`，已挂在 `providers.tsx`）。
 - **前台外壳宽度是「占满窗口」，不设居中上限**：`layout/` 的 Nav / AppShell / Footer / AnnouncementBanner 四处容器统一 `w-full px-4`，**不要再加 `max-w-*`**（历史上有过 `mx-auto max-w-6xl`，在 ≥1700px 窗口里两侧各留 ~300px 空白）。横向留白只由 `px-4` 提供，四处必须一致，否则页头 / 主列 / 页脚会错位。后台 `admin/layout/admin-shell.tsx` 是另一条线（`max-w-[1280px]`），不受此约定约束。
 
 ## 本文件何时更新

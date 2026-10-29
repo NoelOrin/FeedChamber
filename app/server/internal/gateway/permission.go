@@ -316,6 +316,18 @@ func (p *PermissionCheckerMiddleware) initRouteMap() {
 	p.addExact("/api/v1/admin/banned/list", "banned:manage")
 	p.addExact("/api/v1/admin/banned/create", "banned:manage")
 	p.addPrefix("/api/v1/admin/backups/", model.PermBackupManage)
+
+	// 站点自定义层（P1）。读与写是两个权限码：站点自定义的写操作能注入任意
+	// CSS/JS，不能和「看一眼配置」共用同一个门。
+	p.addExact("/api/v1/admin/customization/snippets/list", model.PermCustomizeRead)
+	p.addExact("/api/v1/admin/customization/tokens/list", model.PermCustomizeRead)
+	p.addExact("/api/v1/admin/customization/nav/list", model.PermCustomizeRead)
+	p.addExact("/api/v1/admin/customization/modules/list", model.PermCustomizeRead)
+	p.addExact("/api/v1/admin/customization/pages/list", model.PermCustomizeRead)
+	p.addPrefix("/api/v1/admin/customization/", model.PermCustomizeWrite)
+	// MCP 工具管理与外部 MCP 登记都属于系统设置面。
+	p.addPrefix("/api/v1/admin/mcp/", model.PermSettingManage)
+	p.addPrefix("/api/v1/admin/mcp-servers/", model.PermSettingManage)
 	p.addExact("/api/v1/admin/trash/posts/list", "post:delete")
 	p.addPattern("/api/v1/admin/trash/posts/{id}/restore", "post:delete")
 	p.addExact("/api/v1/admin/trash/comments/list", "comment:delete")

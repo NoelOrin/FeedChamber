@@ -1892,6 +1892,401 @@ paths:
       summary: 批量用户操作
       tags:
       - 管理后台
+  /admin/customization/modules/{id}/delete:
+    post:
+      parameters:
+      - description: 模块 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除首页模块
+      tags:
+      - 站点自定义
+  /admin/customization/modules/{id}/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 模块 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新首页模块
+      tags:
+      - 站点自定义
+  /admin/customization/modules/create:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 创建首页模块
+      tags:
+      - 站点自定义
+  /admin/customization/modules/list:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 首页模块列表
+      tags:
+      - 站点自定义
+  /admin/customization/nav/{id}/delete:
+    post:
+      parameters:
+      - description: 导航项 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除导航项
+      tags:
+      - 站点自定义
+  /admin/customization/nav/{id}/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 导航项 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新导航项
+      tags:
+      - 站点自定义
+  /admin/customization/nav/create:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 创建导航项
+      tags:
+      - 站点自定义
+  /admin/customization/nav/list:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 导航项列表
+      tags:
+      - 站点自定义
+  /admin/customization/pages/{id}/delete:
+    post:
+      parameters:
+      - description: 页面 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除自定义页
+      tags:
+      - 站点自定义
+  /admin/customization/pages/{id}/publish:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 页面 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 发布自定义页
+      tags:
+      - 站点自定义
+  /admin/customization/pages/{id}/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 页面 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新自定义页
+      tags:
+      - 站点自定义
+  /admin/customization/pages/create:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 创建自定义页
+      tags:
+      - 站点自定义
+  /admin/customization/pages/list:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 自定义页列表
+      tags:
+      - 站点自定义
+  /admin/customization/snippets/{id}/delete:
+    post:
+      parameters:
+      - description: 片段 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除片段
+      tags:
+      - 站点自定义
+  /admin/customization/snippets/{id}/toggle:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 片段 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 启停片段
+      tags:
+      - 站点自定义
+  /admin/customization/snippets/{id}/update:
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: 片段 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新片段
+      tags:
+      - 站点自定义
+  /admin/customization/snippets/create:
+    post:
+      consumes:
+      - application/json
+      description: 创建一段自定义 CSS / JS / HTML。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 创建片段
+      tags:
+      - 站点自定义
+  /admin/customization/snippets/list:
+    post:
+      description: 列出全部自定义片段（含未启用的草稿）。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 片段列表
+      tags:
+      - 站点自定义
+  /admin/customization/tokens/{token}/delete:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除主题覆盖
+      tags:
+      - 站点自定义
+  /admin/customization/tokens/clear:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 清空主题覆盖
+      tags:
+      - 站点自定义
+  /admin/customization/tokens/list:
+    post:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 主题覆盖列表
+      tags:
+      - 站点自定义
+  /admin/customization/tokens/set:
+    post:
+      consumes:
+      - application/json
+      description: 按 token 名覆盖视觉变量。CSS 类改动风险低，直接生效。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 设置主题覆盖
+      tags:
+      - 站点自定义
   /admin/dashboard:
     post:
       consumes:
@@ -2184,6 +2579,133 @@ paths:
       summary: 保存等级定义
       tags:
       - 信任等级
+  /admin/mcp-servers/{id}/delete:
+    post:
+      parameters:
+      - description: 服务 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除外部 MCP 服务
+      tags:
+      - 外部 MCP
+  /admin/mcp-servers/{id}/test:
+    post:
+      description: 执行 initialize + tools/list，返回工具清单或失败原因。不改动已保存配置。
+      parameters:
+      - description: 服务 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 测试连通性
+      tags:
+      - 外部 MCP
+  /admin/mcp-servers/{id}/update:
+    post:
+      consumes:
+      - application/json
+      description: headers 留空表示保持原有凭据不变。
+      parameters:
+      - description: 服务 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 更新外部 MCP 服务
+      tags:
+      - 外部 MCP
+  /admin/mcp-servers/create:
+    post:
+      consumes:
+      - application/json
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 登记外部 MCP 服务
+      tags:
+      - 外部 MCP
+  /admin/mcp-servers/list:
+    post:
+      description: 列出已登记的外部 MCP Server。鉴权头只返回值键名，不返回凭据。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 外部 MCP 服务列表
+      tags:
+      - 外部 MCP
+  /admin/mcp/tools:
+    post:
+      description: 列出本站 MCP Server 暴露的全部工具及其启停状态（含未启用的写工具）。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: MCP 工具清单
+      tags:
+      - MCP
+  /admin/mcp/tools/status:
+    post:
+      consumes:
+      - application/json
+      description: 写类工具默认停用；启用后调用方即可通过 /mcp 调用。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 启停 MCP 工具
+      tags:
+      - MCP
   /admin/moderation/{id}/approve:
     post:
       responses: {}
@@ -4259,6 +4781,19 @@ paths:
       summary: 子回复列表
       tags:
       - 内容
+  /customization/public:
+    post:
+      description: 返回导航、首页模块与生效片段，供首屏注入使用。已按可见性过滤。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      summary: 前台自定义聚合
+      tags:
+      - 站点自定义
   /dashboard:
     post:
       consumes:
@@ -5689,6 +6224,29 @@ paths:
       summary: OAuth 令牌端点
       tags:
       - OAuth
+  /pages/{slug}:
+    get:
+      description: 只返回已发布页面；草稿表现为不存在。
+      parameters:
+      - description: 页面 slug
+        in: path
+        name: slug
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      summary: 读取自定义页
+      tags:
+      - 站点自定义
   /permission/list:
     post:
       consumes:

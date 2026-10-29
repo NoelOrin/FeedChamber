@@ -27,6 +27,10 @@ type Container struct {
 	EventBus *eventbus.EventBus
 	Storage  storage.Provider
 
+	// MCP 是站点对外暴露的 MCP Server（P2）。Handler 挂应用根 /mcp，
+	// Registry 供后台管理页读取工具启停状态。
+	MCP MCPComponents
+
 	// Transaction manager — one instance shared by every service that needs a
 	// transaction, instead of a fresh one per constructor.
 	Tx db.TransactionManager
@@ -65,22 +69,30 @@ type Container struct {
 	NotificationRepo repository.NotificationRepository
 	OAuthRepo        repository.OAuthRepository
 	PluginRepo       repository.PluginRepository
-	PostRepo         repository.PostRepository
-	ReportRepo       repository.ReportRepository
-	RevisionRepo     repository.RevisionRepository
-	RoleRepo         repository.RoleRepository
-	SettingRepo      repository.SettingRepository
-	SpaceRepo        repository.SpaceRepository
-	TagRepo          repository.TagRepository
-	TopicReadRepo    repository.TopicReadRepository
-	UploadRepo       repository.UploadRepository
-	UserRepo         repository.UserRepository
-	UserBlockRepo    repository.UserBlockRepository
-	UserMFARepo      repository.UserMFARepository
-	UserPrefRepo     repository.UserPreferenceRepository
-	TrustRepo        repository.TrustRepository
-	WatchRepo        repository.WatchRepository
-	WebhookRepo      repository.WebhookRepository
+	// 站点自定义层（P1）
+	SnippetRepo    repository.SnippetRepository
+	ThemeTokenRepo repository.ThemeTokenRepository
+	NavItemRepo    repository.NavItemRepository
+	HomeModuleRepo repository.HomeModuleRepository
+	CustomPageRepo repository.CustomPageRepository
+	// MCP 客户端（P3）：外部 MCP Server 登记
+	MCPServerRepo repository.MCPServerRepository
+	PostRepo      repository.PostRepository
+	ReportRepo    repository.ReportRepository
+	RevisionRepo  repository.RevisionRepository
+	RoleRepo      repository.RoleRepository
+	SettingRepo   repository.SettingRepository
+	SpaceRepo     repository.SpaceRepository
+	TagRepo       repository.TagRepository
+	TopicReadRepo repository.TopicReadRepository
+	UploadRepo    repository.UploadRepository
+	UserRepo      repository.UserRepository
+	UserBlockRepo repository.UserBlockRepository
+	UserMFARepo   repository.UserMFARepository
+	UserPrefRepo  repository.UserPreferenceRepository
+	TrustRepo     repository.TrustRepository
+	WatchRepo     repository.WatchRepository
+	WebhookRepo   repository.WebhookRepository
 
 	// Services (alphabetical)
 	AdminSvc        service.AdminService
@@ -108,6 +120,8 @@ type Container struct {
 	OAuthSvc        service.OAuthService
 	PMSvc           service.PMService
 	PluginSvc       service.PluginService
+	CustomizeSvc    service.CustomizeService
+	MCPServerSvc    service.MCPServerService
 	PostSvc         service.PostService
 	ReportSvc       service.ReportService
 	RevisionSvc     service.RevisionService
@@ -137,6 +151,7 @@ func New(d Deps) *Container {
 		BannedSvc:     d.Banned,
 		SpaceSvc:      d.Space,
 		SessionSvc:    d.Sessions,
+		MCP:           d.MCP,
 	}
 
 	// ── 1. Repositories ───────────────────────────────────────────
@@ -163,6 +178,12 @@ func New(d Deps) *Container {
 	c.NotificationRepo = repository.NewNotificationRepository(d.Store)
 	c.OAuthRepo = repository.NewOAuthRepository(d.Store)
 	c.PluginRepo = repository.NewPluginRepository(d.Store)
+	c.SnippetRepo = repository.NewSnippetRepository(d.Store)
+	c.ThemeTokenRepo = repository.NewThemeTokenRepository(d.Store)
+	c.NavItemRepo = repository.NewNavItemRepository(d.Store)
+	c.HomeModuleRepo = repository.NewHomeModuleRepository(d.Store)
+	c.CustomPageRepo = repository.NewCustomPageRepository(d.Store)
+	c.MCPServerRepo = repository.NewMCPServerRepository(d.Store)
 	c.PostRepo = repository.NewPostRepository(d.Store)
 	c.ReportRepo = repository.NewReportRepository(d.Store)
 	c.RevisionRepo = repository.NewRevisionRepository(d.Store)
@@ -191,6 +212,9 @@ func New(d Deps) *Container {
 	c.LeaderboardSvc = service.NewLeaderboardService(c.UserRepo)
 	c.BadgeSvc = service.NewBadgeService(c.BadgeRepo, c.UserRepo)
 	c.AuditLogSvc = service.NewAuditLogService(c.AuditLogRepo)
+	c.CustomizeSvc = service.NewCustomizeService(
+		c.SnippetRepo, c.ThemeTokenRepo, c.NavItemRepo, c.HomeModuleRepo, c.CustomPageRepo, c.AuditLogSvc)
+	c.MCPServerSvc = service.NewMCPServerService(c.MCPServerRepo, c.AuditLogSvc)
 	c.EmailSvc = service.NewEmailService(c.SettingSvc, d.KV)
 	c.MFASvc = service.NewMFAService(c.UserMFARepo, c.SettingSvc, d.KV)
 	c.UserSvc = service.NewUserService(c.UserRepo, c.SessionSvc, c.PermissionSvc, c.Tx)
@@ -236,6 +260,8 @@ func New(d Deps) *Container {
 	// Moderation must exist before Post/Content, which consult it pre-persist.
 	c.ModerationSvc = service.NewModerationService(c.ModerationRepo, c.PostRepo, c.ContentRepo, c.SettingSvc, c.EventBus)
 	c.ModerationSvc.SetTrustService(c.TrustSvc)
+	// 外部审核优先走 MCP（P3）；未配置审核用途的 MCP Server 时自动回退 HTTP 契约。
+	c.ModerationSvc.SetMCPServerService(c.MCPServerSvc)
 
 	c.WatchSvc = service.NewWatchService(c.WatchRepo, c.TagRepo, c.EventBus)
 

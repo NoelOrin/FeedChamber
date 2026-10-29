@@ -10,7 +10,7 @@
 |------|------|
 | `docker-compose.yml` | 默认档：postgres 16 + nats 2.10(`-js`) + nats-exporter + backend + frontend + nginx；named volumes `feedchamber_pg` / `feedchamber_nats` / `feedchamber_uploads` |
 | `docker-compose.dokploy.yml` | Dokploy 档：入口交给 Traefik，nginx 用 `expose` 而非 `ports`、接入 `dokploy-network`，且 backend/frontend 用 `image:` 而非 `build:`（镜像由 CI 推 GHCR）。**与默认档只差这三处，改基础档时必须同步这里** |
-| `nginx/nginx.conf` | 反向代理：`/api/v1/` → backend，`/` → web SSR（匿名页 60s 共享缓存），另有 6 条**精确匹配**的爬虫路由 |
+| `nginx/nginx.conf` | 反向代理：`/api/v1/` → backend，`/` → web SSR（匿名页 60s 共享缓存），另有 6 条**精确匹配**的爬虫路由 + 1 条 SSE 专用 regex location |
 | `prometheus.yml` + `prometheus/rules/feedchamber.yml` | 抓取配置与告警规则 |
 | `grafana/` | 数据源与仪表盘 provisioning |
 | `blackbox/blackbox.yml` | 探针（外部可达性） |
@@ -72,6 +72,7 @@ bash scripts/check-metrics-exposure.sh                        # 本地跑护栏
 - **顶层 `volumes:` 每个卷都要写成显式映射（含 `name:`）**。Dokploy 保存 compose 时会把值为空的条目（`feedchamber_pg:` 解析为 null）丢掉，部署时报 `service "postgres" refers to undefined volume feedchamber_pg`——写 `feedchamber_pg: {name: feedchamber_pg}` 才不会被吞。
 - **不要给 backend 加 `ports: 9091`**，也不要在 nginx 加指向 9091 的 `location`。
 - **nginx 改路径规则时同步检查 6 条爬虫 location 与 `/swagger/`、`/health`**。
+- **SSE 路径不能落回 `location /api/v1/`**：`^/api/v1/(notifications|realtime)/stream$` 的 regex location 必须先于前缀匹配生效，且必须带 `proxy_buffering off` 与长 `proxy_read_timeout`。继承默认值（60s）时实测空闲通知流每次 ~61s 被切断，客户端退避重连几次后彻底放弃。
 - 镜像构建上下文是**仓库根**（两个 Dockerfile 的 `COPY` 按仓库根书写），改 Dockerfile 时注意路径。
 - 告警阈值是经验值，用 `scripts/calibrate-alert-thresholds.sh` 在真实流量环境校准，不要凭感觉调。
 

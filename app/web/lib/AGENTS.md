@@ -36,9 +36,10 @@ lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / ut
 | `admin/navigation.ts` | `useNavigate` / `useLocation` / 查询参数 hook（页面不要自己拼 `window.location`） |
 | `admin/permissions.ts` | 权限码前缀 → 分组标签（`permissionGroup` / `groupPermissions`） |
 | `hooks/use-notification-sse.ts` | 通知未读数 SSE：走 `@feedchamber/sse-client`，**浏览器侧必须是相对路径** `/api/v1/notifications/stream` |
+| `notification-target.ts` | `notificationHref(notification)` —— 通知深链的**唯一出口**（type → 站内路由）。顶栏通知铃与通知中心共用，不要再各自维护 switch：此前两份副本同时漏了 `mention` / `watch` / `motion`，同一个缺陷要修两遍 |
 | `hooks/use-announcements.ts` | 公告取数与展示状态 |
 | `hooks/use-trust-levels.ts` | 等级名称的唯一来源：`useTrustLevels()` 读公开接口 `GET /levels`（staleTime 5 分钟），`trustLevelName()` 渲染；P2.9 起不再有硬编码中文标签（旧的 `lib/trust.ts` 已删除） |
-| `theme.ts` | `useTheme`（light/dark/system + localStorage + 系统偏好），首绘前脚本在根布局 |
+| `theme.ts` | `useTheme`（light/dark/system + localStorage + 系统偏好），首绘前脚本在根布局。`cycle()` 切换后自带 `toast.success` 提示（读切换后 `<html>` 的真实明暗），前后台共用，调用方不要重复发 |
 | `i18n.ts` | `useLocale` / `t()`，zh-CN 词条表；前台与后台共用 |
 | `settings.ts` | `usePublicSettings` / `useSiteName`（`qk.settings`），前后台共用一份缓存 |
 | `seo.ts` | `listPageMetadataFromSettings` / `siteImage`：列表页元数据 + 自指 canonical（**刻意不带**筛选与分页参数） |

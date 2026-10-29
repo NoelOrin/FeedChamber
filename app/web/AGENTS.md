@@ -149,4 +149,5 @@ make release-android                 # 生成 .aab（Google Play）
 - 登录后的 `?redirect=` 只接受站内相对路径，拒绝 `//host` 与 `/\host`（防开放重定向）
 - 会话凭据是 HttpOnly cookie（`master_session`），JS 只读非 HttpOnly 的 `master_auth` 标志位
 - 公告弹窗的 `iframe` 带 `sandbox`，且 `content` 为空时不渲染（空 `src` 会让浏览器重复下载整页）
-- 正文渲染统一走 `rehype-sanitize`（`components/content/markdown-renderer.tsx`）。`dangerouslySetInnerHTML` 的**受控例外**只有两处：根布局的首绘主题脚本，以及 `components/seo/json-ld.tsx` 的 JSON-LD（输入是结构化对象、序列化后强制转义 `<`）。新增第三处前先扩展已有组件，不要就地再写一次。
+- 正文渲染统一走 `rehype-sanitize`（`components/content/markdown-renderer.tsx`）。`dangerouslySetInnerHTML` 的**受控例外**共五处：根布局的首绘主题脚本、`components/seo/json-ld.tsx` 的 JSON-LD（输入是结构化对象、序列化后强制转义 `<`），以及**站点自定义层的三处注入**（主题 token 覆盖 / 自定义 CSS / 自定义 JS，见下条）。新增第六处前先扩展已有组件，不要就地再写一次。
+- **站点自定义注入是产品决定的「有意允许任意内容」**：`app/layout.tsx` 的 `fc-theme-overrides` / `fc-custom-css` / `fc-custom-js` / `fc-custom-body` 四处，内容来自后台「站点自定义」。风险由**写入侧**控制（仅 admin 可写、机器凭证写 JS/HTML 强制草稿、全量审计），**渲染侧刻意不做过滤**——过滤会让站长写不了复杂选择器。`/admin/**` 不注入（`isAdmin` 分支返回空），避免任意脚本在后台上下文执行。

@@ -84,7 +84,7 @@ export default async function Page() {
 - **`/timeline/post?id=` 与 `/t/{slug}/{id}` 是同一内容的两个入口**：前者 canonical 指回后者。改任一都要同步 sitemap（后端 `handler/seo.go` 独占）与 `docs/api-reference.md`。
 - **爬虫文件由后端独占**：`/sitemap.xml`、`/sitemap-posts.xml`、`/sitemap-spaces.xml`、`/sitemap-tags.xml`、`/robots.txt`、`/latest.rss` 全部挂在后端 app 根，前端**不生成任何爬虫文件**。nginx 用 6 条精确 `location =` 转给后端（见 [deploy/AGENTS.md](../../../deploy/AGENTS.md)）。
 - **`?redirect=` 只接受站内相对路径**，拒绝 `//host` 与 `/\host`（防开放重定向）。
-- **`dangerouslySetInnerHTML` 的受控例外只有两处**：根布局的首绘主题脚本、`components/seo/json-ld.tsx`。新增第三处前先扩展已有组件。
+- **`dangerouslySetInnerHTML` 的受控例外共五处**：根布局的首绘主题脚本、`components/seo/json-ld.tsx`、以及站点自定义层的三处注入（主题 token 覆盖 / 自定义 CSS / 自定义 JS，见 `app/web/AGENTS.md` 的安全一节）。新增前先扩展已有组件。
 - **`Card` 基类是 `flex flex-col`，调用点想横向排布必须显式给 `flex-row`**：tailwind-merge 只合并同一属性组的类，`flex-wrap` 与 `flex-col` 不同组，所以 `<Card className="flex flex-wrap gap-2 p-4">` 合并后方向仍是 column —— 子元素被拉成整行（`/timeline/tag` 曾因此把 28 个标签渲染成 28 条 1412px 的整行，见 `timeline/tag/tag-list.tsx`）。要么写 `flex flex-row flex-wrap`，要么像标签页那样把横向流放进 Card 内部单独一层 `div`。
 - **`<button>` 的 `cursor: pointer` 由 `globals.css` 的 base 层统一提供**（Tailwind v4 删掉了这个默认值）。写裸 `<button>` 时**不必**再手写 `cursor-pointer`，也别指望浏览器默认；需要别的指针用 `.cursor-default` / `.cursor-not-allowed`（utilities 层优先级更高）。
 

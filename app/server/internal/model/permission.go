@@ -85,6 +85,14 @@ const (
 	PermPluginManage     = "plugin:manage"
 	PermLevelManage      = "level:manage"
 	PermGateManage       = "gate:manage"
+
+	// 站点自定义层。这三个权限码构成独立权限域，MUST NOT 被并入
+	// gateway/apiKeyScopeRegistry 的 read / write / admin 任一项：
+	// 一旦并入，所有存量持 admin scope 的 API Key 会在部署瞬间获得
+	// 向全站注入 JS 的能力，属于权限提升。新 scope 必须在建 Key 时显式勾选。
+	PermCustomizeRead    = "customize:read"
+	PermCustomizeWrite   = "customize:write"
+	PermCustomizePublish = "customize:publish"
 )
 
 // DefaultPermissions 种子权限列表
@@ -158,6 +166,12 @@ var DefaultPermissions = []Permission{
 	{Code: PermPluginManage, Name: "插件管理", Description: "注册、启停和删除声明式插件"},
 	{Code: PermLevelManage, Name: "等级体系管理", Description: "配置 XP 规则、等级定义与人工调整 XP"},
 	{Code: PermGateManage, Name: "门控规则管理", Description: "配置门控规则、能力域默认动作与试算"},
+
+	// 站点自定义层。仅 admin 角色默认持有；customize:publish 单独授予，
+	// 因为它决定 AI/机器凭证能否让 JS 类改动直接生效（见 site-customization 规范）。
+	{Code: PermCustomizeRead, Name: "查看站点自定义", Description: "查看片段、主题 token、导航、首页模块与自定义页"},
+	{Code: PermCustomizeWrite, Name: "编辑站点自定义", Description: "创建和修改片段、主题 token、导航、首页模块与自定义页"},
+	{Code: PermCustomizePublish, Name: "发布站点自定义", Description: "让机器凭证写入的 JS/HTML 类自定义内容直接生效，跳过草稿"},
 }
 
 // RolePermission 角色-权限关联表
@@ -203,6 +217,8 @@ var DefaultRolePermissions = map[string][]string{
 		PermPluginManage,
 		PermLevelManage,
 		PermGateManage,
+		// 站点自定义层只给 admin：内容本身可注入任意 JS，等于站点级 XSS 权限。
+		PermCustomizeRead, PermCustomizeWrite, PermCustomizePublish,
 	},
 	"moderator": {
 		PermPostCreate, PermPostRead, PermPostUpdate, PermPostDelete,

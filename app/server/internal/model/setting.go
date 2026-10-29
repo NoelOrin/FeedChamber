@@ -57,6 +57,13 @@ const (
 	SettingSecurityUnusualLocationEnabled = "security_unusual_location_enabled"
 	// Backup
 	SettingBackupRetentionDays = "backup_retention_days"
+	// MCP Server（P2）。总开关默认 false：未开启时 /mcp 一律拒绝。
+	SettingMCPEnabled = "mcp_enabled"
+	// 工具级开关以逗号分隔的工具名列表存放，空值表示「全部按默认」。
+	// 写类工具默认关闭，由默认值表决定（见 service/mcp_tools.go 的默认启用集）。
+	SettingMCPDisabledTools = "mcp_disabled_tools"
+	// MCP 结果体积上限（字节），超出时截断正文。
+	SettingMCPMaxResultBytes = "mcp_max_result_bytes"
 	// SEO
 	SettingSEODescription         = "seo_description"
 	SettingSEOKeywords            = "seo_keywords"
@@ -110,6 +117,14 @@ var DefaultSettings = map[string]string{
 	"post_approval": "false",
 	// moderation_mode: off | async | external | manual（默认 async，见 DefaultModerationMode）
 	"moderation_mode": "async",
+	// MCP Server 默认关闭。开启前 /mcp 对任何请求都返回「未启用」，
+	// 因此 P2 上线本身不扩大攻击面——风险只在站长显式开启后才出现。
+	"mcp_enabled": "false",
+	// 空表示不额外停用任何工具；写类工具的默认关闭由代码里的默认启用集决定，
+	// 而不是靠这个 key 的初始值（那样「清空设置」会意外打开全部写工具）。
+	"mcp_disabled_tools": "",
+	// 单次工具结果上限。正文超限时截断，避免 AI 客户端被一篇文章撑爆上下文。
+	"mcp_max_result_bytes": "8192",
 	// TL0 信任等级发帖强制待审。默认 false：TL0 是注册用户的起点等级
 	// （含 admin，晋升条件为「≥1 天且 ≥1 篇」），默认 true 会把所有人的新帖
 	// 静默改成 pending，而公开列表只显示 approved/closed → 发帖成功但全站不可见。

@@ -180,15 +180,57 @@ export default function ApiKeyList() {
 							<FormField
 								control={form.control}
 								name="scopes"
-								render={({ field }) => (
-									<FormItem>
-										<FormLabel>Scopes</FormLabel>
-										<FormControl>
-											<Input {...field} />
-										</FormControl>
-										<FormMessage>逗号分隔，例如 read,write</FormMessage>
-									</FormItem>
-								)}
+								render={({ field }) => {
+									const parts = (field.value ?? '')
+										.split(',')
+										.map((x) => x.trim())
+										.filter(Boolean);
+									const toggleScope = (scope: string) => {
+										const next = parts.includes(scope) ? parts.filter((x) => x !== scope) : [...parts, scope];
+										field.onChange(next.join(','));
+									};
+									const hasPublish = parts.includes('customize:publish');
+									return (
+										<FormItem>
+											<FormLabel>Scopes</FormLabel>
+											<FormControl>
+												<Input {...field} placeholder="read,write 或精确权限码" />
+											</FormControl>
+											{/*
+											 * 快捷勾选：精确权限码可以直接当 scope 用，
+											 * 但手输容易拼错（错一个字符就是 403，且没有任何提示）。
+											 * 这三个是 MCP 驱动站点自定义专用的，因此单独列出。
+											 */}
+											<div className="mt-2 flex flex-wrap gap-2">
+												{[
+													['customize:read', '读站点自定义'],
+													['customize:write', '改站点自定义'],
+													['customize:publish', '让 JS/HTML 直接生效'],
+												].map(([scope, label]) => (
+													<button
+														key={scope}
+														type="button"
+														onClick={() => toggleScope(scope)}
+														className={
+															parts.includes(scope)
+																? 'rounded-md border border-primary bg-primary/10 px-2 py-1 text-xs text-foreground'
+																: 'rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:bg-muted'
+														}
+													>
+														{label}
+													</button>
+												))}
+											</div>
+											{hasPublish ? (
+												<p className="mt-1 text-xs text-destructive">
+													该 Key 可让 JS/HTML 片段直接生效，等于把「向全站访客执行任意脚本」的能力交给持有者。
+													请确认用途并设置过期时间。
+												</p>
+											) : null}
+											<FormMessage>逗号分隔。精确权限码（如 customize:write）可直接作为 scope。</FormMessage>
+										</FormItem>
+									);
+								}}
 							/>
 							<FormField
 								control={form.control}

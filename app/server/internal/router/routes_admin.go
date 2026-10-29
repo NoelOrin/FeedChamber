@@ -114,6 +114,55 @@ func (r *reg) adminRoutes() {
 			w.Post("/{id}/deliveries/{deliveryId}/retry", h.Webhook.RetryDelivery)
 		})
 
+		// ── Site Customization（站点自定义层，P1） ─────────────
+		// 读用 customize:read，写用 customize:write。发布用 customize:publish。
+		a.PartyFunc("/customization", func(ac iris.Party) {
+			// 片段
+			ac.Post("/snippets/list", h.Customize.ListSnippets)
+			ac.Post("/snippets/create", h.Customize.CreateSnippet)
+			ac.Post("/snippets/{id}/update", h.Customize.UpdateSnippet)
+			ac.Post("/snippets/{id}/delete", h.Customize.DeleteSnippet)
+			ac.Post("/snippets/{id}/toggle", h.Customize.ToggleSnippet)
+			// 主题 token
+			ac.Post("/tokens/list", h.Customize.ListThemeTokens)
+			ac.Post("/tokens/set", h.Customize.SetThemeTokens)
+			ac.Post("/tokens/clear", h.Customize.ClearThemeTokens)
+			ac.Post("/tokens/{token}/delete", h.Customize.DeleteThemeToken)
+			// 导航
+			ac.Post("/nav/list", h.Customize.ListNavItems)
+			ac.Post("/nav/create", h.Customize.CreateNavItem)
+			ac.Post("/nav/{id}/update", h.Customize.UpdateNavItem)
+			ac.Post("/nav/{id}/delete", h.Customize.DeleteNavItem)
+			// 首页模块
+			ac.Post("/modules/list", h.Customize.ListHomeModules)
+			ac.Post("/modules/create", h.Customize.CreateHomeModule)
+			ac.Post("/modules/{id}/update", h.Customize.UpdateHomeModule)
+			ac.Post("/modules/{id}/delete", h.Customize.DeleteHomeModule)
+			// 自定义页
+			ac.Post("/pages/list", h.Customize.ListCustomPages)
+			ac.Post("/pages/create", h.Customize.CreateCustomPage)
+			ac.Post("/pages/{id}/update", h.Customize.UpdateCustomPage)
+			ac.Post("/pages/{id}/delete", h.Customize.DeleteCustomPage)
+			ac.Post("/pages/{id}/publish", h.Customize.PublishCustomPage)
+		})
+
+		// ── 本站 MCP Server 工具管理（P2） ─────────────────────
+		a.PartyFunc("/mcp", func(am iris.Party) {
+			am.Use(middleware.RequirePermission(deps, model.PermSettingManage))
+			am.Post("/tools", h.MCPServer.ListTools)
+			am.Post("/tools/status", h.MCPServer.SetToolEnabled)
+		})
+
+		// ── External MCP Servers（P3） ─────────────────────────
+		a.PartyFunc("/mcp-servers", func(am iris.Party) {
+			am.Use(middleware.RequirePermission(deps, model.PermSettingManage))
+			am.Post("/list", h.MCPServer.List)
+			am.Post("/create", h.MCPServer.Create)
+			am.Post("/{id}/update", h.MCPServer.Update)
+			am.Post("/{id}/delete", h.MCPServer.Delete)
+			am.Post("/{id}/test", h.MCPServer.Test)
+		})
+
 		// ── Stats / Dashboard ─────────────────────────────────
 		a.Post("/stats", h.Admin.GetStats)
 		a.Post("/dashboard", h.Admin.Dashboard)

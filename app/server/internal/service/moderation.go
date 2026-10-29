@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"regexp"
@@ -30,10 +31,17 @@ type moderationService struct {
 	settingSvc  SettingService
 	bus         *eventbus.EventBus
 	trustSvc    TrustService
+	// mcpSvc 用于「外部审核优先走 MCP」的分支（P3）。为 nil 或未配置
+	// 审核用途的外部服务时，CheckExternal 走既有 HTTP 契约。
+	mcpSvc MCPServerService
 }
 
 // SetTrustService 注入等级评估服务（审核结论会改变内容的 approved 状态）。
 func (s *moderationService) SetTrustService(svc TrustService) { s.trustSvc = svc }
+
+// SetMCPServerService 注入外部 MCP 客户端（P3）。审核链路据此决定
+// 外部审核走 MCP 还是回退既有 HTTP 契约。
+func (s *moderationService) SetMCPServerService(svc MCPServerService) { s.mcpSvc = svc }
 
 func NewModerationService(repo repository.ModerationRepository, postRepo repository.PostRepository, contentRepo repository.ContentRepository, settingSvc SettingService, bus *eventbus.EventBus) ModerationService {
 	return &moderationService{repo: repo, postRepo: postRepo, contentRepo: contentRepo, settingSvc: settingSvc, bus: bus}
@@ -195,6 +203,15 @@ var errExternalModerationUnavailable = errors.New("moderation: external service 
 // 响应：200 + {"action":"allow|flag|block|replace","reason":"..."}。
 // 任何超时 / 非 2xx / 解析失败都返回 errExternalModerationUnavailable。
 func (s *moderationService) CheckExternal(ctx context.Context, targetType, targetID, title, body string, scene model.ModerationScene) (model.ModerationAction, error) {
+	// 优先走 MCP：若登记了「承担审核职责且已启用」的外部 MCP Server，
+	// 通过 tools/call 取结论。失败/未配置时回退既有 HTTP 契约——
+	// 直接替换会让现网「配了 HTTP 审核但没配 MCP」部署静默失效。
+	if action, err := s.checkExternalViaMCP(ctx, targetType, targetID, title, body, scene); err == nil {
+		return action, nil
+	} else if !errors.Is(err, errMCPModerationNotConfigured) {
+		logrus.Warnf("moderation: MCP external check unavailable, falling back to HTTP contract: %v", err)
+	}
+
 	configs, err := s.GetConfigs(ctx)
 	if err != nil {
 		return "", errExternalModerationUnavailable
@@ -483,4 +500,77 @@ func (s *moderationService) CheckContent(ctx context.Context, targetType, target
 
 	// No rule hit: allow (do not force pending by default once rules engine is live).
 	return model.ModerationActionAllow, nil
+}
+
+// errMCPModerationNotConfigured 表示没有启用任何承担审核职责的外部 MCP Server。
+// 它区别于「配置了但调用失败」：前者静默回退，后者要打警告日志。
+var errMCPModerationNotConfigured = errors.New("moderation: no MCP moderation server configured")
+
+// mcpModerationVerdict 是外部 MCP 审核工具期望返回的结论形状。
+//
+// 为了兼容现实里的几种写法，同时接受 {"action":"allow"} 与
+// {"content":[{"type":"text","text":"allow"}]} 两种形态。
+type mcpModerationVerdict struct {
+	Action  string `json:"action"`
+	Reason  string `json:"reason"`
+	Content []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	} `json:"content"`
+}
+
+// checkExternalViaMCP 通过外部 MCP Server 取审核结论。
+//
+// 返回 errMCPModerationNotConfigured 表示压根没配（调用方静默回退）；
+// 返回其它错误表示配了但调用失败（调用方打警告后回退）。
+func (s *moderationService) checkExternalViaMCP(ctx context.Context, targetType, targetID, title, body string, scene model.ModerationScene) (model.ModerationAction, error) {
+	if s.mcpSvc == nil {
+		return "", errMCPModerationNotConfigured
+	}
+	servers, err := s.mcpSvc.ModerationServers(ctx)
+	if err != nil || len(servers) == 0 {
+		return "", errMCPModerationNotConfigured
+	}
+	srv := servers[0]
+	tool := srv.ModerationTool
+	if tool == "" {
+		tool = model.DefaultModerationTool
+	}
+
+	raw, err := s.mcpSvc.CallTool(ctx, &srv, tool, map[string]any{
+		"target_type": targetType,
+		"target_id":   targetID,
+		"scene":       string(scene),
+		"title":       title,
+		"body":        body,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	var verdict mcpModerationVerdict
+	if err := json.Unmarshal(raw, &verdict); err != nil {
+		return "", fmt.Errorf("MCP 审核结论无法解析: %w", err)
+	}
+
+	action := strings.ToLower(strings.TrimSpace(verdict.Action))
+	// 没有 action 字段时，退而从 MCP 的 content 文本里取结论。
+	if action == "" {
+		for _, c := range verdict.Content {
+			candidate := strings.ToLower(strings.TrimSpace(c.Text))
+			if candidate != "" {
+				action = candidate
+				break
+			}
+		}
+	}
+
+	switch model.ModerationAction(action) {
+	case model.ModerationActionAllow:
+		return model.ModerationActionAllow, nil
+	case model.ModerationActionFlag, model.ModerationActionBlock, model.ModerationActionReplace:
+		return model.ModerationAction(action), nil
+	default:
+		return "", fmt.Errorf("MCP 审核结论未知: %q", action)
+	}
 }

@@ -23,6 +23,8 @@
 
 爬虫端点的分页参数 `?page=` MUST 被视为上述「`GET` 允许 query 承载过滤与分页」的既有例外，MUST NOT 因「`POST` 参数走 body」的规则被改写成 `POST`——爬虫不会发起 `POST`。
 
+**MCP 端点（`/mcp`）是协议端点**：MCP 客户端按 JSON-RPC 2.0 与服务协商，请求体 MUST 为 JSON-RPC 消息而非论坛的业务参数，响应 MUST 为 JSON-RPC 结果而非论坛信封。因此 `/mcp` MUST 使用 `POST` 承载请求（JSON-RPC 请求体不适用「写操作动词后缀」约定），MUST NOT 被改写成带动词后缀的 RPC 风格 URL，MUST NOT 套用 `pkg.Success` 信封。该例外 MUST NOT 被推广到任何业务接口。
+
 示例 MUST 使用在用的模块。`Category` 模块已下线、由 `Space`（版面树）承接，规范与文档中的示例不得再引用 `/categories`。
 
 #### Scenario: 写接口使用 POST + 动词后缀
@@ -64,6 +66,13 @@
 
 - WHEN 爬虫请求 `/sitemap-posts.xml?page=2`
 - THEN 该端点 MUST 为 `GET` 且 MUST 接受 query 承载分片页码，MUST NOT 要求 `POST` 或请求体
+
+#### Scenario: MCP 端点保持 JSON-RPC 形状
+
+- WHEN 一个 MCP 客户端向 `/mcp` 发送 JSON-RPC 请求
+- THEN 该端点 MUST 接受 `POST` 且请求体 MUST 按 JSON-RPC 解析
+- AND 响应 MUST 为 JSON-RPC 结果，MUST NOT 包装为 `{code,msg,data}` 信封
+- AND 该端点 MUST NOT 被改写为带动词后缀的业务 URL
 
 ### Requirement: 统一 JSON 响应结构
 
@@ -112,3 +121,4 @@
 
 - WHEN 前端 api-client 读取帖子详情
 - THEN 请求 MUST 为 `GET /posts/{id}`（与后端方法一致），MUST NOT 同时保留 POST 版本
+

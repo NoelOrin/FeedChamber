@@ -7,6 +7,7 @@ import { headers } from 'next/headers';
 
 import { Providers } from '~/components/providers';
 import { JsonLd } from '~/components/seo/json-ld';
+import { buildThemeOverrideCss, joinSnippets, loadPublicCustomization } from '~/lib/customization/server';
 import { loadPublicSettings, loadShellData } from '~/lib/queries/server';
 import { getQueryClient } from '~/lib/query/client';
 import { qk } from '~/lib/query/keys';
@@ -116,6 +117,24 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 		? { settings: {} as Record<string, string>, user: null, spaces: [], tags: { data: [], total: 0 } }
 		: await loadShellData();
 
+	/*
+	 * 站点自定义层（P1）。
+	 *
+	 * head 段在服务端内联，body_end 段交给客户端组件延迟注入：放在服务端
+	 * 意味着首屏就有，但会拖慢 TTFB；放客户端意味着不影响首屏，代价是脚本
+	 * 略晚一点执行。CSS 与统计代码这类典型用途都能接受这个顺序。
+	 *
+	 * 后台不注入：/admin 是纯 CSR 且与前台共用 origin，注入站长写的 JS 等于
+	 * 让任意脚本在后台上下文里跑，风险面不必要地放大。
+	 */
+	const customization = isAdmin
+		? { theme_tokens: [], head_snippets: [], body_snippets: [] }
+		: await loadPublicCustomization();
+	const themeCss = buildThemeOverrideCss(customization.theme_tokens);
+	const headCss = joinSnippets(customization.head_snippets.filter((s) => s.kind === 'css'));
+	const headJs = joinSnippets(customization.head_snippets.filter((s) => s.kind === 'js'));
+	const bodyScripts = joinSnippets(customization.body_snippets);
+
 	queryClient.setQueryData(qk.settings, settings);
 	queryClient.setQueryData(qk.spaces.tree, spaces);
 	queryClient.setQueryData(qk.tags.list({ page: 1, page_size: 50 }), tags);
@@ -129,6 +148,33 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 				<link href="/manifest.webmanifest" rel="manifest" />
 				{/* biome-ignore lint/security/noDangerouslySetInnerHtml: 主题须在首绘前落地，内联脚本是唯一无闪烁方案 */}
 				<script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+				{/*
+				 * 主题 token 覆盖：必须排在 globals.css 之后才能盖住默认值。
+				 * 只输出 CSS 变量声明，选择器由 buildThemeOverrideCss 固定。
+				 */}
+				{themeCss && (
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: token 覆盖由后台配置，名称与值已做字符集校验
+					<style id="fc-theme-overrides" dangerouslySetInnerHTML={{ __html: themeCss }} />
+				)}
+				{/*
+				 * 站长自定义 CSS：这是**有意允许**的任意样式注入（P1 需求）。
+				 * 与 snippets 里的 JS 一样，风险由「仅 admin 可写 + 审计 + 机器写入走草稿」控制，
+				 * 不在渲染层做过滤——过滤会让站长没法写 .
+
+复杂选择器。
+				 */}
+				{headCss && (
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: 自定义 CSS 是产品决定的允许项
+					<style id="fc-custom-css" dangerouslySetInnerHTML={{ __html: headCss }} />
+				)}
+				{/*
+				 * 站长自定义 JS（head 段）：**有意允许**的任意脚本注入。
+				 * 机器凭证（MCP）写入时服务端强制存草稿，需人工启用后才到这里。
+				 */}
+				{headJs && (
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: 自定义 JS 是产品决定的允许项
+					<script id="fc-custom-js" dangerouslySetInnerHTML={{ __html: headJs }} />
+				)}
 			</head>
 			<body className="relative min-h-screen">
 				{/* WebSite + SearchAction：全站一份，只放首页语义，子页不重复注入。 */}
@@ -136,6 +182,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 				<Providers dehydratedState={dehydrate(queryClient)} initialUser={user}>
 					{children}
 				</Providers>
+				{/* body_end 段：放在最后，不阻塞首屏渲染。 */}
+				{bodyScripts && (
+					// biome-ignore lint/security/noDangerouslySetInnerHtml: 自定义片段是产品决定的允许项
+					<script id="fc-custom-body" dangerouslySetInnerHTML={{ __html: bodyScripts }} />
+				)}
 			</body>
 		</html>
 	);

@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 
 import { MotionPanel } from '~/components/motion/motion-panel';
 import { SpaceIcon } from '~/components/space/space-icon';
+import { publicCustomizationOptions } from '~/lib/customization/client';
 import { ChevronLeft } from '~/lib/icons';
 import { spaceTreeOptions, tagListOptions } from '~/lib/queries/shell';
 import { cn } from '~/lib/utils';
@@ -19,6 +20,40 @@ function spaceHref(slug: string) {
 
 function countSpaces(nodes: SpaceNode[]): number {
 	return nodes.reduce((total, node) => total + 1 + countSpaces(node.children ?? []), 0);
+}
+
+/**
+ * CustomNav 渲染站长在「站点自定义 → 导航」里配置的入口。
+ *
+ * 与首页的快捷入口共用同一份 `publicCustomizationOptions`（同一 queryKey），
+ * 因此后台改完配置只需失效一个 key，前台所有入口一起更新。
+ *
+ * **无配置时返回 null**：导航配置为空表示「用内置默认」，不是「显示空导航」
+ * （见 site-customization 规范「无配置时回退默认」）。
+ */
+function CustomNav() {
+	const { data } = useQuery(publicCustomizationOptions);
+	const items = data?.nav ?? [];
+	if (items.length === 0) return null;
+
+	return (
+		<nav aria-label="自定义导航" className="flex flex-col gap-1">
+			<div className="px-2 pb-1">
+				<span className="text-xs font-medium text-muted-foreground">导航</span>
+			</div>
+			<div className="flex flex-col gap-0.5">
+				{items.map((item) => (
+					<Link
+						key={item.id}
+						href={item.href}
+						className="inline-flex h-8 min-w-0 items-center gap-1.5 rounded-md px-2 text-[13px] text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+					>
+						<span className="truncate">{item.label}</span>
+					</Link>
+				))}
+			</div>
+		</nav>
+	);
 }
 
 function BackToPrev() {
@@ -98,6 +133,9 @@ export function SidebarContent() {
 	return (
 		<div className="sticky top-20 flex min-w-0 flex-col gap-5">
 			<BackToPrev />
+
+			{/* 站长配置的自定义导航（P1）。无配置时组件返回 null，侧栏保持既有结构。 */}
+			<CustomNav />
 
 			<nav aria-label="版面导航" className="flex flex-col gap-1">
 				<PanelHeader href="/spaces" title="版面" count={String(countSpaces(spaces))} />

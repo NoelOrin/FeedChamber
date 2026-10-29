@@ -127,6 +127,14 @@ func Start(env Env) {
 		&model.XPAdjustment{},
 		&model.GateRule{},
 		&model.GateDomainDefault{},
+		// 站点自定义层（P1）。五张表都是新增，对存量库无破坏性变更。
+		&model.Snippet{},
+		&model.ThemeToken{},
+		&model.NavItem{},
+		&model.HomeModule{},
+		&model.CustomPage{},
+		// MCP 客户端（P3）：外部 MCP Server 登记表。
+		&model.MCPServer{},
 	); err != nil {
 		logrus.Warnf("AutoMigrate: %v", err)
 	}
@@ -386,6 +394,11 @@ func Start(env Env) {
 		Security:   secSvc,
 	})
 
+	// ── MCP Server（P2）──────────────────────────────────────────
+	// 在设置服务、权限服务、限流引擎都就绪之后装配：MCP 的 Enforcer 要复用
+	// 同一份实例，否则会出现「网关认为已封禁、MCP 认为未封禁」的分叉。
+	c.MCP = buildMCP(c, settingSvc, permSvc, bannedSvc, deps.Limiter)
+
 	runtime, err := c.Start(context.Background())
 	if err != nil {
 		logrus.WithError(err).Fatal("failed to start background workers")
@@ -613,6 +626,21 @@ func seedPermissions(store db.Store, kv kvstore.Store, alreadySeeded bool) (serv
 	// role-permission customizations an administrator has made (R-04).
 	if alreadySeeded && !roleMappingsEmpty(ctx, permRepo) {
 		logrus.Info("default role-permission mappings already seeded, skipping")
+		// 增量补齐：版本升级新增的权限码必须能到已有部署的内置角色上。
+		// 上面的整体跳过是为了保护管理员自定义（R-04），但它同时意味着
+		// 「新权限永远拿不到」——例如 customize:* 上线后 admin 角色没有它们，
+		// MCP 工具因此不出现在 tools/list，且无任何报错。
+		// EnsureRolePermissions 只追加、不删除，两者语义可以并存。
+		for roleName, codes := range model.DefaultRolePermissions {
+			added, err := permRepo.EnsureRolePermissions(ctx, roleName, codes)
+			if err != nil {
+				logrus.Warnf("ensure role permissions for %s: %v", roleName, err)
+				continue
+			}
+			if added > 0 {
+				logrus.Infof("ensured %d new permission(s) for role %s", added, roleName)
+			}
+		}
 		// 增量补齐 pending_user（审批注册）角色权限：仅当该角色尚无任何映射时写入，不覆盖自定义。
 		if codes, ok := model.DefaultRolePermissions["pending_user"]; ok {
 			all, err := permRepo.GetAllRolePermissions(ctx)

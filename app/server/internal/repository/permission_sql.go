@@ -79,3 +79,43 @@ func (r *sqlPermRepo) SyncRolePermissions(ctx context.Context, roleName string, 
 		return nil
 	})
 }
+
+// EnsureRolePermissions 只追加缺失的角色-权限映射，不删除任何已有映射。
+//
+// 与 SyncRolePermissions 的区别是本方法**幂等且非破坏性**：Sync 是
+// 「删光再插入」，用于首次 seed；Ensure 用于后续版本新增权限码时补齐
+// 内置角色，不会覆盖管理员对角色权限的自定义。
+//
+// 为什么需要它：R-04 的幂等 seed 在首启之后整个跳过角色映射同步，
+// 于是「新版本新增了一个权限码」永远到不了已有部署的内置角色——
+// 表现为功能上线后管理员看不到入口，且没有任何报错。
+func (r *sqlPermRepo) EnsureRolePermissions(ctx context.Context, roleName string, permCodes []string) (int, error) {
+	added := 0
+	err := r.db.DB().WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// 先取该角色现有的权限 id 集合。
+		var existing []model.RolePermission
+		if err := tx.WithContext(ctx).Where("role_name = ?", roleName).Find(&existing).Error; err != nil {
+			return err
+		}
+		have := make(map[uint]struct{}, len(existing))
+		for _, rp := range existing {
+			have[rp.PermissionID] = struct{}{}
+		}
+		for _, code := range permCodes {
+			var perm model.Permission
+			if err := tx.WithContext(ctx).Where("code = ?", code).First(&perm).Error; err != nil {
+				continue
+			}
+			if _, ok := have[perm.ID]; ok {
+				continue
+			}
+			rp := model.RolePermission{RoleName: roleName, PermissionID: perm.ID}
+			if err := tx.WithContext(ctx).Create(&rp).Error; err != nil {
+				return err
+			}
+			added++
+		}
+		return nil
+	})
+	return added, err
+}

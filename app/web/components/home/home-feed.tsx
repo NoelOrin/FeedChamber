@@ -10,14 +10,42 @@ import { EmptyState } from '~/components/ui/empty-state';
 import { PageHeader } from '~/components/ui/page-header';
 import { Skeleton } from '~/components/ui/skeleton';
 import { dashboardHomeOptions } from '~/components/user/queries';
+import { publicCustomizationOptions } from '~/lib/customization/client';
 import { ArrowUpRight, Folder, Layers, Megaphone, MessageSquare, Trophy } from '~/lib/icons';
 
-const ENTRIES = [
+/**
+ * 默认快捷入口。这是**回退值**，不是数据源。
+ *
+ * 站长在后台「站点自定义 → 导航」配置后，`nav_items` 优先；表为空时用这份
+ * 硬编码，避免部署瞬间首页入口变成空白（见 design D7）。
+ * 图标按 href 映射：配置里的 icon 是字符串，映射不到就落到 ArrowUpRight。
+ */
+const DEFAULT_ENTRIES = [
 	{ href: '/timeline', label: '时间线', icon: Layers },
 	{ href: '/messages', label: '私信', icon: MessageSquare },
 	{ href: '/leaderboard', label: '荣誉榜', icon: Trophy },
 	{ href: '/spaces', label: '版面', icon: Folder },
 ];
+
+/** 配置里的 icon 字符串 → 图标组件。未收录的落默认箭头。 */
+const ICON_BY_KEY: Record<string, typeof ArrowUpRight> = {
+	layers: Layers,
+	message: MessageSquare,
+	trophy: Trophy,
+	folder: Folder,
+	arrow: ArrowUpRight,
+};
+
+type Entry = { href: string; label: string; icon: typeof ArrowUpRight };
+
+function resolveEntries(nav: readonly { href: string; label: string; icon?: string }[] | undefined): Entry[] {
+	if (!nav || nav.length === 0) return DEFAULT_ENTRIES;
+	return nav.map((item) => ({
+		href: item.href,
+		label: item.label,
+		icon: ICON_BY_KEY[(item.icon ?? '').toLowerCase()] ?? ArrowUpRight,
+	}));
+}
 
 function Stat({ label, value }: { label: string; value: number }) {
 	return (
@@ -30,6 +58,9 @@ function Stat({ label, value }: { label: string; value: number }) {
 
 export function HomeFeed() {
 	const { data, isPending, error } = useQuery(dashboardHomeOptions());
+	// 站点自定义导航（公开读，失败时为空 → 回退默认入口）。
+	const { data: customization } = useQuery(publicCustomizationOptions);
+	const entries = resolveEntries(customization?.nav);
 	const user = data?.user ?? null;
 	const followers = data?.follow_counts?.followers ?? 0;
 	const following = data?.follow_counts?.following ?? 0;
@@ -121,7 +152,7 @@ export function HomeFeed() {
 					<Card className="gap-3 p-4 sm:p-5">
 						<h2 className="text-xs font-medium text-muted-foreground">快捷入口</h2>
 						<div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-							{ENTRIES.map(({ href, label, icon: Icon }) => (
+							{entries.map(({ href, label, icon: Icon }) => (
 								<Link
 									key={href}
 									href={href}

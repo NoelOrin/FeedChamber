@@ -40,6 +40,15 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
 	{ path: '/admin/levels', anyOf: ['level:manage'] },
 	{ path: '/admin/xp-rules', anyOf: ['level:manage'] },
 	{ path: '/admin/gates', anyOf: ['gate:manage'] },
+	// 站点自定义层：读需 customize:read，写操作由后端 customize:write 门控。
+	{ path: '/admin/customize/snippets', anyOf: ['customize:read'] },
+	{ path: '/admin/customize/theme', anyOf: ['customize:read'] },
+	{ path: '/admin/customize/nav', anyOf: ['customize:read'] },
+	{ path: '/admin/customize/home', anyOf: ['customize:read'] },
+	{ path: '/admin/customize/pages', anyOf: ['customize:read'] },
+	// 本站 MCP 工具管理与外部 MCP 服务登记都挂在设置管理权限下。
+	{ path: '/admin/mcp', anyOf: ['setting:manage'] },
+	{ path: '/admin/mcp-servers', anyOf: ['setting:manage'] },
 	{ path: '/admin/invites', anyOf: ['user:update'] },
 	{ path: '/admin/moderation', anyOf: ['report:manage'] },
 	{ path: '/admin/oauth-clients', anyOf: ['setting:manage'] },

@@ -9,6 +9,7 @@ import (
 
 	"feedchamber/internal/config"
 	"feedchamber/internal/db"
+	"feedchamber/internal/mcp"
 	"feedchamber/internal/pkg/kvstore"
 	"feedchamber/internal/service"
 
@@ -51,22 +52,27 @@ type Deps struct {
 	Permission   service.PermissionService
 	PM           service.PMService
 	Plugin       service.PluginService
-	Post         service.PostService
-	Report       service.ReportService
-	Revision     service.RevisionService
-	Role         service.RoleService
-	Sessions     service.SessionStore
-	Setting      service.SettingService
-	Space        service.SpaceService
-	Tag          service.TagService
-	Theme        service.ThemeService
-	Trust        service.TrustService
-	Gate         service.GateService
-	Upload       service.UploadService
-	User         service.UserService
-	Watch        service.WatchService
-	UserBlock    service.UserBlockService
-	Webhook      service.WebhookService
+	Customize    service.CustomizeService
+	MCPServer    service.MCPServerService
+	// MCP 是站点对外暴露的 MCP Server 协议入口（P2）。它不是 iris handler，
+	// 自带 Serve(ctx) 方法：MCP 必须回 JSON-RPC 而非论坛信封。
+	MCP       *mcp.Handler
+	Post      service.PostService
+	Report    service.ReportService
+	Revision  service.RevisionService
+	Role      service.RoleService
+	Sessions  service.SessionStore
+	Setting   service.SettingService
+	Space     service.SpaceService
+	Tag       service.TagService
+	Theme     service.ThemeService
+	Trust     service.TrustService
+	Gate      service.GateService
+	Upload    service.UploadService
+	User      service.UserService
+	Watch     service.WatchService
+	UserBlock service.UserBlockService
+	Webhook   service.WebhookService
 }
 
 type Handler struct {
@@ -109,6 +115,9 @@ type Handler struct {
 	Trash        TrashHandler
 	Theme        ThemeHandler
 	Plugin       PluginHandler
+	Customize    CustomizeHandler
+	MCPServer    MCPServerHandler
+	MCP          *mcp.Handler
 	Trust        TrustHandler
 	Gate         GateHandler
 	Home         HomeHandler
@@ -123,7 +132,7 @@ type Handler struct {
 // Background worker lifecycle does NOT live here: it belongs to
 // container.Runtime, which server/iris.go starts and shuts down.
 func New(d *Deps) *Handler {
-	return &Handler{
+	h := &Handler{
 		Auth:         newAuthHandler(d.Auth, d.Sessions, d.Email, d.AuditLog),
 		MFA:          newMFAHandler(d.MFA, d.Auth, d.User, d.Sessions),
 		Post:         newPostHandler(d.Post),
@@ -163,6 +172,9 @@ func New(d *Deps) *Handler {
 		Trash:        newTrashHandler(d.Post, d.Content, d.AuditLog),
 		Theme:        newThemeHandler(d.Theme),
 		Plugin:       newPluginHandler(d.Plugin),
+		Customize:    newCustomizeHandler(d.Customize),
+		MCPServer:    newMCPServerHandler(d.MCPServer),
+		MCP:          d.MCP,
 		Trust:        newTrustHandler(d.Trust, d.AuditLog),
 		Gate:         newGateHandler(d.Gate, d.AuditLog),
 		Home:         newHomeHandler(d.User, d.Follow, d.Announcement),
@@ -170,6 +182,15 @@ func New(d *Deps) *Handler {
 		kv:           d.KV,
 		cfg:          d.Cfg,
 	}
+	// 本站 MCP 工具管理端点要读工具启停状态；MCP Server 与 handler 层在同一
+	// 装配步骤构造，这里把协议入口回填给管理 handler（不是构造参数，
+	// 否则两者会形成构造顺序上的循环）。
+	if h.MCP != nil {
+		if mh, ok := h.MCPServer.(*mcpServerHandler); ok {
+			mh.SetHost(h.MCP)
+		}
+	}
+	return h
 }
 
 // Health 健康检查

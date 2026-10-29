@@ -57,6 +57,10 @@ export const PermissionCode = {
 	RECONCILE_COUNTERS: 'reconcile:counters',
 	LEVEL_MANAGE: 'level:manage',
 	GATE_MANAGE: 'gate:manage',
+	// 站点自定义层：独立权限域，MUST NOT 并入任何既有 scope（见 mcp-server 规范）。
+	CUSTOMIZE_READ: 'customize:read',
+	CUSTOMIZE_WRITE: 'customize:write',
+	CUSTOMIZE_PUBLISH: 'customize:publish',
 } as const;
 
 export type PermissionCode = (typeof PermissionCode)[keyof typeof PermissionCode];

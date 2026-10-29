@@ -20,6 +20,12 @@ func (r *reg) publicRoutes() {
 	v1.Post("/badges/list", h.Badge.List)
 	v1.Get("/upload/file/{key}", h.Upload.GetFileByKey)
 
+	// ── 站点自定义层（公开读） ────────────────────────────────
+	// 自定义页与前台聚合（导航 / 首页模块 / 生效片段）必须匿名可读：
+	// 它们参与首屏注入，登录墙会让人看不到自己配的 CSS。
+	v1.Get("/pages/{slug}", h.Customize.GetPublicPage)
+	v1.Post("/customization/public", h.Customize.GetPublicCustomization)
+
 	v1.PartyFunc("/auth", func(auth iris.Party) {
 		auth.Post("/register",
 			middleware.RateLimit(deps.Limiter, "register", 5, time.Minute),

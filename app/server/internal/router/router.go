@@ -61,6 +61,24 @@ func Register(app *iris.Application, h *handler.Handler, deps middleware.Deps, g
 	app.Get("/.well-known/openid-configuration", gw.SSO.Discovery)
 	app.Get("/.well-known/jwks.json", gw.SSO.JWKS)
 
+	// ── MCP Server (app root, JSON-RPC) ───────────────────────────
+	//
+	// 挂在应用根而不是 /api/v1：MCP 客户端按约定路径发现服务。
+	// 代价是它拿不到 Preflight/Enforce 的任何保护——鉴权、封禁、权限、
+	// 限流四项检查由 internal/mcp.Enforcer 自行完成（见 layered-architecture
+	// 规范「网关保护面之外的端点必须自行完成等价检查」）。
+	//
+	// 必须在这里注册而不是在 protected party 里：protected 的中间件链在
+	// 注册路由那一刻取快照，把 /mcp 塞进去会连网关的会话解析一起继承，
+	// 而 MCP 用的是 API Key 而非会话，两者凭证语义不同。
+	if h.MCP != nil {
+		app.Post("/mcp", h.MCP.Serve)
+		// 浏览器侧的预检：MCP 客户端一般是原生进程，但 Web 版客户端会发 OPTIONS。
+		app.Options("/mcp", func(ctx iris.Context) {
+			ctx.StatusCode(204)
+		})
+	}
+
 	// ── Body size limit (global 1MB, upload 10MB) ─────────────
 	v1.Use(middleware.PathBodyLimit(1*1024*1024, map[string]int64{
 		"/api/v1/upload": 10 * 1024 * 1024,

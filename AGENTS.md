@@ -243,7 +243,11 @@ func NewUserRepository(store db.Store) UserRepository {
 文件上传抽象层，支持本地存储和 S3。提供预签名签名、上传确认、文件列表和删除。
 
 ### Notification — 通知 (`model/notification.go`, `handler/notification.go`, `service/notification.go`, `repository/notification.go`)
-用户通知系统，支持列表、未读计数、标记已读、批量标记已读和删除。`/stream` 端点以 SSE 方式推送未读数，前端通过 `@feedchamber/sse-client` 的 `SSEClient` 订阅（自动重连 + token 刷新）。未读计数使用 KV Store 缓存，实时更新无需查 DB。
+用户通知系统，支持列表（按 type / read 服务端筛选）、未读计数、标记已读、批量标记已读和删除。`/stream` 端点以 SSE 方式推送未读数，前端通过 `@feedchamber/sse-client` 的 `SSEClient` 订阅（自动重连 + token 刷新），深链映射的唯一出口是 `app/web/lib/notification-target.ts`。未读计数使用 KV Store 缓存，实时更新无需查 DB。
+
+两条容易改坏的性质：
+- **一条评论只产生一条通知**。同一次评论可能同时命中「帖子作者 / @提及 / 关注话题」三条扇出路径，`service/content.go` 用一个共享的 `notified` 集合按「作者 > 提及 > 关注」优先级去重，集合随后传给 `publishUserMentions` 与 `NotifyWatchers`。新增扇出步骤必须接收并遵守同一个集合，否则收件人会重复收到通知。
+- **`/stream` 必须发心跳**。空闲的通知流不产生任何字节，任何带读超时的中间层（nginx 默认 60s）都会切断它；handler 每 15s 写一行 SSE 注释 `: keepalive`（客户端忽略，前端解析器只认 `data: ` 行）。nginx 侧另有 SSE 专用 location 兜底，见 `deploy/AGENTS.md`。
 
 ### Report — 举报 (`model/report.go`, `handler/report.go`, `service/report.go`, `repository/report.go`)
 内容举报系统，支持创建、列表和状态更新（待处理/已处理/已关闭）。
@@ -511,7 +515,7 @@ open http://localhost:8080/swagger/
 
 <!-- 由 `node scripts/check-agents-docs.mjs --write-index` 生成，请勿手改。 -->
 
-共 39 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
+共 40 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
 
 | 模块目录 | 文档 | 标题 |
 |----------|------|------|
@@ -524,6 +528,7 @@ open http://localhost:8080/swagger/
 | `app/server/internal/gateway/` | [AGENTS.md](app/server/internal/gateway/AGENTS.md) | Gateway 网关层 |
 | `app/server/internal/handler/` | [AGENTS.md](app/server/internal/handler/AGENTS.md) | Handler 层 |
 | `app/server/internal/mailer/` | [AGENTS.md](app/server/internal/mailer/AGENTS.md) | Mailer 邮件发送抽象 |
+| `app/server/internal/mcp/` | [AGENTS.md](app/server/internal/mcp/AGENTS.md) | MCP Server（`internal/mcp/`） |
 | `app/server/internal/metrics/` | [AGENTS.md](app/server/internal/metrics/AGENTS.md) | Metrics Prometheus 指标 |
 | `app/server/internal/middleware/` | [AGENTS.md](app/server/internal/middleware/AGENTS.md) | Middleware 层 |
 | `app/server/internal/mock/` | [AGENTS.md](app/server/internal/mock/AGENTS.md) | Mock 测试替身 |
