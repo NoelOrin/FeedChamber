@@ -11,6 +11,7 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 - 分页列表用 `pkg.SuccessPaginated(ctx, items, total)` 返回（内部包成 `{items,total}`），非分页用 `pkg.Success(ctx, data)`；两者输出固定 `{code:0,msg:"success",data}`
 - 错误统一用 `pkg.HandleError(ctx, err)`：`*pkg.AppError` 走其业务码，其余一律压平为 `500 INTERNAL_ERROR`
 - 参数获取：路径参数 `ctx.Params().Get("id")`，请求体 `ctx.ReadJSON(&req)`；分页用 `readListParams(ctx)` 返回 `ListParams{Page, PageSize}`，时间范围用 `readTimeRange(ctx, p)`
+- **列表接口必须容忍空 body**：`ctx.ReadJSON` 在无 body 的 POST 上返回 `io.EOF`，直接 `pkg.Fail(INVALID_PARAMS)` 会把「合法的空筛选」打成 400。写法是 `if err := ctx.ReadJSON(&req); err != nil && !errors.Is(err, io.EOF) { … }`（`notification.go` / `banned.go` 已按此处理，`readListParams` 内部同理）。`/admin/banned/list` 曾因此整个列表恒空——前端 `bannedService.list()` 不传 body。
 - 当前用户来自**服务端会话**（不是 JWT）：`currentSession(ctx)` 取 `*model.UserSession`，`currentUser(ctx)` / `currentUserID(ctx)` / `currentRole(ctx)` / `requireUser(ctx)` 都从网关写入的 ctx values 派生（`internal/gateway/auth.go` 的 `applySession`）
 - 这些 ctx values 的键名是跨包契约，用 `pkg.CtxUserID` / `CtxUsername` / `CtxRole` / `CtxSession` / `CtxAuthMethod` / `CtxAPIKeyScopes` / `CtxClientScopes` 常量（`internal/pkg/ctxkey.go`），不要写字面量；注意 `CtxUserID` 装的是 `User.ID`（ULID）；对应的 handler 辅助函数叫 `currentUserID`（2026-10-28 由 `currentUserUUID` 改名，旧名会让人误以为在读 UUID 列）
 - 每个方法上方必须有 swag 注解 (@Summary, @Description, @Tags, @Param, @Success, @Router, @Security)；`make swag` 依赖它们生成 `docs/` 与根 `openapi.json`

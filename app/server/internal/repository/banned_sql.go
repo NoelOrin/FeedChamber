@@ -80,3 +80,23 @@ func (r *sqlBannedRepo) ListByUserID(ctx context.Context, userID string) ([]mode
 	err := r.db.DB().WithContext(ctx).Where("user_id = ?", userID).Order("scope, space_id").Find(&bans).Error
 	return bans, err
 }
+
+func (r *sqlBannedRepo) Count(ctx context.Context) (int64, error) {
+	var total int64
+	err := r.db.DB().WithContext(ctx).Model(&model.Banned{}).Count(&total).Error
+	return total, err
+}
+
+func (r *sqlBannedRepo) CountByScope(ctx context.Context, scope, spaceID string) (int64, error) {
+	var total int64
+	query := r.db.DB().WithContext(ctx).Model(&model.Banned{}).Where("scope = ?", scope)
+
+	if scope == "space" && spaceID != "" {
+		query = query.Where("space_id = ?", spaceID)
+	} else if scope == "global" {
+		query = query.Where("space_id IS NULL OR space_id = ''")
+	}
+
+	err := query.Count(&total).Error
+	return total, err
+}

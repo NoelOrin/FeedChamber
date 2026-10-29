@@ -20,7 +20,8 @@ type BannedService interface {
 	// 通用方法
 	IsBanned(ctx context.Context, userID string) bool
 	IsBannedInSpace(ctx context.Context, userID, spaceID string) bool
-	List(ctx context.Context, page, pageSize int) ([]model.Banned, error)
-	ListByScope(ctx context.Context, scope, spaceID string, page, pageSize int) ([]model.Banned, error)
+	// List / ListByScope 返回 (items, total, error)：handler 用 total 构造分页信封。
+	List(ctx context.Context, page, pageSize int) ([]model.Banned, int64, error)
+	ListByScope(ctx context.Context, scope, spaceID string, page, pageSize int) ([]model.Banned, int64, error)
 	ListByUserID(ctx context.Context, userID string) ([]model.Banned, error)
 }

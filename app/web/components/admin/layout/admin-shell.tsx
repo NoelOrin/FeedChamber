@@ -2,7 +2,7 @@
 
 import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useAccessPermissions } from '~/components/admin/access/access-context';
 import { Badge } from '~/components/ui/badge';
@@ -217,15 +217,39 @@ export function AdminShell({ children, user }: { children?: ReactNode; user?: Ad
 			.map((item) => (item.children ? { ...item, children: item.children.filter(keep) } : item));
 	}, [menuItems, permissions, permissionsLoaded]);
 
-	// 当前路径所属的组默认展开，避免刷新后菜单收起找不到自己
+	// 当前路径所属的组在**导航时**自动展开，避免刷新后菜单收起找不到自己。
+	//
+	// 这里刻意只认 pathname 变化：早前依赖数组里带了 openGroups，于是用户刚把
+	// 当前所在的组手动收起，effect 立刻把它又展开——「父级收不起来」。
+	// 用 ref 记住上一次已经自动展开过的路径，同一路径下的开合完全交给用户；
+	// 权限码尚未到货（visibleMenuItems 还空着）时先不记账，等菜单成形再展开一次。
+	const lastAutoOpenPath = useRef<string | null>(null);
 	useEffect(() => {
+		if (lastAutoOpenPath.current === pathname) return;
 		const owner = visibleMenuItems.find((item) => item.children?.some((child) => pathname.startsWith(child.path)));
-		if (owner && !openGroups.includes(owner.path)) {
-			setOpenGroups((prev) => (prev.includes(owner.path) ? prev : [...prev, owner.path]));
-		}
-	}, [pathname, visibleMenuItems, openGroups]);
+		if (!owner) return;
+		lastAutoOpenPath.current = pathname;
+		setOpenGroups((prev) => (prev.includes(owner.path) ? prev : [...prev, owner.path]));
+	}, [pathname, visibleMenuItems]);
 
-	const isActive = (path: string) => pathname === path || pathname.startsWith(`${path}/`);
+	// 命中判定用「最长前缀胜出」：`/admin` 是前缀一切的根，裸 startsWith 会让
+	// 「运营概览」在每个后台页都亮着，也会让 `/admin/posts` 与 `/admin/posts/detail`
+	// 同时高亮。这里只让最具体的那个**在菜单里真的渲染出来**的项亮——详情页是
+	// `hideInMenu`，把它算进「更具体」会让列表项和详情项都不亮。
+	const isActive = useCallback(
+		(path: string) => {
+			const matches = (p: string) => pathname === p || pathname.startsWith(`${p}/`);
+			if (!matches(path)) return false;
+			const deeper = visibleMenuItems.some((item) =>
+				(item.children ?? [item]).some(
+					(child) =>
+						!child.hideInMenu && child.path !== path && matches(child.path) && child.path.startsWith(`${path}/`),
+				),
+			);
+			return !deeper;
+		},
+		[pathname, visibleMenuItems],
+	);
 
 	async function handleLogout() {
 		await authClient.logout();
@@ -236,12 +260,14 @@ export function AdminShell({ children, user }: { children?: ReactNode; user?: Ad
 	const iconButton =
 		'inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/80 focus-visible:outline-none';
 
+	// 单页应用壳层：整页高度锁死，只有内容区（main）滚动。
+	// 早前是 `min-h-screen` 文档流布局，页面一长就把侧栏和顶栏一起滚走。
 	return (
-		<div className="admin-surface bg-background text-foreground flex min-h-screen">
+		<div className="admin-surface bg-background text-foreground flex h-screen overflow-hidden">
 			{/* ── 侧栏 ───────────────────────────────────────────── */}
 			<aside
 				className={cn(
-					'border-border bg-card flex shrink-0 flex-col border-r transition-[width] duration-200',
+					'border-border bg-card flex h-full shrink-0 flex-col border-r transition-[width] duration-200',
 					collapsed ? 'w-[60px]' : 'w-[228px]',
 				)}
 			>
@@ -414,7 +440,7 @@ export function AdminShell({ children, user }: { children?: ReactNode; user?: Ad
 			</aside>
 
 			{/* ── 主区 ───────────────────────────────────────────── */}
-			<div className="flex min-w-0 flex-1 flex-col">
+			<div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
 				<header className="border-border bg-card flex h-14 shrink-0 items-center justify-between gap-3 border-b px-6">
 					<div className="flex min-w-0 items-center gap-2">
 						<Button variant="ghost" size="sm" onClick={() => navigate({ to: '/admin' })}>
@@ -476,7 +502,8 @@ export function AdminShell({ children, user }: { children?: ReactNode; user?: Ad
 					</div>
 				</header>
 
-				<main id="main-content" tabIndex={-1} className="min-w-0 flex-1 px-6 py-6 outline-none">
+				{/* 内容区是唯一的滚动容器（侧栏与顶栏固定）。 */}
+				<main id="main-content" tabIndex={-1} className="min-w-0 flex-1 overflow-y-auto px-6 py-6 outline-none">
 					<div className="mx-auto w-full max-w-[1280px]">{children}</div>
 				</main>
 			</div>

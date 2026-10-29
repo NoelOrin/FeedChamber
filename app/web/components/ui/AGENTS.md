@@ -13,6 +13,9 @@ shadcn/ui 基准的原语层：**无业务、无取数、只接收 props**。前
 3. **图标从 `~/lib/icons` 引入**。`biome.json` 的 `noRestrictedImports` 把直接 import `lucide-react` 或 `lucide-react/*` 判为 **error**。
 4. **颜色只用 token 类**（`bg-background`、`text-foreground`、`border-border`、`bg-primary` …），不要写死 hex 或 `bg-[#...]`。改配色改 `globals.css`，不要改组件。
 5. **`prose.tsx` 是正文排版的唯一出口**（Markdown 渲染走它）。shadcn 不覆盖这一块，不要就地再写一套 typography。
+6. **浮层层级只用 `globals.css` 的 `--z-*` token**（`z-[var(--z-popover)]` 等），不要写裸 `z-50` / `z-[100]`。层级梯度是 `dropdown 1000 < sticky 1020 < fixed 1030 < modal-backdrop 1040 < modal 1050 < popover 1060 < tooltip 1070`：任何「弹窗里的下拉/浮层」都必须 ≥ `--z-popover`，否则会被 modal（1050）压住——`select.tsx` 曾用 `z-50`，在 dialog/sheet 里点不出来。
+7. **浮层必须 portal 出去**，不要在业务容器里用 `relative + absolute` 自己画面板。自绘面板既吃不到统一层级，也会被 dialog 的 `overflow-y-auto` 裁掉——`tree-select.tsx` 已因此改走 `popover.tsx`。
+
 
 ## 文件表
 
@@ -53,9 +56,11 @@ node scripts/axe-audit.mjs   # 可访问性审计（需先起 web，登录态见
 - `data-table.tsx` 的 props 是后台 20+ 列表页的共享契约。加必填 prop 等于一次批量改动，优先用可选 prop + 默认值。
 - `prose.tsx` 的 class 表被 Markdown 渲染、公告、评论共用。改层级规则前先确认没有页面在覆写它。
 - 不要在这里引入 `@feedchamber/tokens`：Web 的 token 来自 `globals.css`，两套 token 并存会立刻出现色差。
+- **弹窗里的浮层要真的点一次再交付**：`dialog.tsx` 的 `DialogContent` 自带 `overflow-y-auto`，`sheet.tsx` 同理。浮层即使层级正确，也可能被这两层滚动容器裁掉——验证方式是在 `/admin/spaces` 新建弹窗里点开「可见性策略」下拉与「父版面」树选择，确认面板完整可见且能选中。
 
 ## 本文件何时更新
 
 - 新增/删除原语文件
 - `data-table.tsx` / `confirm-dialog.tsx` / `prose.tsx` 的对外契约变化
+- 浮层层级契约（`--z-*` 梯度、`select.tsx` / `tree-select.tsx` 的实现方式）变化
 - 视觉基准从 `globals.css` 迁移到别处（例如恢复 tokens 包消费）

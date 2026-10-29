@@ -1805,6 +1805,8 @@ paths:
                       items:
                         $ref: '#/definitions/handler.BannedListView'
                       type: array
+                    total:
+                      type: integer
                   type: object
               type: object
         "401":

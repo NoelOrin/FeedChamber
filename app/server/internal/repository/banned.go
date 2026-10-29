@@ -16,6 +16,9 @@ type BannedRepository interface {
 	List(ctx context.Context, offset, limit int) ([]model.Banned, error)
 	ListByScope(ctx context.Context, scope, spaceID string, offset, limit int) ([]model.Banned, error)
 	ListByUserID(ctx context.Context, userID string) ([]model.Banned, error)
+	// Count / CountByScope 与上面的列表方法成对出现：列表接口的分页条需要真实总数。
+	Count(ctx context.Context) (int64, error)
+	CountByScope(ctx context.Context, scope, spaceID string) (int64, error)
 }
 
 func NewBannedRepository(store db.Store) BannedRepository {

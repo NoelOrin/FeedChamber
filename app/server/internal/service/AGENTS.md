@@ -67,7 +67,7 @@
 | setting.go | SettingService | SettingRepository |
 | admin.go | AdminService | AdminRepository, UserRepository, KV, TokenBlacklist |
 | admin_iface.go | — | AdminService 接口 + `AdminStats`, `DashboardData`, `SearchResults`, `EntitySearchResult[T]`, `UserActivities` |
-| banned.go | BannedService | BannedRepository |
+| banned.go | BannedService | BannedRepository（`List` / `ListByScope` 返回 `(items, total, error)`，分页条依赖 total） |
 | banned_iface.go | — | BannedService 接口定义 |
 | token_blacklist.go | TokenBlacklist | KV Store (jti + user 級黑名单) |
 | token_blacklist_iface.go | — | TokenBlacklist 接口 |

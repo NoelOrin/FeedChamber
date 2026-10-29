@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"time"
 
 	"feedchamber/internal/model"
@@ -383,7 +384,7 @@ func (h *bannedHandler) enrichBanned(ctx context.Context, bans []model.Banned) [
 // @Param        pageSize  body     int     false  "每页数量"  default(20)
 // @Param        scope     body     string  false  "禁言范围"  Enums(global, space)
 // @Param        space_id  body     string  false  "版面ID"    default()
-// @Success      200  {object}  pkg.Response{data=object{items=[]handler.BannedListView}}
+// @Success      200  {object}  pkg.Response{data=object{items=[]handler.BannedListView,total=int}}
 // @Failure      401  {object}  pkg.Response
 // @Failure      403  {object}  pkg.Response
 // @Router       /admin/banned/list [post]
@@ -394,26 +395,28 @@ func (h *bannedHandler) List(ctx iris.Context) {
 		Scope    string `json:"scope"`
 		SpaceID  string `json:"space_id"`
 	}
-	if err := ctx.ReadJSON(&req); err != nil {
+	// 列表接口的空 body 是合法输入（= 第一页、不筛选），不能当 400 打回。
+	if err := ctx.ReadJSON(&req); err != nil && !errors.Is(err, io.EOF) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
 	req.Page, req.PageSize = pkg.NormalizePagination(req.Page, req.PageSize)
 
 	var bans []model.Banned
+	var total int64
 	var err error
 
 	if req.Scope != "" {
-		bans, err = h.svc.ListByScope(ctx.Request().Context(), req.Scope, req.SpaceID, req.Page, req.PageSize)
+		bans, total, err = h.svc.ListByScope(ctx.Request().Context(), req.Scope, req.SpaceID, req.Page, req.PageSize)
 	} else {
-		bans, err = h.svc.List(ctx.Request().Context(), req.Page, req.PageSize)
+		bans, total, err = h.svc.List(ctx.Request().Context(), req.Page, req.PageSize)
 	}
 
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
-	pkg.Success(ctx, iris.Map{"items": h.enrichBanned(ctx.Request().Context(), bans)})
+	pkg.SuccessPaginated(ctx, h.enrichBanned(ctx.Request().Context(), bans), int(total))
 }
 
 // ListByUserID 获取用户的所有禁言记录

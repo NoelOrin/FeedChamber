@@ -9,7 +9,7 @@
 - 每个资源定义 `XxxRepository` 接口 + 工厂 `NewXxxRepository(store db.Store) XxxRepository`，工厂直接返回 SQL 实现；service 层只依赖接口。
 - SQL 实现命名为 `sqlXxxRepo{db db.SQLStore}`，所有 DB 访问经 `r.db.DB().WithContext(ctx)`。
 - 所有方法第一个参数为 `context.Context`（超时、trace、logger 都挂在它上面）。
-- 列表方法成对出现：`List(ctx, offset, limit)` + `Count(ctx)`；计数变体命名 `CountXxx`。
+- 列表方法成对出现：`List(ctx, offset, limit)` + `Count(ctx)`；计数变体命名 `CountXxx`。筛选版列表（`ListByScope` 等）同样要有对应的 `CountXxx`，否则分页条拿不到真实总数。`Banned` 曾是唯一例外（只有 `List` / `ListByScope`、没有计数），2026-10-29 补齐 `Count` / `CountByScope`。
 - 错误一律 `WrapDBErr(err)`（errors.go），把驱动错误翻译为 `ErrNotFound` / `ErrDuplicate` 等哨兵值，由 service 层再包装成 `*pkg.AppError`。
 - 软删除与审核相关的横切逻辑放在 `softdelete.go`、`checker_sql.go`、`post_filter.go`，不在各 repo 里重复。
 

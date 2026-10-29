@@ -865,6 +865,9 @@ const docTemplate = `{
                                                     "items": {
                                                         "$ref": "#/definitions/handler.BannedListView"
                                                     }
+                                                },
+                                                "total": {
+                                                    "type": "integer"
                                                 }
                                             }
                                         }

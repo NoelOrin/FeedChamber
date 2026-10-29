@@ -79,7 +79,8 @@ export function SelectContent({
 				data-slot="select-content"
 				position={position}
 				className={cn(
-					'relative z-50 max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md',
+					// 层级必须走统一 token：`z-50` 会被 modal(1050)/drawer 压住，弹层在弹窗里点不出来。
+					'relative z-[var(--z-popover)] max-h-96 min-w-[8rem] overflow-hidden rounded-md border border-border bg-popover text-popover-foreground shadow-md',
 					position === 'popper' && 'data-[side=bottom]:translate-y-1 data-[side=top]:-translate-y-1',
 					className,
 				)}

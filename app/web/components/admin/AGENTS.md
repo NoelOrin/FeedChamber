@@ -35,6 +35,13 @@
 
 > 根 `AGENTS.md` 曾写「菜单在 `components/admin/layout/pro-shell.tsx` 登记」——该文件不存在。以本文件为准。
 
+### 菜单开合与高亮的语义（改之前先读）
+
+- **滚动**：壳层是**固定高度的单页布局**（根容器 `h-screen overflow-hidden`），只有 `<main>` 是滚动容器（`overflow-y-auto`），侧栏 `<nav>` 单独滚动。**不要退回 `min-h-screen` 文档流布局**：那样页面一长就把侧栏和顶栏一起滚走，用户抱怨的「左侧 side 跟着页面滚」就是它。后台页面因此不能依赖 `window.scrollY`（历史上也没有页面依赖）。
+- **分组开合**：`openGroups` 持久化到 localStorage `menu_open_keys`。自动展开只在**路径变化**时发生（用 `useRef` 记住上次自动展开的路径），同一路径下用户的手动收起/展开不会被 effect 撤销。早前 effect 依赖里带了 `openGroups`，于是「当前组」永远收不起来——这是「子选中时父级收不起」的根因。
+- **高亮**：`isActive` 是**最长前缀胜出**，且只考虑菜单里真的渲染出来的项。`/admin` 是前缀一切的根，裸 `startsWith` 会让「运营概览」在每个后台页都亮着；把 `hideInMenu` 的详情页算进「更具体」则会让列表项和详情项都不亮。当前实现：路径命中且没有更具体的**可见**兄弟项时才高亮。
+
+
 ## 准入分工（不要在这层重写判定）
 
 - **判定**（要不要放行、跳哪里）在 `lib/admin/auth/access.ts` 的 `useDashboardAccess` / `canAccess`
@@ -55,6 +62,7 @@
 
 - 壳层分层（挂载门 / 分区总壳 / 视觉壳层）变化
 - `menuItems` 结构或菜单过滤机制变化
+- 壳层滚动模型（`h-screen` + `<main>` 滚动）、菜单开合/高亮语义变化
 - 准入组件（403 页 / 模块 403 / AccessProvider）的对外契约变化
 
 > 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
