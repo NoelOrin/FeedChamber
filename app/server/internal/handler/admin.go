@@ -2,10 +2,10 @@ package handler
 
 import (
 	"encoding/json"
-	"log/slog"
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
 	"feedchamber/internal/service"
+	"log/slog"
 	"strconv"
 
 	"github.com/kataras/iris/v12"

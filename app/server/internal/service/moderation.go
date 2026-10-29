@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
 	"feedchamber/internal/pkg/eventbus"
+	"github.com/sirupsen/logrus"
 
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"

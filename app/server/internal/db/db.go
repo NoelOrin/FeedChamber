@@ -1,8 +1,8 @@
 package db
 
 import (
-	"fmt"
 	"feedchamber/internal/config"
+	"fmt"
 )
 
 // Store is the unified database abstraction.

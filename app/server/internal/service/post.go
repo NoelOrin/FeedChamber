@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"feedchamber/internal/db"
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
@@ -11,6 +10,7 @@ import (
 	"feedchamber/internal/pkg/kvstore"
 	"feedchamber/internal/pkg/readcache"
 	"feedchamber/internal/repository"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"

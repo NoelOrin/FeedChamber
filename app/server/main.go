@@ -13,8 +13,8 @@ package main
 //go:generate swag init -g main.go -o docs --parseInternal
 
 import (
-	"fmt"
 	"feedchamber/cmd"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"

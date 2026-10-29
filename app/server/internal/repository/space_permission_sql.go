@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"feedchamber/internal/db"
 	"feedchamber/internal/model"
+	"fmt"
 
 	"gorm.io/gorm"
 )
