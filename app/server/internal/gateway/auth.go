@@ -150,6 +150,11 @@ func (a *AuthChecker) applySession(ctx iris.Context, sess *model.UserSession) {
 	reqCtx := ctx.Request().Context()
 	if shouldRenew(sess, time.Now()) {
 		expires := a.sessions.Extend(reqCtx, sess, model.SessionTTL)
-		pkg.SetSessionCookie(ctx, sess.SessionID, time.Until(time.Unix(expires, 0)))
+		// expires == 0 means the row was revoked in flight: adding several days
+		// of TTL to the browser cookie here would advertise a credential the
+		// server has already dropped.
+		if expires > 0 {
+			pkg.SetSessionCookie(ctx, sess.SessionID, time.Until(time.Unix(expires, 0)))
+		}
 	}
 }

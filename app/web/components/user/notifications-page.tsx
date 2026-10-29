@@ -15,19 +15,25 @@ import { NotificationList } from '~/components/user/notification-list';
 import { notificationsOptions, toReadFilter, totalPages } from '~/components/user/queries';
 import { SkeletonList } from '~/components/user/skeletons';
 import { CheckCheck } from '~/lib/icons';
+import { notificationHref } from '~/lib/notification-target';
 import { DEFAULT_PAGE_SIZE } from '~/lib/pagination';
 import { qk } from '~/lib/query/keys';
 import { toast } from '~/lib/toast';
 
+/**
+ * 与后端实际产出的 type 一一对应（`service/notification.go` 的订阅端 + `pm.go`）：
+ * comment / like / follow / mention / watch / motion / pm。
+ * 曾有一个 `system` 选项，但后端从不产生该类型，选中后永远是空列表，已移除。
+ */
 const TYPE_OPTIONS = [
 	{ value: 'all', label: '全部' },
-	{ value: 'system', label: '系统' },
 	{ value: 'comment', label: '评论' },
 	{ value: 'follow', label: '关注' },
 	{ value: 'like', label: '点赞' },
 	{ value: 'mention', label: '提及' },
-	{ value: 'pm', label: '私信' },
 	{ value: 'watch', label: '关注内容' },
+	{ value: 'motion', label: '自治动议' },
+	{ value: 'pm', label: '私信' },
 ];
 
 const READ_OPTIONS = [
@@ -35,26 +41,6 @@ const READ_OPTIONS = [
 	{ value: 'unread', label: '未读' },
 	{ value: 'read', label: '已读' },
 ];
-
-/** 通知深链跳转（与 components/layout/notification-bell.tsx 同一份 URL 契约）。 */
-function openNotificationTarget(n: Notification, push: (href: string) => void) {
-	if (!n.reference_id) return;
-	switch (n.type) {
-		case 'comment':
-		case 'replied':
-		case 'like':
-		case 'liked':
-			push(`/timeline/post?id=${encodeURIComponent(n.reference_id)}`);
-			return;
-		case 'follow':
-		case 'followed':
-			push(`/user/${encodeURIComponent(n.reference_id)}`);
-			return;
-		case 'pm':
-			push(`/messages/${encodeURIComponent(n.reference_id)}`);
-			return;
-	}
-}
 
 type ListState = { items: Notification[]; total: number };
 
@@ -144,7 +130,8 @@ export function NotificationsPage() {
 				return;
 			}
 		}
-		openNotificationTarget(n, (href) => router.push(href));
+		const href = notificationHref(n);
+		if (href) router.push(href);
 	}
 
 	function deleteNotification(n: Notification) {

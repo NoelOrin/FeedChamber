@@ -13,32 +13,13 @@ import { Sheet, SheetContent, SheetTitle } from '~/components/ui/sheet';
 import { useAuthStore } from '~/lib/auth';
 import { useNotificationSSE } from '~/lib/hooks/use-notification-sse';
 import { Bell, CheckCheck, X } from '~/lib/icons';
+import { notificationHref } from '~/lib/notification-target';
 import { DEFAULT_PAGE_SIZE } from '~/lib/pagination';
 import { qk } from '~/lib/query/keys';
 import { cn } from '~/lib/utils';
 
 const listKey = qk.notifications.list({ page: 1, page_size: DEFAULT_PAGE_SIZE });
 const NO_ITEMS: Notification[] = [];
-
-/** 通知深链跳转（旧 utils/openNotificationTarget.ts 的等价实现，router.push 版）。 */
-function openNotificationTarget(n: Notification, push: (href: string) => void) {
-	if (!n.reference_id) return;
-	switch (n.type) {
-		case 'comment':
-		case 'replied':
-		case 'like':
-		case 'liked':
-			push(`/timeline/post?id=${encodeURIComponent(n.reference_id)}`);
-			return;
-		case 'follow':
-		case 'followed':
-			push(`/user/${encodeURIComponent(n.reference_id)}`);
-			return;
-		case 'pm':
-			push(`/messages/${encodeURIComponent(n.reference_id)}`);
-			return;
-	}
-}
 
 export function NotificationBell() {
 	const router = useRouter();
@@ -88,7 +69,8 @@ export function NotificationBell() {
 			await markOne.mutateAsync(n.id).catch(() => {});
 		}
 		setOpen(false);
-		openNotificationTarget(n, (href) => router.push(href));
+		const href = notificationHref(n);
+		if (href) router.push(href);
 	}
 
 	function markAllRead() {

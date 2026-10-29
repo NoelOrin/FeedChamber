@@ -50,6 +50,10 @@ func (s *stubModerationService) ListRules(ctx context.Context, page, pageSize in
 }
 func (s *stubModerationService) SetTrustService(svc TrustService) {}
 
+// SetMCPServerService 是 P3 新增的接缝（外部审核优先走 MCP）。
+// 测试替身不涉及该路径，空实现即可。
+func (s *stubModerationService) SetMCPServerService(svc MCPServerService) {}
+
 func (s *stubModerationService) Mode(ctx context.Context) string {
 	if s.mode == "" {
 		return model.DefaultModerationMode

@@ -75,7 +75,7 @@ func (s *SessionStore) Lookup(ctx context.Context, sessionID string) (*model.Use
 
 	if cached, ok := s.cacheGet(ctx, sessionID); ok {
 		if cached.ExpiresAt <= time.Now().Unix() {
-			_ = s.kv.Delete(ctx, sessionCachePrefix+sessionID)
+			s.cacheDrop(ctx, sessionID)
 			return nil, ErrSessionNotFound
 		}
 		return cached, nil
@@ -93,36 +93,67 @@ func (s *SessionStore) Lookup(ctx context.Context, sessionID string) (*model.Use
 		s.revokeRow(ctx, &sess)
 		return nil, ErrSessionNotFound
 	}
+	// The row was read before this write, so a Revoke can land in between and
+	// the cache would then hold a dead credential for its whole TTL. Confirm the
+	// row is still there and refuse the lookup if it is gone. Revoke deletes the
+	// row before the cache entry, so this check plus that ordering closes every
+	// interleaving (see the invariant on revokeRow).
 	s.cachePut(ctx, &sess)
+	exists, checkErr := s.sessionExists(ctx, sessionID)
+	if checkErr != nil {
+		// Cannot prove existence — do not authenticate on an unverified cache.
+		s.cacheDrop(ctx, sessionID)
+		return nil, fmt.Errorf("lookup session: %w", checkErr)
+	}
+	if !exists {
+		s.cacheDrop(ctx, sessionID)
+		return nil, ErrSessionNotFound
+	}
 	return &sess, nil
 }
 
 // Touch records activity, throttled so a busy page does not write per request.
 // The stored row keeps the original expiry; sliding renewal is the handler's job.
+//
+// The UPDATE doubles as the existence proof for the cache refresh: a matching
+// row count of zero means the session was revoked while this request was in
+// flight, and writing the stale snapshot back would resurrect it.
 func (s *SessionStore) Touch(ctx context.Context, sess *model.UserSession, minInterval time.Duration) {
 	now := time.Now().Unix()
 	if minInterval > 0 && now-sess.LastActive < int64(minInterval.Seconds()) {
 		return
 	}
 	sess.LastActive = now
-	if err := s.db.WithContext(ctx).Model(&model.UserSession{}).
+	res := s.db.WithContext(ctx).Model(&model.UserSession{}).
 		Where("session_id = ?", sess.SessionID).
-		Update("last_active", now).Error; err != nil {
+		Update("last_active", now)
+	if res.Error != nil {
+		return
+	}
+	if res.RowsAffected == 0 {
+		s.cacheDrop(ctx, sess.SessionID)
 		return
 	}
 	s.cachePut(ctx, sess)
 }
 
 // Extend slides a session's lifetime and re-issues the cache entry. Returns the
-// new absolute expiry so the caller can re-set the cookie with a matching Max-Age.
+// new absolute expiry so the caller can re-set the cookie with a matching Max-Age,
+// or 0 when the session no longer exists (caller must not re-issue the cookie).
 func (s *SessionStore) Extend(ctx context.Context, sess *model.UserSession, ttl time.Duration) int64 {
 	expires := time.Now().Add(ttl).Unix()
-	sess.ExpiresAt = expires
-	if err := s.db.WithContext(ctx).Model(&model.UserSession{}).
+	res := s.db.WithContext(ctx).Model(&model.UserSession{}).
 		Where("session_id = ?", sess.SessionID).
-		Update("expires_at", expires).Error; err != nil {
+		Update("expires_at", expires)
+	if res.Error != nil {
 		return sess.ExpiresAt
 	}
+	// Same existence proof as Touch: zero rows means revoked in flight.
+	if res.RowsAffected == 0 {
+		s.cacheDrop(ctx, sess.SessionID)
+		return 0
+	}
+	sess.ExpiresAt = expires
 	s.cachePut(ctx, sess)
 	return expires
 }
@@ -153,10 +184,43 @@ func (s *SessionStore) RevokeAllForUser(ctx context.Context, userUUID string) er
 	return nil
 }
 
+// revokeRow drops one session row and its cache entry.
+//
+// Ordering is the invariant that makes cache resurrection impossible: delete the
+// ROW first, then the cache entry. Every cache write path (Create / Lookup /
+// Touch / Extend) either proves the row still exists *after* it writes, or
+// rewrites the cache from a statement whose RowsAffected proves it. With the row
+// gone first:
+//   - a writer that committed before the delete is overwritten by the cache
+//     delete that follows; and
+//   - a writer that commits after the delete finds RowsAffected == 0 (or its
+//     post-write existence check fails) and drops the entry itself.
+//
+// Deleting the cache first (the previous order) left the window open in the
+// opposite direction: an in-flight writer would re-add the entry after the
+// delete and the credential stayed valid for the rest of its TTL.
 func (s *SessionStore) revokeRow(ctx context.Context, sess *model.UserSession) {
-	_ = s.kv.Delete(ctx, sessionCachePrefix+sess.SessionID)
 	_ = s.db.WithContext(ctx).
 		Where("session_id = ?", sess.SessionID).Delete(&model.UserSession{}).Error
+	s.cacheDrop(ctx, sess.SessionID)
+}
+
+// sessionExists reports whether the session row is still present. Used as the
+// post-write existence proof on the Lookup miss path.
+func (s *SessionStore) sessionExists(ctx context.Context, sessionID string) (bool, error) {
+	var count int64
+	err := s.db.WithContext(ctx).Model(&model.UserSession{}).
+		Where("session_id = ?", sessionID).Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
+// cacheDrop removes a cache entry. Best-effort: callers are on paths where the
+// DB is already authoritative.
+func (s *SessionStore) cacheDrop(ctx context.Context, sessionID string) {
+	_ = s.kv.Delete(ctx, sessionCachePrefix+sessionID)
 }
 
 func (s *SessionStore) cachePut(ctx context.Context, sess *model.UserSession) {

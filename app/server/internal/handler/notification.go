@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"net/http"
 	"time"
 
 	"feedchamber/internal/metrics"
@@ -220,6 +221,18 @@ func (h *notificationHandler) Stream(ctx iris.Context) {
 		return true
 	}
 
+	writeSSEKeepalive := func(w io.Writer, f http.Flusher) bool {
+		// SSE comment: ignored by every client, and the frontend parser only
+		// looks at lines starting with "data: ", so this cannot surface as an
+		// event with an empty payload.
+		if _, err := io.WriteString(w, ": keepalive\n\n"); err != nil {
+			metrics.ObserveSSEWriteFailure(metrics.SSEChannelNotification)
+			return false
+		}
+		f.Flush()
+		return true
+	}
+
 	// Try Pub/Sub first.
 	ch, err := h.kv.Subscribe(reqCtx, "notif:"+u.ID)
 	if err == nil {
@@ -227,6 +240,15 @@ func (h *notificationHandler) Stream(ctx iris.Context) {
 		if count, cErr := h.svc.CountUnread(reqCtx, u.ID); cErr == nil {
 			_ = writeSSE([]byte(fmt.Sprintf(`{"unread":%d}`, count)))
 		}
+		// Keepalive: an idle notifications stream carries no bytes at all, so any
+		// intermediary with a read timeout drops it. nginx's proxy_read_timeout
+		// defaults to 60s, and the stream was measured disconnecting at ~61s while
+		// /realtime/stream (which heartbeats) survived past 200s. An SSE comment
+		// line is the protocol-correct keepalive: clients ignore it, the frontend
+		// parser only reacts to "data: " lines, and it cannot be mistaken for an
+		// event. Use the same 15s cadence as the realtime stream.
+		heartbeat := time.NewTicker(15 * time.Second)
+		defer heartbeat.Stop()
 		for {
 			select {
 			case msg, ok := <-ch:
@@ -234,6 +256,10 @@ func (h *notificationHandler) Stream(ctx iris.Context) {
 					return
 				}
 				if !writeSSE(msg) {
+					return
+				}
+			case <-heartbeat.C:
+				if !writeSSEKeepalive(w, flusher) {
 					return
 				}
 			case <-reqCtx.Done():

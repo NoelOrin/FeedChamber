@@ -96,11 +96,16 @@ func (s *watchService) List(ctx context.Context, userID string, page, pageSize i
 	return items, int(total), nil
 }
 
-func (s *watchService) NotifyWatchers(ctx context.Context, postID, authorID, senderName, postTitle string) {
+// NotifyWatchers fans out a watch notification for a post update/reply.
+//
+// notified is shared with the other fanout steps of the same event so a recipient
+// who is also the post author or was @-mentioned does not get a second
+// notification for the same comment. Entries already in it are skipped.
+func (s *watchService) NotifyWatchers(ctx context.Context, postID, authorID, senderName, postTitle string, notified map[string]struct{}) {
 	if s.repo == nil || s.bus == nil || postID == "" {
 		return
 	}
-	seen := map[string]struct{}{}
+	seen := notified
 	add := func(ids []string) {
 		for _, id := range ids {
 			if id == "" || id == authorID {

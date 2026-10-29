@@ -32,7 +32,13 @@ func ExtractMentions(body string) []string {
 
 // publishUserMentions resolves mentioned usernames and publishes EventUserMentioned
 // for each valid user other than the author. reference_id is postID.
-func publishUserMentions(bus *eventbus.EventBus, userRepo repository.UserRepository, ctx context.Context, authorID, postID, text, senderName string) {
+//
+// notified accumulates the recipients handled for the current event. One comment
+// can reach the same person as the post author, as a mentioned user and as a
+// follower of the post/tag; without this the recipient got three notifications
+// for a single comment. Callers pass the set that earlier fanout steps filled and
+// this one skips (and then adds to) it.
+func publishUserMentions(bus *eventbus.EventBus, userRepo repository.UserRepository, ctx context.Context, authorID, postID, text, senderName string, notified map[string]struct{}) {
 	if bus == nil || userRepo == nil || text == "" {
 		return
 	}
@@ -42,6 +48,10 @@ func publishUserMentions(bus *eventbus.EventBus, userRepo repository.UserReposit
 		if err != nil || mentioned == nil || mentioned.ID == "" || mentioned.ID == authorID {
 			continue
 		}
+		if _, dup := notified[mentioned.ID]; dup {
+			continue
+		}
+		notified[mentioned.ID] = struct{}{}
 		bus.Publish(eventbus.Event{
 			Type: eventbus.EventUserMentioned,
 			Ctx:  ctx,

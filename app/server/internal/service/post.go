@@ -646,7 +646,7 @@ func (s *postService) Create(ctx context.Context, authorID, title, body, spaceID
 	}
 
 	// @提及通知（标题 + 正文）
-	publishUserMentions(s.bus, s.users, ctx, authorID, post.ID, title+"\n"+body, senderName)
+	publishUserMentions(s.bus, s.users, ctx, authorID, post.ID, title+"\n"+body, senderName, map[string]struct{}{})
 
 	s.invalidateListCache(ctx)
 	return post, nil

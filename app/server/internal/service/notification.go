@@ -104,12 +104,6 @@ func (s *notificationService) Create(ctx context.Context, userID, notifType, con
 	return nil
 }
 
-func (s *notificationService) List(ctx context.Context, userID string, page, pageSize int) ([]model.Notification, error) {
-	page, pageSize = pkg.NormalizePagination(page, pageSize)
-	offset := (page - 1) * pageSize
-	return s.repo.ListByUser(ctx, userID, offset, pageSize)
-}
-
 func (s *notificationService) ListFiltered(ctx context.Context, userID string, page, pageSize int, typ, read string) ([]model.Notification, int64, error) {
 	page, pageSize = pkg.NormalizePagination(page, pageSize)
 	offset := (page - 1) * pageSize
@@ -122,10 +116,6 @@ func (s *notificationService) ListFiltered(ctx context.Context, userID string, p
 		return nil, 0, err
 	}
 	return items, total, nil
-}
-
-func (s *notificationService) CountByUser(ctx context.Context, userID string) (int64, error) {
-	return s.repo.CountByUser(ctx, userID)
 }
 
 func (s *notificationService) CountUnread(ctx context.Context, userID string) (int64, error) {

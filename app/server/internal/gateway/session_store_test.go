@@ -17,8 +17,9 @@ import (
 
 type stubKV struct {
 	baseKV
-	data map[string]string
-	ttls map[string]time.Duration
+	data  map[string]string
+	ttls  map[string]time.Duration
+	onSet func() // test hook: runs at the start of every Set
 }
 
 func newStubKV() *stubKV {
@@ -26,6 +27,9 @@ func newStubKV() *stubKV {
 }
 
 func (k *stubKV) Set(_ context.Context, key, value string, ttl time.Duration) error {
+	if k.onSet != nil {
+		k.onSet()
+	}
 	k.data[key] = value
 	k.ttls[key] = ttl
 	return nil
@@ -206,4 +210,98 @@ func TestSessionStore_ExtendSlidesExpiry(t *testing.T) {
 	got, err := store.Lookup(ctx, "sid-e")
 	require.NoError(t, err)
 	assert.Equal(t, expires, got.ExpiresAt)
+}
+
+// ── Revocation must be final ────────────────────────────────────────────────
+//
+// A revoked credential must never resolve again, no matter where a concurrent
+// request was when the revoke landed. The class of bug these cover: a writer
+// that had already loaded the session re-writes the KV entry after Revoke
+// deleted it, resurrecting the credential for the rest of its TTL.
+
+func TestSessionStore_RevokedSessionStaysDeadAfterTouch(t *testing.T) {
+	store, _, db := newStore(t)
+	ctx := context.Background()
+
+	sess := newTestSession("sid-touch-revoked", "01USER", time.Now().Add(time.Hour).Unix())
+	require.NoError(t, store.Create(ctx, sess))
+
+	// An in-flight request authenticated before the revoke and still holds sess.
+	require.NoError(t, store.Revoke(ctx, "sid-touch-revoked"))
+
+	store.Touch(ctx, sess, 0)
+
+	var rows int64
+	require.NoError(t, db.Model(&model.UserSession{}).Count(&rows).Error)
+	require.Zero(t, rows, "row must stay deleted")
+
+	_, err := store.Lookup(ctx, "sid-touch-revoked")
+	require.ErrorIs(t, err, ErrSessionNotFound, "Touch must not resurrect a revoked session")
+}
+
+func TestSessionStore_RevokedSessionStaysDeadAfterExtend(t *testing.T) {
+	store, _, _ := newStore(t)
+	ctx := context.Background()
+
+	sess := newTestSession("sid-extend-revoked", "01USER", time.Now().Add(time.Hour).Unix())
+	require.NoError(t, store.Create(ctx, sess))
+	require.NoError(t, store.Revoke(ctx, "sid-extend-revoked"))
+
+	expires := store.Extend(ctx, sess, 72*time.Hour)
+	require.Zero(t, expires, "Extend must report failure so no cookie is re-issued")
+
+	_, err := store.Lookup(ctx, "sid-extend-revoked")
+	require.ErrorIs(t, err, ErrSessionNotFound, "Extend must not resurrect a revoked session")
+}
+
+// The read-through miss path: Lookup reads the row, Revoke deletes it, and only
+// then does Lookup try to warm the cache. Deterministically reproduced by
+// hooking the KV write that Lookup performs after its read.
+func TestSessionStore_RevokedSessionStaysDeadAfterReadThrough(t *testing.T) {
+	store, kv, db := newStore(t)
+	ctx := context.Background()
+
+	require.NoError(t, store.Create(ctx, newTestSession("sid-readthrough", "01USER", time.Now().Add(time.Hour).Unix())))
+	// Force the miss path so Lookup must read the DB row.
+	require.NoError(t, kv.Delete(ctx, sessionCachePrefix+"sid-readthrough"))
+
+	// Land the revoke exactly between Lookup's row read and its cache write.
+	kv.onSet = func() {
+		kv.onSet = nil
+		_ = db.Where("session_id = ?", "sid-readthrough").Delete(&model.UserSession{}).Error
+	}
+
+	_, err := store.Lookup(ctx, "sid-readthrough")
+	require.ErrorIs(t, err, ErrSessionNotFound,
+		"a revoke landing during the read-through must not be overwritten by the cache warmth")
+
+	require.Empty(t, kv.data[sessionCachePrefix+"sid-readthrough"],
+		"Lookup must drop the entry it could not prove")
+}
+
+func TestSessionStore_RevokeDeletesRowBeforeCache(t *testing.T) {
+	store, kv, _ := newStore(t)
+	ctx := context.Background()
+
+	sess := newTestSession("sid-order", "01USER", time.Now().Add(time.Hour).Unix())
+	require.NoError(t, store.Create(ctx, sess))
+	require.NotEmpty(t, kv.data[sessionCachePrefix+"sid-order"])
+
+	require.NoError(t, store.Revoke(ctx, "sid-order"))
+	require.Empty(t, kv.data[sessionCachePrefix+"sid-order"], "revoke must clear the cache entry")
+}
+
+func TestSessionStore_TouchDropsCacheWhenRowGone(t *testing.T) {
+	store, kv, db := newStore(t)
+	ctx := context.Background()
+
+	sess := newTestSession("sid-orphan", "01USER", time.Now().Add(time.Hour).Unix())
+	require.NoError(t, store.Create(ctx, sess))
+
+	// Row disappears without going through Revoke (e.g. manual delete / restore
+	// from an older backup); Touch must not keep serving it from cache.
+	require.NoError(t, db.Where("session_id = ?", "sid-orphan").Delete(&model.UserSession{}).Error)
+
+	store.Touch(ctx, sess, 0)
+	require.Empty(t, kv.data[sessionCachePrefix+"sid-orphan"])
 }
