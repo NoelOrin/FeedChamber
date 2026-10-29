@@ -1,4 +1,4 @@
-import { pmService } from '@orinforum/api-client';
+import { pmService } from '@feedchamber/api-client';
 import { queryOptions } from '@tanstack/react-query';
 
 import { qk } from '~/lib/query/keys';

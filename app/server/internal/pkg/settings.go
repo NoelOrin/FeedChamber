@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"time"
 
-	"orinforum/internal/mailer"
-	"orinforum/internal/storage"
+	"feedchamber/internal/mailer"
+	"feedchamber/internal/storage"
 )
 
 // SettingGetter 抽象 SettingService.Get，避免 pkg 包直接依赖 service 层。
@@ -93,7 +93,7 @@ func BuildMailerConfig(ctx context.Context, sg SettingGetter) mailer.Config {
 	return mailer.Config{
 		Provider: GetSettingOrDefault(ctx, sg, "email_provider", "EMAIL_PROVIDER", "log"),
 		From:     GetSettingOrDefault(ctx, sg, "email_from", "EMAIL_FROM", ""),
-		FromName: GetSettingOrDefault(ctx, sg, "email_from_name", "EMAIL_FROM_NAME", "OrinForum"),
+		FromName: GetSettingOrDefault(ctx, sg, "email_from_name", "EMAIL_FROM_NAME", "Feed Chamber"),
 		Host:     GetSettingOrDefault(ctx, sg, "email_smtp_host", "EMAIL_SMTP_HOST", ""),
 		Port:     GetSettingInt(ctx, sg, "email_smtp_port", "EMAIL_SMTP_PORT", 587),
 		Username: GetSettingOrDefault(ctx, sg, "email_username", "EMAIL_USERNAME", ""),

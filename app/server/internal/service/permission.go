@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/repository"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/repository"
 )
 
 const (

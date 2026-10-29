@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 
 	"golang.org/x/crypto/bcrypt"
 

@@ -2,7 +2,7 @@ package db
 
 import (
 	"fmt"
-	"orinforum/internal/config"
+	"feedchamber/internal/config"
 )
 
 // Store is the unified database abstraction.

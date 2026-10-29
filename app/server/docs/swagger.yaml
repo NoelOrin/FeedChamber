@@ -1277,8 +1277,8 @@ definitions:
 host: localhost:8080
 info:
   contact: {}
-  description: OrinForum 社区论坛 API 文档
-  title: OrinForum API
+  description: Feed Chamber 社区论坛 API 文档
+  title: Feed Chamber API
   version: "1.0"
 paths:
   /admin/announcements/{id}/delete:

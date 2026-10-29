@@ -1,4 +1,4 @@
-import type { SpaceNode } from '@orinforum/api-client';
+import type { SpaceNode } from '@feedchamber/api-client';
 import Link from 'next/link';
 import { SpaceIcon } from '~/components/space/space-icon';
 import { Button } from '~/components/ui/button';

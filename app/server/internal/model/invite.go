@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"orinforum/internal/pkg"
+	"feedchamber/internal/pkg"
 )
 
 // Invite 注册邀请码。

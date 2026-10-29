@@ -27,7 +27,7 @@
 ## 4. 网关 Tracing 实化与 nginx
 
 - [x] 4.1 `pkg/gateway/tracing.go`：空 TODO 替换为真实实现——路由匹配后把 `ctx.GetCurrentRoute().Path()`（模板，非具体路径）写进 `trace.Name`；沿用同一 span id，不调 `ctx.Next()`（与 `gateway.Handler()` 的组合方式一致）
-- [x] 4.2 `deploy/nginx/nginx.conf`：`map $http_x_request_id $req_id` + `proxy_set_header X-Request-ID $req_id`；`log_format orinforum_main` 带 `rid=`（名称必须避开 http 上下文里已存在的 `combined`）
+- [x] 4.2 `deploy/nginx/nginx.conf`：`map $http_x_request_id $req_id` + `proxy_set_header X-Request-ID $req_id`；`log_format feedchamber_main` 带 `rid=`（名称必须避开 http 上下文里已存在的 `combined`）
 - [x] 4.3 `WithRemoteAddrHeader` 未改动；伪造 trace id 的风险按 design 风险表接受（id 非机密、不进标签）
 
 ## 5. trace 经 NATS 传播
@@ -58,9 +58,9 @@
 
 ## 8. Prometheus / 告警 / Grafana / compose
 
-- [x] 8.1 `deploy/prometheus.yml`（新）：抓 `backend:9091`；`rule_files: /etc/prometheus/rules/*.yml`；`orinforum-health` 经 blackbox 探 `/api/v1/health`
-- [x] 8.2 `deploy/prometheus/rules/orinforum.yml`（新）：**13 条**告警（超出最低 8 条）——5xx 比率、P99、指标端口 up、health 探测、DB 池饱和、KV P99、CAS 耗尽、EventBus 丢弃、handler panic、webhook 终态失败、登录失败突增、限流 fail-open、指标族缺失
-- [x] 8.3 `deploy/grafana/provisioning/{datasources,dashboards}/*.yml` + `deploy/grafana/dashboards/orinforum.json`（9 面板）
+- [x] 8.1 `deploy/prometheus.yml`（新）：抓 `backend:9091`；`rule_files: /etc/prometheus/rules/*.yml`；`feedchamber-health` 经 blackbox 探 `/api/v1/health`
+- [x] 8.2 `deploy/prometheus/rules/feedchamber.yml`（新）：**13 条**告警（超出最低 8 条）——5xx 比率、P99、指标端口 up、health 探测、DB 池饱和、KV P99、CAS 耗尽、EventBus 丢弃、handler panic、webhook 终态失败、登录失败突增、限流 fail-open、指标族缺失
+- [x] 8.3 `deploy/grafana/provisioning/{datasources,dashboards}/*.yml` + `deploy/grafana/dashboards/feedchamber.json`（9 面板）
 - [x] 8.4 `docker-compose.cluster.yml`：prometheus 增规则挂载 + `depends_on: backend`；grafana 挂 provisioning/dashboards、口令改 `${GRAFANA_ADMIN_PASSWORD:?...}`；backend 补 `LOG_*`/`METRICS_PORT`/`TRACING_ENABLED`，`expose: ["8080","9091"]` 且无 `ports`
 - [x] 8.5 确认 `basic/lite/full/docker-compose.yml` 未被要求引入监控栈（不动；`METRICS_ENABLED=false` 时 9091 无监听）
 - [x] 8.6（新增）`deploy/blackbox/blackbox.yml`：`http_2xx` 模块。`/health` 返回 JSON 而非 Prometheus 文本，不引 prober 则「健康检查失败」告警无判定依据
@@ -91,5 +91,5 @@
 ## 11. 归档后跟进（2026-10-18）
 
 - [x] 11.1 测试基线修复：`internal/middleware/auth_test.go` / `auth_test_helpers.go` 是**未跟踪**的陈旧遗留文件（Aug 28-29，引用 2026-10-14 已删除的 `JWTAuth`/`OptionalJWTAuth`/`BanCheck`/`RequireRole`/`RequireOwnerOrPermission`/`Deps.Blacklist`），导致 `go test ./...` 该包编译失败。处理：迁移其中仍有效的 `AuthGate`(6) / `SpaceAuthGate`(5) / `RequirePermission`(4) 用例到新增的 `internal/middleware/auth_gate_test.go`（含 `fakeSpace` / `mockSettingReader` doubles），删除两份陈旧文件。现 `go test ./...` 全绿
-- [x] 11.2（既存缺陷）`MetricsFamilyMissing` 告警两处错误：① `absent()` 用了 histogram 基础名 `orinforum_kv_operation_duration_seconds`——TSDB 里只有 `_bucket/_sum/_count`，该子句**恒为真**，告警会永久触发；② 三个受探族都只在运行时产生标签、原先不 seed，健康但安静的实例 15 分钟后同样误报。修复：`absent()` 改探 `_count`；并由生产侧接线点 seed 零值——`eventbus.AllEventTypes()` + `eventbus.New` → `metrics.SeedEventbusEvent`、`kvstore.NewNATSStore` → `SeedKVOperation`（op 名收成常量 + `observedOps` 单一列表）、`middleware.RateLimit` 与 `gateway.NewRateLimiter` → `SeedRatelimitPolicy`。依赖方向保持 生产方 → metrics。`observability_test.go` 增 `TestProducerSeedingExportsRuntimeFamilies`（含「零观测 histogram 仍导出 `_count`」断言）
+- [x] 11.2（既存缺陷）`MetricsFamilyMissing` 告警两处错误：① `absent()` 用了 histogram 基础名 `feedchamber_kv_operation_duration_seconds`——TSDB 里只有 `_bucket/_sum/_count`，该子句**恒为真**，告警会永久触发；② 三个受探族都只在运行时产生标签、原先不 seed，健康但安静的实例 15 分钟后同样误报。修复：`absent()` 改探 `_count`；并由生产侧接线点 seed 零值——`eventbus.AllEventTypes()` + `eventbus.New` → `metrics.SeedEventbusEvent`、`kvstore.NewNATSStore` → `SeedKVOperation`（op 名收成常量 + `observedOps` 单一列表）、`middleware.RateLimit` 与 `gateway.NewRateLimiter` → `SeedRatelimitPolicy`。依赖方向保持 生产方 → metrics。`observability_test.go` 增 `TestProducerSeedingExportsRuntimeFamilies`（含「零观测 histogram 仍导出 `_count`」断言）
 - [x] 11.3 冒烟（隔离副本 `PORT=18080`/`METRICS_PORT=19091`，避开共享 `.env`）：`/api/v1/metrics` → 404、`:19091/metrics` → 200/23KB；安静实例上三族已在（`eventbus_publish_total` 12 序列、`kv_operation_duration_seconds_count` 9 序列、`ratelimit_rejections_total` 13 序列）；失败登录实测 `unknown_user=2` / `bad_password=1` / `no_credential=0`；入站 `traceparent` 沿用同 trace id 换新 span，畸形（大写）丢弃重生成，`X-Request-Id` == trace id；完成日志含 `trace_id`/`span_id`/`route`/`status`/`latency_ms`

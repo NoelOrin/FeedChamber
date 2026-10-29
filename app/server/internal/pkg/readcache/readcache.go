@@ -16,8 +16,8 @@ import (
 	"encoding/json"
 	"time"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/pkg/kvstore"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/pkg/kvstore"
 )
 
 // Cache 绑定一个 KV store 与一个 TTL。

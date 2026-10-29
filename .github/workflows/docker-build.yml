@@ -62,7 +62,7 @@ jobs:
 
       # Docker 要求镜像名全小写，而 GitHub 账号可能带大写（NoelOrin）。
       - name: Compute image name
-        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/orinforum-server" >> "$GITHUB_ENV"
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/feedchamber-server" >> "$GITHUB_ENV"
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
@@ -84,7 +84,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.description=OrinForum backend (Iris v12)
+            org.opencontainers.image.description=Feed Chamber backend (Iris v12)
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -109,7 +109,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Compute image name
-        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/orinforum-web" >> "$GITHUB_ENV"
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/feedchamber-web" >> "$GITHUB_ENV"
 
       - name: Log in to GHCR
         if: github.event_name != 'pull_request'
@@ -131,7 +131,7 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
           labels: |
             org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.description=OrinForum web (React 19 + vinext SSR)
+            org.opencontainers.image.description=Feed Chamber web (React 19 + vinext SSR)
 
       - name: Build and push
         uses: docker/build-push-action@v6

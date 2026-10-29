@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"orinforum/internal/pkg/logger"
-	"orinforum/internal/pkg/tracing"
+	"feedchamber/internal/pkg/logger"
+	"feedchamber/internal/pkg/tracing"
 
 	"github.com/kataras/iris/v12"
 )

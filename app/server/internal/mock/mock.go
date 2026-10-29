@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/repository"
-	"orinforum/internal/storage"
+	"feedchamber/internal/model"
+	"feedchamber/internal/repository"
+	"feedchamber/internal/storage"
 )
 
 // ── UploadRepository ────────────────────────────────────────────────────────

@@ -11,8 +11,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
 )
 
 // OAuth2/OIDC access tokens are opaque bearer strings: the server keeps only a

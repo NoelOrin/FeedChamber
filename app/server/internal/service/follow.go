@@ -3,9 +3,9 @@ package service
 import (
 	"context"
 
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/repository"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/repository"
 )
 
 type followService struct {

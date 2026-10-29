@@ -7,8 +7,8 @@ try {
 }
 
 const serverUrl = process.env.MOBILE_SERVER_URL?.trim() || undefined;
-const appId = process.env.CAPACITOR_APP_ID || 'com.orinforum.app';
-const appName = process.env.CAPACITOR_APP_NAME || 'OrinForum';
+const appId = process.env.CAPACITOR_APP_ID || 'com.feedchamber.app';
+const appName = process.env.CAPACITOR_APP_NAME || 'Feed Chamber';
 
 const config: CapacitorConfig = {
 	appId,

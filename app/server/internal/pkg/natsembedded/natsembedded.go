@@ -22,7 +22,7 @@ func Start() (*Server, error) {
 // StartOnPort 启动进程内 NATS。port <= 0 时使用随机端口，
 // port > 0 时固定监听 127.0.0.1:port。
 func StartOnPort(port int) (*Server, error) {
-	dir, err := os.MkdirTemp("", "orinforum-nats-js-*")
+	dir, err := os.MkdirTemp("", "feedchamber-nats-js-*")
 	if err != nil {
 		return nil, fmt.Errorf("nats embedded: temp store dir: %w", err)
 	}

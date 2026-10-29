@@ -1,6 +1,6 @@
-# @orinforum/tokens
+# @feedchamber/tokens
 
-OrinForum 视觉设计 Token 包。Web 端（`@orinforum/web`）为视觉权威来源；Dashboard（`@orinforum/dashboard`）消费同一套 token 以保持跨端视觉一致。构建产出静态 CSS + JS 产物，运行时零颜色算法依赖。
+Feed Chamber 视觉设计 Token 包。Web 端（`@feedchamber/web`）为视觉权威来源；Dashboard（`@feedchamber/dashboard`）消费同一套 token 以保持跨端视觉一致。构建产出静态 CSS + JS 产物，运行时零颜色算法依赖。
 
 **单一可信来源：`w3c-tokens.json`**（W3C Design Tokens / DTCG 格式）。所有 token 值都以 `$value` / `$type` 声明，其余产物全部由构建脚本推导。修改 token 只需编辑 `w3c-tokens.json` 后重新构建，两个前端自动生效。
 
@@ -39,11 +39,11 @@ packages/tokens/
 ## 构建
 
 ```bash
-pnpm --filter @orinforum/tokens tokens:build
+pnpm --filter @feedchamber/tokens tokens:build
 ```
 
 ## 修改 token 的流程
 
 1. 编辑 `w3c-tokens.json`（保持 W3C DTCG 结构）。
-2. 运行 `pnpm --filter @orinforum/tokens tokens:build`。
+2. 运行 `pnpm --filter @feedchamber/tokens tokens:build`。
 3. 提交 `w3c-tokens.json` 与 `dist/` 产物。

@@ -1,7 +1,7 @@
 # backend-service-design Specification
 
 ## Purpose
-定义 OrinForum 后端关键服务设计约束：Repository 的 SQL 单实现、统一响应与错误映射、权限系统与路由组织方式，确保跨模块实现一致。
+定义 Feed Chamber 后端关键服务设计约束：Repository 的 SQL 单实现、统一响应与错误映射、权限系统与路由组织方式，确保跨模块实现一致。
 ## Requirements
 ### Requirement: 统一响应与错误映射
 

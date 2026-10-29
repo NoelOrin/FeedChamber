@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"orinforum/internal/pkg/eventbus"
+	"feedchamber/internal/pkg/eventbus"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/repository"
 )
 
 // moderationExternalTimeout 是发布前调用外部自动化审核服务的硬超时：

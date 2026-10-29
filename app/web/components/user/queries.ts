@@ -7,7 +7,7 @@ import {
 	notificationService,
 	postService,
 	userService,
-} from '@orinforum/api-client';
+} from '@feedchamber/api-client';
 import { queryOptions } from '@tanstack/react-query';
 
 import { DEFAULT_PAGE_SIZE } from '~/lib/pagination';

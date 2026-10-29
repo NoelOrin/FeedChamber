@@ -3,9 +3,9 @@ package repository
 import (
 	"context"
 	"errors"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
 	"time"
 )
 

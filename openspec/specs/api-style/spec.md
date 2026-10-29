@@ -1,7 +1,7 @@
 # api-style Specification
 
 ## Purpose
-定义 OrinForum 后端 HTTP API 的统一约定：HTTP 方法按「有无副作用」选择（写操作 `POST`、只读查询 MAY `GET`），URL 遵循 RPC 风格而非 RESTful，所有出口共用同一响应信封与错误码命名空间。
+定义 Feed Chamber 后端 HTTP API 的统一约定：HTTP 方法按「有无副作用」选择（写操作 `POST`、只读查询 MAY `GET`），URL 遵循 RPC 风格而非 RESTful，所有出口共用同一响应信封与错误码命名空间。
 ## Requirements
 ### Requirement: HTTP 方法选择与 RPC 风格 URL
 

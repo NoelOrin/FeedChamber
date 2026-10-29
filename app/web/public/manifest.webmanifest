@@ -1,7 +1,7 @@
 {
-	"name": "OrinForum",
-	"short_name": "OrinForum",
-	"description": "OrinForum 社区论坛",
+	"name": "Feed Chamber",
+	"short_name": "Feed Chamber",
+	"description": "Feed Chamber 社区论坛",
 	"start_url": "/",
 	"display": "standalone",
 	"background_color": "#ffffff",

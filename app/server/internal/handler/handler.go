@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/service"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/service"
 
 	"github.com/kataras/iris/v12"
 )

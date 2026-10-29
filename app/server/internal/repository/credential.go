@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 )
 
 // CredentialRepository handles password credential storage separately from the User model.

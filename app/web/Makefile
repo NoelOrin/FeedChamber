@@ -1,4 +1,4 @@
-# OrinForum Mobile Build — Makefile
+# Feed Chamber Mobile Build — Makefile
 # 基于 Capacitor，支持 iOS / Android H5 混合打包
 #
 # 快速开始：
@@ -16,8 +16,8 @@ ifneq (,$(wildcard .env.mobile))
 endif
 
 MOBILE_SERVER_URL    ?=
-CAPACITOR_APP_ID     ?= com.orinforum.app
-CAPACITOR_APP_NAME   ?= OrinForum
+CAPACITOR_APP_ID     ?= com.feedchamber.app
+CAPACITOR_APP_NAME   ?= Feed Chamber
 IOS_DEV_TEAM         ?=
 
 # ===================================================================
@@ -104,15 +104,15 @@ dev: ## 一键启动：后台 Vite + 前台 iOS/Android（通过 PLATFORM=androi
 		exit 1; \
 	fi
 	@echo "🚀  启动 Vite dev server（后台）..."
-	$(VITE) --host 0.0.0.0 > /tmp/orinforum-vite.log 2>&1 & \
-		echo $$! > /tmp/orinforum-vite.pid
+	$(VITE) --host 0.0.0.0 > /tmp/feedchamber-vite.log 2>&1 & \
+		echo $$! > /tmp/feedchamber-vite.pid
 	@sleep 4
 	@echo "📱  启动 $(if $(filter android,$(PLATFORM)),Android,iOS) 模拟器..."
 	$(CAP) run $(if $(filter android,$(PLATFORM)),android,ios) --external; \
 		STATUS=$$?; \
-		if [ -f /tmp/orinforum-vite.pid ]; then \
-			kill `cat /tmp/orinforum-vite.pid` 2>/dev/null || true; \
-			rm -f /tmp/orinforum-vite.pid; \
+		if [ -f /tmp/feedchamber-vite.pid ]; then \
+			kill `cat /tmp/feedchamber-vite.pid` 2>/dev/null || true; \
+			rm -f /tmp/feedchamber-vite.pid; \
 		fi; \
 		exit $$STATUS
 
@@ -142,7 +142,7 @@ build-ios: sync ## 构建并生成 iOS .ipa（需先 make open-ios 配置签名�
 	@if [ -n "$(IOS_DEV_TEAM)" ]; then \
 		cd ios/App && xcodebuild -workspace App.xcworkspace \
 			-scheme App -configuration Release \
-			-archivePath build/OrinForum.xcarchive archive \
+			-archivePath build/Feed Chamber.xcarchive archive \
 			DEVELOPMENT_TEAM=$(IOS_DEV_TEAM) \
 			CODE_SIGN_STYLE=Automatic \
 			| tail -20; \
@@ -190,7 +190,7 @@ clean-all: clean ## 清理 + 删除原生项目（⚠️  不可逆，签名/原
 	@echo "✅  原生项目已删除"
 
 status: ## 显示当前配置摘要
-	@echo "📋  OrinForum Mobile 配置"
+	@echo "📋  Feed Chamber Mobile 配置"
 	@echo "─────────────────────────────────"
 	@echo "App ID:        $(CAPACITOR_APP_ID)"
 	@echo "App Name:      $(CAPACITOR_APP_NAME)"
@@ -221,7 +221,7 @@ ip: ## 打印本机局域网 IP（用于 MOBILE_SERVER_URL）
 # ===================================================================
 .PHONY: help
 help: ## 显示本帮助
-	@echo "OrinForum Mobile Build"
+	@echo "Feed Chamber Mobile Build"
 	@echo "======================"
 	@echo ""
 	@awk 'BEGIN {FS = ":.*##"; printf "用法: make \033[36m<target>\033[0m\n\n"} \

@@ -15,7 +15,7 @@ var (
 	// WebhookDeliveriesTotal counts delivery attempts by outcome.
 	WebhookDeliveriesTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_webhook_deliveries_total",
+			Name: "feedchamber_webhook_deliveries_total",
 			Help: "Webhook delivery attempts by outcome.",
 		},
 		[]string{"outcome"},
@@ -24,7 +24,7 @@ var (
 	// WebhookDeliveryDuration records the HTTP leg of a delivery.
 	WebhookDeliveryDuration = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:    "orinforum_webhook_delivery_duration_seconds",
+			Name:    "feedchamber_webhook_delivery_duration_seconds",
 			Help:    "Webhook delivery request latency in seconds.",
 			Buckets: prometheus.DefBuckets,
 		},
@@ -38,7 +38,7 @@ var (
 	// actually was. A backlog of 500 looked identical to 20 on the dashboard.
 	WebhookPendingDeliveries = prometheus.NewGauge(
 		prometheus.GaugeOpts{
-			Name: "orinforum_webhook_pending_deliveries",
+			Name: "feedchamber_webhook_pending_deliveries",
 			Help: "Webhook deliveries currently pending (true backlog).",
 		},
 	)

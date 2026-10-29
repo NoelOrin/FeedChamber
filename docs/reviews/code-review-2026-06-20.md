@@ -1,4 +1,4 @@
-# OrinForum 全面代码审查报告
+# Feed Chamber 全面代码审查报告
 
 > 审查日期：2026-06-20
 > 审查范围：Go 后端、Web 前端（SolidJS）、Dashboard（React）、共享包、基础设施
@@ -93,7 +93,7 @@
 - `sse-client/client.ts:138-151` — SSE 多行载荷被静默截断
 - `tokens/dist/tokens.css:29-45` — 17 个 `--color-seed-*` CSS 变量暴露但未被引用
 - `tokens/dist/tokens.css:76-110` — 11 个 spacing/z-index/duration 变量未使用
-- `tokens/README.md:3` — 声明已不存在的 `@orinforum/web` 包
+- `tokens/README.md:3` — 声明已不存在的 `@feedchamber/web` 包
 - `tokens/README.md:8-18` — 架构图遗漏 `layout.js/d.ts` 和 `dashboard.js/d.ts`
 - `tokens/scripts/build.ts:210` — `colorBgContainer` 映射到 `item` 而非 `card`
 
@@ -116,8 +116,8 @@
 - **[HIGH] service/space** — 板块树/CRUD 无测试。
 - **[HIGH] service/banned** — 封禁逻辑与 auth 中间件集成无测试。
 - **[HIGH] Dockerfile:27** — 无 USER 指令，容器以 root 运行。
-- **[HIGH] @orinforum/tokens:package.json** — exports map 缺少 `"."` entry，创建双重解析路径。
-- **[HIGH] @orinforum/dashboard-vite:package.json** — axios 和 lodash 未使用。
+- **[HIGH] @feedchamber/tokens:package.json** — exports map 缺少 `"."` entry，创建双重解析路径。
+- **[HIGH] @feedchamber/dashboard-vite:package.json** — axios 和 lodash 未使用。
 - **[HIGH] dashboard:package.json** — 缺少 `@types/lodash`。
 - **[HIGH] openapi:/categories/** — 4 个路径 OpenAPI 存在但 Go 后端完全不存在。
 - **[HIGH] openapi:9 个管理端端点** — response 架构为空对象 `{}`。
@@ -165,8 +165,8 @@
 
 #### 未使用依赖
 
-- `@orinforum/web` — `@tanstack/solid-form`、`zod`、`@tanstack/solid-query-devtools`、`@tanstack/solid-router-devtools`
-- `@orinforum/dashboard-vite` — `axios`、`lodash`
+- `@feedchamber/web` — `@tanstack/solid-form`、`zod`、`@tanstack/solid-query-devtools`、`@tanstack/solid-router-devtools`
+- `@feedchamber/dashboard-vite` — `axios`、`lodash`
 - `@ant-design/pro-layout` — 被 `@ant-design/pro-components` 重新导出
 
 ### 低危问题（摘要）

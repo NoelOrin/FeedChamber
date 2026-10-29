@@ -5,10 +5,10 @@ import (
 	"errors"
 	"testing"
 
-	"orinforum/internal/mock"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/eventbus"
+	"feedchamber/internal/mock"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/eventbus"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

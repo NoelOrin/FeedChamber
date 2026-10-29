@@ -1,6 +1,6 @@
 'use client';
 
-import { type TrustLevel, trustService } from '@orinforum/api-client';
+import { type TrustLevel, trustService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';

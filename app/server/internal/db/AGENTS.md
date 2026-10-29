@@ -29,3 +29,5 @@ type Store interface {
 - 实现通过 `r.db.DB().WithContext(ctx)` 操作
 - Repository 工厂函数直接返回基于 `store.SQL()` 的 SQL 实现
 - 不对外暴露存储细节，service 层只依赖接口
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

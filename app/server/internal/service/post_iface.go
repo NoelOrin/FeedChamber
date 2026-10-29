@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/repository"
 )
 
 type PostService interface {

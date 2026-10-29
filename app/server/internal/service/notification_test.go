@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/pkg/testnats"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/pkg/testnats"
+	"feedchamber/internal/repository"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

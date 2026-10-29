@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg/eventbus"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg/eventbus"
 )
 
 type ModerationService interface {

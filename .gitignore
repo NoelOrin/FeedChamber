@@ -55,7 +55,7 @@ app/web/.tanstack/
 # Turborepo
 .turbo/
 
-# @orinforum/tokens ships committed generated output
+# @feedchamber/tokens ships committed generated output
 !packages/tokens/dist/
 !packages/tokens/dist/**
 .qoder/settings.local.json

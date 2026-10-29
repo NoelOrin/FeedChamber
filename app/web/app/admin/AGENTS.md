@@ -33,7 +33,7 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 1. `app/web/app/admin/<route>/page.tsx` — 新建目录即新增 `/admin/<route>` 路由
 2. `components/admin/layout/admin-shell.tsx` — 在 `menuItems` 里登记菜单项（`path` / `name` / `icon`）；详情页加 `hideInMenu: true`
 3. `lib/admin/auth/route-access.ts` — 在 `ROUTE_PERMISSIONS` 登记权限码；**详情页必须排在列表页之前**（顺序即优先级，`/admin` 只做精确匹配）。`/admin/levels` 与 `/admin/xp-rules` 登记为 `level:manage`、`/admin/gates` 登记为 `gate:manage`（后端 `routes_trust.go` / `routes_gate.go` 同一门）
-4. 取数用 `@orinforum/api-client` 的 service + `useQuery`（key 取 `~/lib/query/keys.ts` 的 `qk`），表格用 `components/ui/data-table.tsx` 的 `DataTable`，详情用 `components/ui/descriptions.tsx`
+4. 取数用 `@feedchamber/api-client` 的 service + `useQuery`（key 取 `~/lib/query/keys.ts` 的 `qk`），表格用 `components/ui/data-table.tsx` 的 `DataTable`，详情用 `components/ui/descriptions.tsx`
 
 > 注：根 `AGENTS.md` 曾写「菜单在 `components/admin/layout/pro-shell.tsx` 登记」——该文件不存在，实际是 `admin-shell.tsx` 的 `menuItems`。以本文件为准。
 
@@ -67,7 +67,7 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 - 不要在页面里读 `window.location` 拼跳转：用 `lib/admin/navigation.ts` 的 `useNavigate` / `useLocation` / 查询参数 hook。
 - 删除确认用 `components/ui/confirm-dialog.tsx` 的 `useConfirm`，不要 `window.confirm`。
 - 后台页面不允许被搜索引擎索引：`admin/layout.tsx` 的 metadata 已声明 `robots: { index: false, follow: false }`，新增路由段不要覆盖它。
-- **状态筛选的「全部状态」哨兵统一取 `@orinforum/api-client` 的 `STATUS_FILTER_ALL`（`'__all__'`）**，不要在页面里各自定义 `const ALL`（`/admin/posts` 与 `/admin/reports` 共用）。后端只对 `report:manage` 持有者把该值当「不按状态过滤」，所以 **pending 帖只会出现在 `/admin/posts` 的「全部状态」下**——存量待审帖靠该列表操作列的「通过 / 拒绝」（`postService.setStatus` → `POST /posts/{id}/status`）救回，`/admin/posts` 因此是该状态唯一的运营入口。
+- **状态筛选的「全部状态」哨兵统一取 `@feedchamber/api-client` 的 `STATUS_FILTER_ALL`（`'__all__'`）**，不要在页面里各自定义 `const ALL`（`/admin/posts` 与 `/admin/reports` 共用）。后端只对 `report:manage` 持有者把该值当「不按状态过滤」，所以 **pending 帖只会出现在 `/admin/posts` 的「全部状态」下**——存量待审帖靠该列表操作列的「通过 / 拒绝」（`postService.setStatus` → `POST /posts/{id}/status`）救回，`/admin/posts` 因此是该状态唯一的运营入口。
 
 ## 本文件何时更新
 

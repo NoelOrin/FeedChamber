@@ -11,7 +11,7 @@ ENV npm_config_registry=${NPM_REGISTRY}
 RUN corepack enable && corepack prepare pnpm@10.26.2 --activate
 
 WORKDIR /build
-# Workspace manifests first: @orinforum/web resolves @orinforum/* through `workspace:*`.
+# Workspace manifests first: @feedchamber/web resolves @feedchamber/* through `workspace:*`.
 #
 # 只拷各包的 package.json，不拷源码：install 层只依赖 manifest + lockfile，
 # 早先整目录 COPY packages/ 会让「改一行 shared-utils 源码」就击穿安装层，
@@ -23,28 +23,28 @@ COPY packages/sse-client/package.json packages/sse-client/
 COPY packages/tokens/package.json packages/tokens/
 COPY app/web/package.json app/web/package.json
 
-# `@orinforum/web...` selects web *and its workspace dependencies*, but pnpm's
+# `@feedchamber/web...` selects web *and its workspace dependencies*, but pnpm's
 # `--filter` only installs the devDependencies of the named packages. The four
 # shared packages are built below, so they must be named too — otherwise
-# `@orinforum/tokens` has no `tsx` and its build dies with `sh: tsx: not found`.
+# `@feedchamber/tokens` has no `tsx` and its build dies with `sh: tsx: not found`.
 #
 # store 单独放 cache 挂载：manifest 层命中时这次安装本来就是 0s；manifest 变化
 # 时也不会把几百个包重新下载一遍，只从本地 store 硬链接。
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm install --frozen-lockfile --prefer-offline --store-dir=/pnpm/store \
-      --filter @orinforum/web... \
-      --filter @orinforum/tokens \
-      --filter @orinforum/api-client \
-      --filter @orinforum/shared-utils \
-      --filter @orinforum/sse-client
+      --filter @feedchamber/web... \
+      --filter @feedchamber/tokens \
+      --filter @feedchamber/api-client \
+      --filter @feedchamber/shared-utils \
+      --filter @feedchamber/sse-client
 
 # 源码层放在 install 之后：只有源码真正变化时才重跑，且不会波及上面那层安装结果。
 COPY packages/ packages/
 COPY app/web/ app/web/
 # The app imports built CSS/JS from the shared packages, so build those first.
 # `cd app/web` matters: a bare `pnpm build` at /build runs the root turbo script,
-# which filters on @orinforum/server — a package not present in this image.
-RUN pnpm --filter @orinforum/tokens --filter @orinforum/api-client --filter @orinforum/shared-utils --filter @orinforum/sse-client build \
+# which filters on @feedchamber/server — a package not present in this image.
+RUN pnpm --filter @feedchamber/tokens --filter @feedchamber/api-client --filter @feedchamber/shared-utils --filter @feedchamber/sse-client build \
  && cd app/web && pnpm build
 
 # ── Stage 2: Production ───────────────────────────────────────────────────

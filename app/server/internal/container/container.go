@@ -7,13 +7,13 @@
 package container
 
 import (
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/repository"
-	"orinforum/internal/service"
-	"orinforum/internal/storage"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/repository"
+	"feedchamber/internal/service"
+	"feedchamber/internal/storage"
 )
 
 // Container holds every repository and service used by the application.

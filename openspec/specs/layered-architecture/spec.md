@@ -1,7 +1,7 @@
 # layered-architecture Specification
 
 ## Purpose
-定义 OrinForum 后端请求处理的单向分层依赖链与各层职责边界，确保各层职责清晰隔离、不允许跨层调用。
+定义 Feed Chamber 后端请求处理的单向分层依赖链与各层职责边界，确保各层职责清晰隔离、不允许跨层调用。
 ## Requirements
 ### Requirement: 单向分层依赖链
 
@@ -95,7 +95,7 @@ trace 上下文 MUST 在网关/中间件层建立一次，并沿依赖链单向�
 
 应用 MUST 在请求链路上安装 panic 恢复边界（`middleware.Recover()`），位置 MUST 在 `Logger` 之后：Iris 先执行 app 级中间件再执行 per-party 中间件，恢复点若排在 `Logger` 之前，被 panic 的请求不会留下完成日志。
 
-恢复后 MUST 返回标准信封的 `500 / code 5001`；堆栈与 panic 值 MUST 只写入日志（`panic`/`method`/`path`/`stack` 字段），MUST NOT 出现在响应体中。响应已开始写出时 MUST NOT 追加或伪造信封。恢复计数 MUST 暴露为无标签指标 `orinforum_http_panics_total`（panic 文本与路由为无界取值，不得成为标签）。
+恢复后 MUST 返回标准信封的 `500 / code 5001`；堆栈与 panic 值 MUST 只写入日志（`panic`/`method`/`path`/`stack` 字段），MUST NOT 出现在响应体中。响应已开始写出时 MUST NOT 追加或伪造信封。恢复计数 MUST 暴露为无标签指标 `feedchamber_http_panics_total`（panic 文本与路由为无界取值，不得成为标签）。
 
 #### Scenario: handler panic 不打断连接
 
@@ -141,7 +141,7 @@ trace 上下文 MUST 在网关/中间件层建立一次，并沿依赖链单向�
 #### Scenario: 放进 pkg/ 需给出消费者证据
 
 - WHEN 某包申请位于 `app/server/pkg/` 下
-- THEN MUST 能指出至少一个 `orinforum` 模块之外的 import 方；指不出时评审 MUST 要求移入 `internal/`
+- THEN MUST 能指出至少一个 `feedchamber` 模块之外的 import 方；指不出时评审 MUST 要求移入 `internal/`
 
 #### Scenario: 现存例外已清空
 

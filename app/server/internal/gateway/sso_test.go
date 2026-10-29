@@ -10,7 +10,7 @@ import (
 	"github.com/kataras/iris/v12/httptest"
 	"github.com/stretchr/testify/require"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // ID tokens are the only JWTs left in the system (OIDC Core requires them).

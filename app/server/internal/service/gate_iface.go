@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // GateDecision 是一次门控求值的结果，必须可解释：要么命中某条规则，要么走域默认。

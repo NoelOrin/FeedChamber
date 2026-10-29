@@ -1,7 +1,7 @@
 'use client';
 
+import { roleService as adminRoleService, permissionService } from '@feedchamber/api-client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { roleService as adminRoleService, permissionService } from '@orinforum/api-client';
 import { useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';

@@ -1,5 +1,5 @@
 /**
- * @orinforum/tokens parity check.
+ * @feedchamber/tokens parity check.
  *
  * The failure this guards against actually happened: `color.component.*` used to
  * hold a hand-maintained second palette, and six of its nine values had silently
@@ -11,7 +11,7 @@
  * script proves it still holds after generation and fails the build the moment
  * a projection stops resolving to the semantic source of truth.
  *
- * Run: pnpm --filter @orinforum/tokens check-parity
+ * Run: pnpm --filter @feedchamber/tokens check-parity
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';

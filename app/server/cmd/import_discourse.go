@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/bcrypt"

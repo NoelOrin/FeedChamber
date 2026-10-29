@@ -1,11 +1,11 @@
 'use client';
 
-import { settingService } from '@orinforum/api-client';
+import { settingService } from '@feedchamber/api-client';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 
 import { qk } from '~/lib/query/keys';
 
-const DEFAULT_SITE_NAME = 'OrinForum';
+const DEFAULT_SITE_NAME = 'Feed Chamber';
 
 /**
  * 公开站点设置（站点名、site_url 等）。前后台共用一份 query key 与缓存，

@@ -83,7 +83,7 @@ func TestRedactSettingAuditDetail(t *testing.T) {
 	if got := RedactSettingAuditDetail("email_password", "super-secret"); got != "[REDACTED]" {
 		t.Errorf("secret detail = %q, want [REDACTED]", got)
 	}
-	if got := RedactSettingAuditDetail("site_name", "OrinForum"); got != "OrinForum" {
-		t.Errorf("non-secret detail = %q, want OrinForum", got)
+	if got := RedactSettingAuditDetail("site_name", "Feed Chamber"); got != "Feed Chamber" {
+		t.Errorf("non-secret detail = %q, want Feed Chamber", got)
 	}
 }

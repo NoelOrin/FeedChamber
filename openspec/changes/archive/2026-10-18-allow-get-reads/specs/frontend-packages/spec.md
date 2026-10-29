@@ -4,7 +4,7 @@
 
 ### Requirement: api-client 共享包契约
 
-`@orinforum/api-client` MUST 为 Web 与 Dashboard 共同依赖，提供：`client.ts`（authFetch 封装，自动携带 Bearer token，401 自动刷新并重试）、`auth.ts`（token 存取与 `isAuthenticated`）、`types.ts`（所有 API 响应类型）、`constants.ts`（ErrorCode / PermissionCode / SettingKey / RoleName / PostStatus / API_BASE_URL 等类型化常量）、`services/*.ts`（各模块 API service：写操作 `method: 'POST'` 且 URL 带动词后缀，只读查询 MAY 使用 `GET` 且 MUST 与后端方法一致）。
+`@feedchamber/api-client` MUST 为 Web 与 Dashboard 共同依赖，提供：`client.ts`（authFetch 封装，自动携带 Bearer token，401 自动刷新并重试）、`auth.ts`（token 存取与 `isAuthenticated`）、`types.ts`（所有 API 响应类型）、`constants.ts`（ErrorCode / PermissionCode / SettingKey / RoleName / PostStatus / API_BASE_URL 等类型化常量）、`services/*.ts`（各模块 API service：写操作 `method: 'POST'` 且 URL 带动词后缀，只读查询 MAY 使用 `GET` 且 MUST 与后端方法一致）。
 
 #### Scenario: 401 自动刷新重试
 

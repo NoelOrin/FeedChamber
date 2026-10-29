@@ -1,5 +1,5 @@
 {
-	"name": "@orinforum/web",
+	"name": "@feedchamber/web",
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
@@ -15,10 +15,10 @@
 	},
 	"dependencies": {
 		"@hookform/resolvers": "^6.0.1",
-		"@orinforum/api-client": "workspace:*",
-		"@orinforum/shared-utils": "workspace:^",
-		"@orinforum/sse-client": "workspace:^",
-		"@orinforum/tokens": "workspace:*",
+		"@feedchamber/api-client": "workspace:*",
+		"@feedchamber/shared-utils": "workspace:^",
+		"@feedchamber/sse-client": "workspace:^",
+		"@feedchamber/tokens": "workspace:*",
 		"@radix-ui/react-avatar": "^1.1.10",
 		"@radix-ui/react-checkbox": "^1.4.1",
 		"@radix-ui/react-dialog": "^1.1.14",

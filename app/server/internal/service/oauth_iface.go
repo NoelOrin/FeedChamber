@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 type OAuthService interface {

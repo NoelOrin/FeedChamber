@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/repository"
-	"orinforum/internal/service"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/repository"
+	"feedchamber/internal/service"
 
 	"github.com/kataras/iris/v12"
 )
@@ -310,7 +310,7 @@ func (h *seoHandler) LatestRSS(ctx iris.Context) {
 		return
 	}
 
-	siteName := "OrinForum"
+	siteName := "Feed Chamber"
 	siteDesc := ""
 	if h.setting != nil {
 		if v := pkg.GetSettingOrDefault(reqCtx, h.setting, "site_name", "SITE_NAME", siteName); v != "" {

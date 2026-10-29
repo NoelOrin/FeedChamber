@@ -12,7 +12,7 @@ Web 前端的跨域基础设施：会话状态、取数接缝、API 适配、主
 lib/auth/        会话状态机 + 服务端 guards + 跨标签同步
 lib/query/       QueryClient（RSC 每请求一份 / 浏览器单例）+ 全站唯一 key 来源
 lib/queries/     RSC 取数接缝（cache() 包裹）+ 外壳查询契约
-lib/api/         向 @orinforum/api-client 注入 SSR cookie / request id
+lib/api/         向 @feedchamber/api-client 注入 SSR cookie / request id
 lib/admin/       后台准入（access / route-access / return-to）与导航适配
 lib/hooks/       SSE 订阅、公告等跨域 hook
 lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / utils
@@ -35,7 +35,7 @@ lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / ut
 | `admin/auth/return-to.ts` | `captureReturnTarget` / `resolveReturnTarget` / `rememberSiteUrl` |
 | `admin/navigation.ts` | `useNavigate` / `useLocation` / 查询参数 hook（页面不要自己拼 `window.location`） |
 | `admin/permissions.ts` | 权限码前缀 → 分组标签（`permissionGroup` / `groupPermissions`） |
-| `hooks/use-notification-sse.ts` | 通知未读数 SSE：走 `@orinforum/sse-client`，**浏览器侧必须是相对路径** `/api/v1/notifications/stream` |
+| `hooks/use-notification-sse.ts` | 通知未读数 SSE：走 `@feedchamber/sse-client`，**浏览器侧必须是相对路径** `/api/v1/notifications/stream` |
 | `hooks/use-announcements.ts` | 公告取数与展示状态 |
 | `hooks/use-trust-levels.ts` | 等级名称的唯一来源：`useTrustLevels()` 读公开接口 `GET /levels`（staleTime 5 分钟），`trustLevelName()` 渲染；P2.9 起不再有硬编码中文标签（旧的 `lib/trust.ts` 已删除） |
 | `theme.ts` | `useTheme`（light/dark/system + localStorage + 系统偏好），首绘前脚本在根布局 |
@@ -45,7 +45,7 @@ lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / ut
 | `pagination.ts` | 分页尺寸 fallback（与服务端 `model.DefaultSettings` 一致） |
 | `toast.ts` | 命令式 toast（zustand store + 视口组件在 `components/ui/toast.tsx`） |
 | `icons.ts` | 图标唯一出口；`biome.json` 禁止直接 import `lucide-react` |
-| `utils.ts` | `cn()` = `@orinforum/shared-utils` 的 `cx` |
+| `utils.ts` | `cn()` = `@feedchamber/shared-utils` 的 `cx` |
 
 ## 三条最容易踩的规则
 

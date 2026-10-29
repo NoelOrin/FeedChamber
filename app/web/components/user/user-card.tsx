@@ -1,6 +1,6 @@
 'use client';
 
-import type { User } from '@orinforum/api-client';
+import type { User } from '@feedchamber/api-client';
 import dayjs from 'dayjs';
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar';
 import { Badge } from '~/components/ui/badge';

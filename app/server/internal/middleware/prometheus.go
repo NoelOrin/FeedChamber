@@ -4,7 +4,7 @@ import (
 	"strconv"
 	"time"
 
-	"orinforum/internal/metrics"
+	"feedchamber/internal/metrics"
 
 	"github.com/kataras/iris/v12"
 )

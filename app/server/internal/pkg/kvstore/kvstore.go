@@ -22,7 +22,7 @@ func KVChangeChannel() string { return kvChangeChannel }
 // Config KV 存储配置，NATS JetStream 是唯一后端。
 type Config struct {
 	NATSURL    string // NATS 连接地址，可由上层内嵌 NATS 提供
-	NATSBucket string // NATS_BUCKET，默认 "orin_kv"
+	NATSBucket string // NATS_BUCKET，默认 "feedchamber_kv"
 }
 
 // Store 支持 TTL 的 KV 存储抽象。
@@ -81,7 +81,7 @@ func New(cfg Config) (Store, error) {
 		return nil, errors.New("kvstore: NATS URL is required")
 	}
 	if cfg.NATSBucket == "" {
-		cfg.NATSBucket = "orin_kv"
+		cfg.NATSBucket = "feedchamber_kv"
 	}
 	store, err := NewNATSStore(cfg.NATSURL, cfg.NATSBucket)
 	if err != nil {

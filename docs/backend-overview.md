@@ -1,4 +1,4 @@
-# OrinForum 后端梳理（`app/server`）
+# Feed Chamber 后端梳理（`app/server`）
 
 > 状态：2026-10-27 · 范围：仅 `app/server`（Go 后端）
 > 依据：源码实测（非转述既有文档）。跨栈全景见 [system-map.md](./system-map.md)，架构索引入口见 [ARCHITECTURE.md](./ARCHITECTURE.md)，端点清单见 [api-reference.md](./api-reference.md)。
@@ -345,8 +345,8 @@ Service/Repository → logger.FromContext(ctx).WithContext(ctx).Info(...)
 
 | 文件 | 指标族 | 埋点位置 |
 |---|---|---|
-| `metrics.go` | `orinforum_http_request_duration_seconds` / `http_requests_total` `{method,path,status}`、`http_request_size_bytes`、`http_response_size_bytes`、`http_panics_total` + Go/Process collector | `middleware/prometheus.go`，`path` 经 ID 折叠归一化 |
-| `collector.go` | `orinforum_db_pool_*`：max_open / open / in_use / idle / wait_count / wait_duration | 启动时 `RegisterDBPoolCollector(store)` |
+| `metrics.go` | `feedchamber_http_request_duration_seconds` / `http_requests_total` `{method,path,status}`、`http_request_size_bytes`、`http_response_size_bytes`、`http_panics_total` + Go/Process collector | `middleware/prometheus.go`，`path` 经 ID 折叠归一化 |
+| `collector.go` | `feedchamber_db_pool_*`：max_open / open / in_use / idle / wait_count / wait_duration | 启动时 `RegisterDBPoolCollector(store)` |
 | `http.go` | — | `Serve(addr)`：同步 `net.Listen`（端口冲突由调用方 warn 而非 crash） |
 | `eventbus.go` | `eventbus_publish_total{event,result}`、`dispatch_duration_seconds{event}`、`dispatch_errors_total{event}`、`queue_depth`、`dropped_total{event}` | `internal/pkg/eventbus` |
 | `kv.go` | `kv_operation_duration_seconds{op,outcome}`、`kv_cas_exhausted_total` | `kvstore/observe.go` 单点 helper |
@@ -372,15 +372,15 @@ Service/Repository → logger.FromContext(ctx).WithContext(ctx).Info(...)
 
 | 文件 | 内容 |
 |---|---|
-| `prometheus.yml` | 15s 抓取；`orinforum` → `backend:9091/metrics`；`orinforum-health` → 经 blackbox 探 `http://backend:8080/api/v1/health`；`rule_files: /etc/prometheus/rules/*.yml`；`alertmanagers.targets` 为空（尚未部署 Alertmanager） |
-| `prometheus/rules/orinforum.yml` | 4 组共 **13 条**告警：availability、saturation、business、metric-gaps |
+| `prometheus.yml` | 15s 抓取；`feedchamber` → `backend:9091/metrics`；`feedchamber-health` → 经 blackbox 探 `http://backend:8080/api/v1/health`；`rule_files: /etc/prometheus/rules/*.yml`；`alertmanagers.targets` 为空（尚未部署 Alertmanager） |
+| `prometheus/rules/feedchamber.yml` | 4 组共 **13 条**告警：availability、saturation、business、metric-gaps |
 | `blackbox/blackbox.yml` | `http_2xx` 模块。`/api/v1/health` 返回 JSON 而非 Prometheus 文本，不能直接当抓取目标，健康类告警必须有 prober |
-| `grafana/provisioning/datasources/prometheus.yml` | `uid: orinforum-prom`，指向 `http://prometheus:9090`，默认数据源、不可编辑 |
-| `grafana/provisioning/dashboards/orinforum.yml` | file provider，读 `/var/lib/grafana/dashboards` |
-| `grafana/dashboards/orinforum.json` | 10 面板：请求速率、5xx 占比、延迟分位、DB 池、KV P99、EventBus、Webhook、SSE/登录/限流、权限判定、panic 计数 |
+| `grafana/provisioning/datasources/prometheus.yml` | `uid: feedchamber-prom`，指向 `http://prometheus:9090`，默认数据源、不可编辑 |
+| `grafana/provisioning/dashboards/feedchamber.yml` | file provider，读 `/var/lib/grafana/dashboards` |
+| `grafana/dashboards/feedchamber.json` | 10 面板：请求速率、5xx 占比、延迟分位、DB 池、KV P99、EventBus、Webhook、SSE/登录/限流、权限判定、panic 计数 |
 
 - 这些文件是**可选素材**：仓库只保留 `docker-compose.yml` 一个编排档，不含监控栈；接入方式是把它们挂到外部 Prometheus / Grafana（抓取目标 `backend:9091`）。backend 在无监控栈时正常启动。
-- nginx 侧统一关联 id：`map $http_x_request_id $req_id`，`location /api/v1/` `proxy_set_header X-Request-ID $req_id`，`log_format orinforum_main` 带 `rid=`。**目前只有 `/api/v1/` 透传该头**，`/swagger/` 与前端 location 未设，端到端关联尚未打通。
+- nginx 侧统一关联 id：`map $http_x_request_id $req_id`，`location /api/v1/` `proxy_set_header X-Request-ID $req_id`，`log_format feedchamber_main` 带 `rid=`。**目前只有 `/api/v1/` 透传该头**，`/swagger/` 与前端 location 未设，端到端关联尚未打通。
 
 #### 刻意不用 OpenTelemetry
 
@@ -414,7 +414,7 @@ AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uu
 | `DB_TYPE` | sqlite | sqlite/mysql/postgres |
 | `DB_DSN` | 空 | 非 sqlite 必填；连接池另有 `DB_MAX_OPEN_CONNS(25)`/`DB_MAX_IDLE_CONNS(10)`/`DB_CONN_MAX_LIFETIME(300)`/`DB_CONN_MAX_IDLE_TIME(60)` |
 | `NATS_URL` | 空 | 空则内嵌 nats-server |
-| `NATS_BUCKET` | orin_kv | JetStream KV bucket |
+| `NATS_BUCKET` | feedchamber_kv | JetStream KV bucket |
 | `METRICS_ENABLED` | true | 同时控制 `middleware.Prometheus()` 与 9091 指标 listener；`false` 时两者都不注册 |
 | `METRICS_PORT` | 9091 | 指标独立端口，无鉴权，MUST NOT 经 nginx 暴露；`Validate()` 在启用时校验 1–65535 |
 | `TRACING_ENABLED` | true | `false` 时不解析入站 `traceparent`/`X-Request-ID`、不回写 `traceparent`，但仍生成 trace 供日志关联 |
@@ -434,7 +434,7 @@ AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uu
 - **构建**：`make` 交叉编译多平台（`windows`/`linux`/`darwin`）；`make swag` 生成 Swagger 并同步 `openapi.json`。
 - **Dockerfile**：三个，职责不同。
   - 根 `Dockerfile`：Go + Web 合并镜像（`entrypoint.sh` 同时起后端和 SSR）。**Go 基础镜像仍是 `golang:1.24-alpine`，落后于 `go.mod` 的 `1.25.0`**（见 §13.2）。
-  - `app/server/Dockerfile`：仅后端，两阶段（`golang:1.25-alpine` 构建，CGO 开 → alpine 运行，含 sqlite-libs），入口 `orinforum -e prod`。
+  - `app/server/Dockerfile`：仅后端，两阶段（`golang:1.25-alpine` 构建，CGO 开 → alpine 运行，含 sqlite-libs），入口 `feedchamber -e prod`。
   - `app/web/Dockerfile`：仅前端（vinext SSR）。
   - 各 compose 服务的 build context 指向 `../../app/server` 或 `../../app/web`，用的是后两个。
 - **部署编排**（仓库根 `deploy/`，2026-10 从 `app/server/deploy/` 移出）：
@@ -446,7 +446,7 @@ AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uu
   **这是唯一的编排档**。原 `lite` / `basic` / `full` / `cluster` 四档均已删除（`cluster` 的 PG + nats×3 + 监控栈不再随仓库发布）。`prometheus.yml`、`prometheus/rules/`、`blackbox/`、`grafana/` 保留为可选素材，挂到外部 Prometheus / Grafana 使用；backend 的 `METRICS_PORT`(9091) 仅在容器网络内可达。
 - **热重载**：`.air.toml`。
 - **CLI 子命令**：只有 `backup` 与 `import-discourse`（[cmd/backup.go](../app/server/cmd/backup.go)、[cmd/import_discourse.go](../app/server/cmd/import_discourse.go)）。环境经根命令的持久标志 `-e/--env` 选择（默认 `dev`），**不存在 `dev`/`prod` 子命令**——`go run main.go dev` 会报 `unknown command`。
-- **API 测试**：仓库根 `orinforum_test.sh`（纯 curl 全量脚本）。
+- **API 测试**：仓库根 `feedchamber_test.sh`（纯 curl 全量脚本）。
 
 ---
 

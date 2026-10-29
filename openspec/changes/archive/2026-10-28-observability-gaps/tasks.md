@@ -42,10 +42,10 @@
 
 ## 6. 告警与面板
 
-- [x] 6.1 `deploy/prometheus/rules/orinforum.yml`：新增 `NATSDisconnected`（`connected==0` for 2m，severity page）、`WebhookBacklogGrowing`（`>100` for 15m）、`SSEWriteFailures`（10m 内 >5）
-- [x] 6.2 `MetricsFamilyMissing` 补探 `orinforum_nats_connected`；注释更新
-- [x] 6.3 三条新告警归入 `orinforum-business` 组（初稿误放 `metric-gaps`，已修正）
-- [x] 6.4 `deploy/grafana/dashboards/orinforum.json`：新增面板 10「NATS 连接状态 / 断连与重连」、面板 11「SSE 写失败 / Webhook 积压」
+- [x] 6.1 `deploy/prometheus/rules/feedchamber.yml`：新增 `NATSDisconnected`（`connected==0` for 2m，severity page）、`WebhookBacklogGrowing`（`>100` for 15m）、`SSEWriteFailures`（10m 内 >5）
+- [x] 6.2 `MetricsFamilyMissing` 补探 `feedchamber_nats_connected`；注释更新
+- [x] 6.3 三条新告警归入 `feedchamber-business` 组（初稿误放 `metric-gaps`，已修正）
+- [x] 6.4 `deploy/grafana/dashboards/feedchamber.json`：新增面板 10「NATS 连接状态 / 断连与重连」、面板 11「SSE 写失败 / Webhook 积压」
 - [x] 6.5 告警总数 13 → **16**，面板 9 → **11**
 
 ## 7. 测试
@@ -61,8 +61,8 @@
 - [x] 8.1 `go build ./...` / `go vet ./...` / `go test ./...` 退出码均为 **0**（19 包 ok，零 FAIL）
 - [x] 8.2 `tsc -b packages/api-client/tsconfig.build.json` 与 `tsc --noEmit -p app/web/tsconfig.json` 退出码均为 0
 - [x] 8.3 `bash scripts/check-metrics-exposure.sh` 在真实仓库上退出 0（两个 compose 档 + nginx 全部 OK）
-- [x] 8.4 `deploy/prometheus/rules/orinforum.yml` YAML 解析通过，16 条告警分组正确
-- [x] 8.5 `deploy/grafana/dashboards/orinforum.json` JSON 解析通过，11 面板
+- [x] 8.4 `deploy/prometheus/rules/feedchamber.yml` YAML 解析通过，16 条告警分组正确
+- [x] 8.5 `deploy/grafana/dashboards/feedchamber.json` JSON 解析通过，11 面板
 - [x] 8.6 `.github/workflows/docker-build.yml` YAML 解析通过，job 顺序为 `metrics-exposure` → `server` → `web` → `deploy`
 
 ## 9. 文档与规范同步
@@ -75,14 +75,14 @@
 
 - [x] 10.1 `internal/db/gorm_logger.go`（新）：自定义 `slowQueryLogger` 实现 `logger.Interface`；`Trace` 对每语句调 `queryObserver`，超 200ms 另写带 `latency_ms`/`rows`/`sql` 的 warn 日志
 - [x] 10.2 **import cycle 处置**：`metrics/collector.go` 已 import `db`，`db` 反向 import `metrics` 会成环（实测 `go build` 报 `import cycle not allowed`）。改为 `db` 暴露 `SetQueryObserver(fn func(slow bool))` 钩子，由 `metrics/db.go` 的 `init()` 注入——依赖方向仍是 `metrics → db`
-- [x] 10.3 `internal/metrics/db.go`（新）：`orinforum_db_queries_total` + `orinforum_db_slow_queries_total`，**均无标签**（SQL 是无界文本，违反基数护栏；语句只进日志）
+- [x] 10.3 `internal/metrics/db.go`（新）：`feedchamber_db_queries_total` + `feedchamber_db_slow_queries_total`，**均无标签**（SQL 是无界文本，违反基数护栏；语句只进日志）
 - [x] 10.4 `internal/db/sql.go`：`gorm.Open(dialector, &gorm.Config{Logger: newSlowQueryLogger()})`
 
 ## 11. G3 余项：权限缓存规模 + 备份任务
 
-- [x] 11.1 `internal/metrics/permission_cache.go`（新）：`orinforum_permission_cache_entries{cache}`，`cache` ∈ `role`/`space`/`group`，`init()` seed 三值
+- [x] 11.1 `internal/metrics/permission_cache.go`（新）：`feedchamber_permission_cache_entries{cache}`，`cache` ∈ `role`/`space`/`group`，`init()` seed 三值
 - [x] 11.2 `internal/service/permission.go`：`LoadCache` 在**持有写锁期间**上报三个缓存的 `len()`（重建完成态，非部分填充态）
-- [x] 11.3 `internal/metrics/backup.go`（新）：`orinforum_backup_jobs_total{kind,outcome}` + `orinforum_backup_job_duration_seconds{kind}`；`init()` seed 全部 kind×outcome 组合
+- [x] 11.3 `internal/metrics/backup.go`（新）：`feedchamber_backup_jobs_total{kind,outcome}` + `feedchamber_backup_job_duration_seconds{kind}`；`init()` seed 全部 kind×outcome 组合
 - [x] 11.4 `internal/service/backup.go`：`Create`/`Restore`/`Cleanup` 三个入口用具名返回值 + `defer observeBackup(...)`；outcome 由 `err` 推导（不由调用方传入，否则「忘了报失败」无法被发现）
 
 ## 12. G2 告警阈值改相对基线
@@ -113,5 +113,5 @@
 
 ## 16. 明确未做（保留在 findings 中）
 
-- [x] 16.1 NATS server 自身指标（`/varz` / JetStream 存储水位）：`deploy/docker-compose.yml` 新增 `nats-exporter`（`natsio/prometheus-nats-exporter:0.15.0`，`-varz -jsz all -connz` 抓 `nats:8222`），`deploy/prometheus.yml` 增 `job_name: nats`；`rules/orinforum.yml` 新增 `orinforum-nats` 组 5 条告警（exporter down / 慢消费者 / JetStream 存储 >85% / 消费者积压 / 连接数异常）。顺带修掉既有 `BackupJobFailed` 的 `\"` 转义错误（此前整份规则文件 promtool 解析失败）。`promtool check rules` → 23 rules SUCCESS
-- [x] 16.2 5xx / P99 / DB 池阈值按真实流量回归：真实分位数无法在本地合成（用相对基线替代只会得到"永远不响"或"一直响"的假规则），因此改为交付校准工具 `scripts/calibrate-alert-thresholds.sh`——在**有真实流量的环境**里一次性打印 5xx 占比、P50/P90/P99/P99.9、DB 池使用率与等待次数、NATS 慢消费者/存储水位/连接数，每项都附「怎么读」的判据，结论直接写回 `rules/orinforum.yml`。脚本只读不写，连不上 Prometheus 时 fail fast。已用真实 Prometheus 实例验证全部 PromQL 表达式被接受（status=success）
+- [x] 16.1 NATS server 自身指标（`/varz` / JetStream 存储水位）：`deploy/docker-compose.yml` 新增 `nats-exporter`（`natsio/prometheus-nats-exporter:0.15.0`，`-varz -jsz all -connz` 抓 `nats:8222`），`deploy/prometheus.yml` 增 `job_name: nats`；`rules/feedchamber.yml` 新增 `feedchamber-nats` 组 5 条告警（exporter down / 慢消费者 / JetStream 存储 >85% / 消费者积压 / 连接数异常）。顺带修掉既有 `BackupJobFailed` 的 `\"` 转义错误（此前整份规则文件 promtool 解析失败）。`promtool check rules` → 23 rules SUCCESS
+- [x] 16.2 5xx / P99 / DB 池阈值按真实流量回归：真实分位数无法在本地合成（用相对基线替代只会得到"永远不响"或"一直响"的假规则），因此改为交付校准工具 `scripts/calibrate-alert-thresholds.sh`——在**有真实流量的环境**里一次性打印 5xx 占比、P50/P90/P99/P99.9、DB 池使用率与等待次数、NATS 慢消费者/存储水位/连接数，每项都附「怎么读」的判据，结论直接写回 `rules/feedchamber.yml`。脚本只读不写，连不上 Prometheus 时 fail fast。已用真实 Prometheus 实例验证全部 PromQL 表达式被接受（status=success）

@@ -1,8 +1,8 @@
 package server
 
 import (
-	"orinforum/internal/container"
-	"orinforum/internal/handler"
+	"feedchamber/internal/container"
+	"feedchamber/internal/handler"
 )
 
 // newHandler maps the assembled container onto the HTTP layer's dependency

@@ -17,7 +17,7 @@ var (
 	// threshold events stay in SecurityEvent storage; this is the trend view.
 	LoginFailuresTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_login_failures_total",
+			Name: "feedchamber_login_failures_total",
 			Help: "Rejected login attempts by failure reason.",
 		},
 		[]string{"reason"},

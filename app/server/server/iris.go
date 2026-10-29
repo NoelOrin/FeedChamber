@@ -12,25 +12,25 @@ import (
 	"strings"
 	"syscall"
 
-	"orinforum/internal/config"
-	"orinforum/internal/container"
-	"orinforum/internal/db"
-	"orinforum/internal/gateway"
-	"orinforum/internal/metrics"
-	"orinforum/internal/middleware"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/pkg/logger"
-	"orinforum/internal/pkg/ratelimit"
-	"orinforum/internal/repository"
-	"orinforum/internal/router"
-	"orinforum/internal/service"
-	"orinforum/internal/storage"
+	"feedchamber/internal/config"
+	"feedchamber/internal/container"
+	"feedchamber/internal/db"
+	"feedchamber/internal/gateway"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/middleware"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/pkg/logger"
+	"feedchamber/internal/pkg/ratelimit"
+	"feedchamber/internal/repository"
+	"feedchamber/internal/router"
+	"feedchamber/internal/service"
+	"feedchamber/internal/storage"
 	"time"
 
-	_ "orinforum/docs"
+	_ "feedchamber/docs"
 
 	irisSwagger "github.com/iris-contrib/swagger"
 	"github.com/iris-contrib/swagger/swaggerFiles"
@@ -403,7 +403,7 @@ func Start(env Env) {
 		_ = ln.Close()
 	}
 
-	logrus.Infof("OrinForum listening on %s", addr)
+	logrus.Infof("Feed Chamber listening on %s", addr)
 
 	// Run server in background goroutine
 	go func() {
@@ -507,7 +507,7 @@ func seedAdmin(store db.Store) {
 		ID:          pkg.NewID(),
 		Username:    "admin",
 		DisplayName: "admin",
-		Email:       "admin@orinforum.local",
+		Email:       "admin@feedchamber.local",
 		Role:        "admin",
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),

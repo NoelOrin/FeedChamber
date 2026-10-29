@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/db"
-	"orinforum/internal/model"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 )
 
 // TrustRepository 承担 XP/等级体系的数据访问：配置表（规则 / 阶梯 / 等级 /

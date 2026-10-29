@@ -20,7 +20,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
 				<meta charSet="utf-8" />
 				<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 				<meta name="theme-color" content="#8c2de4" />
-				<title>OrinForum</title>
+				<title>Feed Chamber</title>
 			</head>
 			<body className="relative min-h-screen">
 				<ErrorFallback error={error} reset={reset} variant="global" />

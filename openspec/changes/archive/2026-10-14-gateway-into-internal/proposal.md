@@ -7,7 +7,7 @@
 ## What Changes
 
 - `app/server/pkg/gateway/` → `app/server/internal/gateway/`（31 个 `.go` 文件整体搬迁：18 个生产文件 3649 行 + 13 个测试文件 3513 行）。文件内容逐字节不变，`git mv` 后 rename 检测成立。
-- 两个 importer 的 import 路径改为 `orinforum/internal/gateway`：`server/iris.go`、`internal/router/router.go`。
+- 两个 importer 的 import 路径改为 `feedchamber/internal/gateway`：`server/iris.go`、`internal/router/router.go`。
 - 9 处跨包注释里的路径字样同步（`internal/middleware/{auth,deps,ratelimit,trace}.go`、`internal/metrics/gateway.go`、`internal/container/deps.go`、`internal/pkg/{ctxkey,ratelimit/ratelimit}.go`、`internal/router/router.go`）。
 - 新增「包位置按消费者边界选择」要求（layered-architecture），把"只有模块内消费者的包 MUST NOT 住 `pkg/`"写成规则，并如实记录 `pkg/jwt` 是此刻唯一的例外及其待决状态。
 - 文档路径与措辞：根 `AGENTS.md`（结构树、§Gateway 段首句"独立于 `internal` 的网关子系统"已失真）、`docs/ARCHITECTURE.md` 命名提醒、`docs/backend-overview.md`（24 处）、`docs/design/session-auth.md`（8 处）、`internal/{handler,middleware,repository,router}/AGENTS.md`。
@@ -17,7 +17,7 @@
 
 - **行为**：零变化。路由、鉴权、限流、响应、指标全部不变；`go build/vet/test ./...` 全绿（17 个含测试包，与搬迁前同一基线），测试文件未改一行。
 - **编译面**：`internal/gateway` 只 import `internal/*` 与 `pkg/jwt`；`internal/middleware` 不 import 网关（仅 `internal/gateway/tracing_test.go` 在测试里用到 `middleware.Trace`），故搬迁不引入新环。
-- **外部可见性**：Go 的 `internal/` 限制的是"非 `orinforum` 模块不得 import"。仓库内没有任何模块外消费者，因此实际影响为 0；若将来要做可复用库，那时再移回 `pkg/` 才是有依据的。
+- **外部可见性**：Go 的 `internal/` 限制的是"非 `feedchamber` 模块不得 import"。仓库内没有任何模块外消费者，因此实际影响为 0；若将来要做可复用库，那时再移回 `pkg/` 才是有依据的。
 - **不在本轮范围**（已实测确认，非遗漏）：
   - 网关自持 `*gorm.DB` 与 13 个文件直接 import `internal/model`（21 处）——数据访问下沉 repository 是另一件事，方向与本轮相反（本轮只搬位置，不改变谁持有 DB 句柄）。
   - `internal/gateway` 与 `internal/middleware` 各自声明了方法集完全相同的 `SettingReader` / `PermissionChecker` / `Ban(ner)Checker`，以及两个平行 `Deps`。合并需要确定接口归属方并新增一条包间依赖边，代价与收益要单独评估。

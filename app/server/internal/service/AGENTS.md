@@ -144,3 +144,5 @@
 因为登录列表会注入已读状态（`ReadStates`）、拉黑作者排除（`ExcludeAuthorIDs`）
 与等级可见性——缓存它就是跨用户串数据。新增过滤条件时把它加进 `readcache.Key`
 的参数列表，否则不同过滤会命中同一条缓存。
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

@@ -1,4 +1,4 @@
-# OrinForum Mobile 使用指南
+# Feed Chamber Mobile 使用指南
 
 > 将 Web 应用打包为 iOS / Android H5 混合 App，基于 [Capacitor](https://capacitorjs.com/)。
 
@@ -95,10 +95,10 @@ cp .env.mobile.example .env.mobile
 MOBILE_SERVER_URL=http://192.168.8.3:3000
 
 # App 唯一标识（反向域名，发布后不可更改）
-CAPACITOR_APP_ID=com.orinforum.app
+CAPACITOR_APP_ID=com.feedchamber.app
 
 # App 显示名称
-CAPACITOR_APP_NAME=OrinForum
+CAPACITOR_APP_NAME=Feed Chamber
 
 # iOS 开发团队 ID（签名用）
 IOS_DEV_TEAM=
@@ -176,7 +176,7 @@ make open-ios
 make build-ios
 ```
 
-产物：`ios/App/build/OrinForum.xcarchive` 和导出目录。
+产物：`ios/App/build/Feed Chamber.xcarchive` 和导出目录。
 
 **手动导出 IPA**（更灵活）：
 
@@ -204,7 +204,7 @@ make release-android
 
 ```bash
 keytool -genkey -v -keystore android/app/release.keystore \
-  -alias orinforum -keyalg RSA -keysize 2048 -validity 10000
+  -alias feedchamber -keyalg RSA -keysize 2048 -validity 10000
 ```
 
 修改 `android/app/build.gradle` 添加 release signingConfig：
@@ -215,7 +215,7 @@ android {
         release {
             storeFile file('release.keystore')
             storePassword '你的密码'
-            keyAlias 'orinforum'
+            keyAlias 'feedchamber'
             keyPassword '你的密码'
         }
     }
@@ -390,7 +390,7 @@ make sync
 **修改 `.env.mobile`**：
 
 ```bash
-CAPACITOR_APP_ID=com.yourname.orinforum
+CAPACITOR_APP_ID=com.yourname.feedchamber
 CAPACITOR_APP_NAME=你的 App 名
 ```
 

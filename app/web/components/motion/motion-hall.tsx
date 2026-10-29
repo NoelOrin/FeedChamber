@@ -1,6 +1,6 @@
 'use client';
 
-import { motionService } from '@orinforum/api-client';
+import { motionService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 

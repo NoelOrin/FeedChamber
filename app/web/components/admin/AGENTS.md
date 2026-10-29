@@ -56,3 +56,5 @@
 - 壳层分层（挂载门 / 分区总壳 / 视觉壳层）变化
 - `menuItems` 结构或菜单过滤机制变化
 - 准入组件（403 页 / 模块 403 / AccessProvider）的对外契约变化
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

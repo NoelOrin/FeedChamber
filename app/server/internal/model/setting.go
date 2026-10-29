@@ -85,12 +85,12 @@ func (Setting) TableName() string { return "settings" }
 
 // DefaultSettings are seeded on first startup.
 var DefaultSettings = map[string]string{
-	"site_name":        "OrinForum",
+	"site_name":        "Feed Chamber",
 	"site_description": "NoelOrin 的个人博客",
 	"site_logo":        "",
 	"site_url":         "",
-	"seo_title":        "OrinForum",
-	"seo_keywords":     "OrinForum,博客,社区,技术",
+	"seo_title":        "Feed Chamber",
+	"seo_keywords":     "Feed Chamber,博客,社区,技术",
 	// seo_description 曾被 app/web 的 generateMetadata 读取，却既不在本表也不在
 	// PublicSettingKeys 中——读取即落空、永远回退到 site_description。此处补齐种子。
 	"seo_description": "",
@@ -216,7 +216,7 @@ var DefaultSettings = map[string]string{
 	"email_username":  "",
 	"email_password":  "",
 	"email_from":      "",
-	"email_from_name": "OrinForum",
+	"email_from_name": "Feed Chamber",
 	"email_use_tls":   "false",
 	"email_api_key":   "",
 	// Email code

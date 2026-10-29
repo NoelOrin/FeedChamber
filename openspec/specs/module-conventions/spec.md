@@ -1,7 +1,7 @@
 # module-conventions Specification
 
 ## Purpose
-定义 OrinForum 业务模块的分层文件组织约定与新增模块的改动清单，确保新增功能以一致方式落入既有架构。
+定义 Feed Chamber 业务模块的分层文件组织约定与新增模块的改动清单，确保新增功能以一致方式落入既有架构。
 ## Requirements
 ### Requirement: 模块分层文件组织
 

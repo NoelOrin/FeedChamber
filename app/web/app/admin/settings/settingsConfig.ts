@@ -175,7 +175,7 @@ export const settingsGroups: SettingsGroup[] = [
 			{ key: 'email_username', value: '', description: 'SMTP / 邮箱用户名' },
 			{ key: 'email_password', value: '', description: 'SMTP / 邮箱密码', type: 'secret' },
 			{ key: 'email_from', value: '', description: '发件人邮箱' },
-			{ key: 'email_from_name', value: 'OrinForum', description: '发件人名称' },
+			{ key: 'email_from_name', value: 'Feed Chamber', description: '发件人名称' },
 			{ key: 'email_use_tls', value: 'false', description: 'SMTP 使用 TLS', type: 'boolean' },
 			{ key: 'email_api_key', value: '', description: 'SendGrid / Resend API Key', type: 'secret' },
 			{ key: 'email_code_ttl', value: '600', description: '邮箱验证码有效期（秒）' },

@@ -8,11 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/repository"
-	"orinforum/internal/storage"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/repository"
+	"feedchamber/internal/storage"
 
 	"github.com/stretchr/testify/require"
 )

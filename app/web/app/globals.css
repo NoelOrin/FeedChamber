@@ -2,11 +2,11 @@
 @import "tw-animate-css";
 
 /* ============================================================
-   色彩与圆角的唯一来源：@orinforum/tokens（w3c-tokens.json → shadcn.css）。
+   色彩与圆角的唯一来源：@feedchamber/tokens（w3c-tokens.json → shadcn.css）。
    Web 与 Dashboard 共用同一份生成结果，改色只改 w3c-tokens.json 再跑
-   `pnpm --filter @orinforum/tokens tokens:build`，两边同时生效。
+   `pnpm --filter @feedchamber/tokens tokens:build`，两边同时生效。
    ============================================================ */
-@import "@orinforum/tokens/shadcn.css";
+@import "@feedchamber/tokens/shadcn.css";
 
 /* ============================================================
    设计基准：shadcn/ui（new-york, neutral）

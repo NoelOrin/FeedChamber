@@ -1,5 +1,5 @@
-import type { Space } from '@orinforum/api-client';
-import { spaceService } from '@orinforum/api-client';
+import type { Space } from '@feedchamber/api-client';
+import { spaceService } from '@feedchamber/api-client';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import {

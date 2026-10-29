@@ -4,8 +4,8 @@ import (
 	"io"
 	"strconv"
 
-	"orinforum/internal/pkg"
-	"orinforum/internal/service"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/service"
 
 	"github.com/kataras/iris/v12"
 )

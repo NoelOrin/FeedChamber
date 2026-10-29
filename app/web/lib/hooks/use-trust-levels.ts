@@ -1,6 +1,6 @@
 'use client';
 
-import { type PublicTrustLevel, trustService } from '@orinforum/api-client';
+import { type PublicTrustLevel, trustService } from '@feedchamber/api-client';
 import { useQuery } from '@tanstack/react-query';
 
 export const trustLevelsQueryKey = ['trust', 'levels', 'public'] as const;

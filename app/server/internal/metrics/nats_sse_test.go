@@ -47,9 +47,9 @@ func counterValue(t *testing.T, mf *dto.MetricFamily, label, want string) (float
 // here would make a healthy instance page on the disconnect alert.
 func TestNATSClientsSeededConnected(t *testing.T) {
 	byName := gatherByName(t)
-	mf := byName["orinforum_nats_connected"]
+	mf := byName["feedchamber_nats_connected"]
 	if mf == nil {
-		t.Fatal("orinforum_nats_connected missing before first observation")
+		t.Fatal("feedchamber_nats_connected missing before first observation")
 	}
 
 	for _, client := range []string{NATSClientKV, NATSClientEventBus} {
@@ -72,30 +72,30 @@ func TestNATSDisconnectAndReconnectTransitions(t *testing.T) {
 
 	SeedNATSClient(client)
 	byName := gatherByName(t)
-	if v, _ := gaugeValue(t, byName["orinforum_nats_connected"], "client", client); v != 1 {
+	if v, _ := gaugeValue(t, byName["feedchamber_nats_connected"], "client", client); v != 1 {
 		t.Fatalf("seeded connected = %v, want 1", v)
 	}
 
 	ObserveNATSDisconnected(client)
 	byName = gatherByName(t)
-	if v, _ := gaugeValue(t, byName["orinforum_nats_connected"], "client", client); v != 0 {
+	if v, _ := gaugeValue(t, byName["feedchamber_nats_connected"], "client", client); v != 0 {
 		t.Errorf("connected after disconnect = %v, want 0", v)
 	}
-	if v, _ := counterValue(t, byName["orinforum_nats_disconnects_total"], "client", client); v != 1 {
+	if v, _ := counterValue(t, byName["feedchamber_nats_disconnects_total"], "client", client); v != 1 {
 		t.Errorf("disconnects_total = %v, want 1", v)
 	}
 
 	ObserveNATSReconnected(client)
 	byName = gatherByName(t)
-	if v, _ := gaugeValue(t, byName["orinforum_nats_connected"], "client", client); v != 1 {
+	if v, _ := gaugeValue(t, byName["feedchamber_nats_connected"], "client", client); v != 1 {
 		t.Errorf("connected after reconnect = %v, want 1", v)
 	}
-	if v, _ := counterValue(t, byName["orinforum_nats_reconnects_total"], "client", client); v != 1 {
+	if v, _ := counterValue(t, byName["feedchamber_nats_reconnects_total"], "client", client); v != 1 {
 		t.Errorf("reconnects_total = %v, want 1", v)
 	}
 	// The disconnect counter must not move on a successful reconnect, or the
 	// "flapping" alert (disconnects >> reconnects) would never fire.
-	if v, _ := counterValue(t, byName["orinforum_nats_disconnects_total"], "client", client); v != 1 {
+	if v, _ := counterValue(t, byName["feedchamber_nats_disconnects_total"], "client", client); v != 1 {
 		t.Errorf("disconnects_total after reconnect = %v, want still 1", v)
 	}
 }
@@ -105,7 +105,7 @@ func TestNATSDisconnectAndReconnectTransitions(t *testing.T) {
 func TestSSEChannelsSeeded(t *testing.T) {
 	byName := gatherByName(t)
 
-	for _, family := range []string{"orinforum_sse_connections", "orinforum_sse_write_failures_total"} {
+	for _, family := range []string{"feedchamber_sse_connections", "feedchamber_sse_write_failures_total"} {
 		mf := byName[family]
 		if mf == nil {
 			t.Errorf("%s missing before first stream", family)
@@ -132,17 +132,17 @@ func TestSSEChannelsSeeded(t *testing.T) {
 // normal disconnect.
 func TestSSEWriteFailureIsCounted(t *testing.T) {
 	byName := gatherByName(t)
-	before, _ := counterValue(t, byName["orinforum_sse_write_failures_total"], "channel", SSEChannelRealtime)
-	connBefore, _ := gaugeValue(t, byName["orinforum_sse_connections"], "channel", SSEChannelRealtime)
+	before, _ := counterValue(t, byName["feedchamber_sse_write_failures_total"], "channel", SSEChannelRealtime)
+	connBefore, _ := gaugeValue(t, byName["feedchamber_sse_connections"], "channel", SSEChannelRealtime)
 
 	ObserveSSEWriteFailure(SSEChannelRealtime)
 
 	byName = gatherByName(t)
-	after, _ := counterValue(t, byName["orinforum_sse_write_failures_total"], "channel", SSEChannelRealtime)
+	after, _ := counterValue(t, byName["feedchamber_sse_write_failures_total"], "channel", SSEChannelRealtime)
 	if after != before+1 {
 		t.Errorf("write_failures_total = %v, want %v", after, before+1)
 	}
-	connAfter, _ := gaugeValue(t, byName["orinforum_sse_connections"], "channel", SSEChannelRealtime)
+	connAfter, _ := gaugeValue(t, byName["feedchamber_sse_connections"], "channel", SSEChannelRealtime)
 	if connAfter != connBefore {
 		t.Errorf("write failure changed the connection gauge: %v -> %v", connBefore, connAfter)
 	}

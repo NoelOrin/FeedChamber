@@ -1,7 +1,7 @@
 'use client';
 
-import type { PostDetail as PostDetailData } from '@orinforum/api-client';
-import { PostStatus, postService, revisionService } from '@orinforum/api-client';
+import type { PostDetail as PostDetailData } from '@feedchamber/api-client';
+import { PostStatus, postService, revisionService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
 import { useState } from 'react';

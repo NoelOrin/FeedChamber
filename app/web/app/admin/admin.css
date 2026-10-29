@@ -1,7 +1,7 @@
 /*
  * 后台专属样式。只被 `app/admin/layout.tsx` 引入，因此只打进 /admin 的 CSS 分块。
  *
- * 色彩词汇与主站统一：后台**不引入** `@orinforum/tokens/tokens.css`。
+ * 色彩词汇与主站统一：后台**不引入** `@feedchamber/tokens/tokens.css`。
  * 根布局已引入 `globals.css`（shadcn 变量：--background / --foreground /
  * --muted / --card / --border / --primary / --accent / --brand-text …），
  * 后台直接复用同一套变量名。

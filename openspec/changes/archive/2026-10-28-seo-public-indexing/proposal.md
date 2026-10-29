@@ -1,6 +1,6 @@
 ## Why
 
-OrinForum 的 SEO 能力目前**整体失效**，不是「优化不足」而是「一条都抓不到」。四个缺陷叠加，任何一个单独存在都足以让索引为零：
+Feed Chamber 的 SEO 能力目前**整体失效**，不是「优化不足」而是「一条都抓不到」。四个缺陷叠加，任何一个单独存在都足以让索引为零：
 
 1. **所有内容页对爬虫返回 307 到 `/login`。** 前端 `proxy.ts` 把 `/timeline|spaces|t|user|...` 硬编码为 PROTECTED，`(app)/layout.tsx` 再用 `requireAuth()` 二次拦截。而后端 `post_auth_required` / `space_view_auth_required` 默认 `false` 且 `AuthGate` 已按设置动态放行——**后端本来就是对的，是前端单方面加的登录墙**。这意味着设置项在后台改了也不生效，前端不读它。
 2. **`/sitemap.xml`、`/robots.txt` 在生产环境返回 404。** 这两个端点只注册在后端根 mux（`app.Get`），而 `deploy/nginx/nginx.conf` 只把 `/api/v1/`、`/swagger/`、`/health` 转给后端，其余全部落到前端，前端没有对应路由。

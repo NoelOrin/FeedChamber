@@ -1,5 +1,5 @@
-/* @orinforum/tokens - Layout tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
-   Run: pnpm --filter @orinforum/tokens tokens:build */
+/* @feedchamber/tokens - Layout tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
+   Run: pnpm --filter @feedchamber/tokens tokens:build */
 
 export const lightLayoutTokens = {
   headerBg: '#ffffff',

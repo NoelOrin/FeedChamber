@@ -1,6 +1,6 @@
 ## Context
 
-OrinForum 后端已有完整分层（`handler → service → repository → db`），统一响应 `pkg.Success/HandleError`、RPC 风格 URL、gateway 两段式鉴权（Preflight/Enforce）与 path→permission 映射、`eventbus` 事件总线、`kvstore` 缓存。现有 `Report` 模块是「用户单向上报 + 管理员私裁」的范本，本变更要做的 `Motion` 子系统与之**同构并存**，不改动 `Report` 任何行为。暗区以「新增一个软隔离 Space」的形式落地，复用现有 `Space`/`Post` 模型，避免引入平行的内容隔离体系。
+Feed Chamber 后端已有完整分层（`handler → service → repository → db`），统一响应 `pkg.Success/HandleError`、RPC 风格 URL、gateway 两段式鉴权（Preflight/Enforce）与 path→permission 映射、`eventbus` 事件总线、`kvstore` 缓存。现有 `Report` 模块是「用户单向上报 + 管理员私裁」的范本，本变更要做的 `Motion` 子系统与之**同构并存**，不改动 `Report` 任何行为。暗区以「新增一个软隔离 Space」的形式落地，复用现有 `Space`/`Post` 模型，避免引入平行的内容隔离体系。
 
 ## Goals / Non-Goals
 

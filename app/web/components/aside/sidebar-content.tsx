@@ -1,6 +1,6 @@
 'use client';
 
-import type { SpaceNode } from '@orinforum/api-client';
+import type { SpaceNode } from '@feedchamber/api-client';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';

@@ -19,7 +19,7 @@ GitHub Actions。四个 workflow，分工明确：**质量门（几分钟）与�
 |-----|--------|-----------|
 | `backend` | `gofmt -l`（只列不改）、`go vet ./...`、`go test ./...`、`swag` + `make swag-check` | gofmt 用 `-l` 保证永不替作者改文件，只让漂移暴露在 PR；swagger 产物是提交进仓库的，忘记 `make swag` 不会编译报错 |
 | `frontend` | `pnpm exec biome check .` | 单条命令覆盖格式化 + import 组织 + lint；`biome.json` 已排除构建产物 |
-| `typecheck` | `turbo run build --filter='./packages/*'` 然后 `app/web` 的 `tsc -p tsconfig.check.json` | **共享包必须先出 dist**，否则 web 解析不到 `@orinforum/*` 的类型 |
+| `typecheck` | `turbo run build --filter='./packages/*'` 然后 `app/web` 的 `tsc -p tsconfig.check.json` | **共享包必须先出 dist**，否则 web 解析不到 `@feedchamber/*` 的类型 |
 | `docs` | `node scripts/check-agents-docs.mjs --check-index` + PR 时 `--base` 校验模块文档同步 | 模块改了代码却没改 `AGENTS.md` 会让文档长期脱节，且没有任何编译错误提醒 |
 
 ## 历史背景（别把门禁当摆设）

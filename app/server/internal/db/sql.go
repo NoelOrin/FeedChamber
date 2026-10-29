@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 	"fmt"
-	"orinforum/internal/config"
+	"feedchamber/internal/config"
 	"os"
 	"time"
 
@@ -43,7 +43,7 @@ func newSQLStore(cfg config.DBConfig, backend BackendType) (Store, error) {
 		dsn := cfg.DSN
 		if dsn == "" {
 			dsn = fmt.Sprintf(
-				"%s:%s@tcp(%s:%s)/orinforum?charset=utf8mb4&parseTime=True&loc=Local",
+				"%s:%s@tcp(%s:%s)/feedchamber?charset=utf8mb4&parseTime=True&loc=Local",
 				getEnv("DB_USER", "root"),
 				getEnv("DB_PASSWORD", ""),
 				getEnv("DB_HOST", "localhost"),
@@ -56,7 +56,7 @@ func newSQLStore(cfg config.DBConfig, backend BackendType) (Store, error) {
 		dsn := cfg.DSN
 		if dsn == "" {
 			dsn = fmt.Sprintf(
-				"host=%s user=%s password=%s dbname=orinforum port=%s sslmode=disable",
+				"host=%s user=%s password=%s dbname=feedchamber port=%s sslmode=disable",
 				getEnv("DB_HOST", "localhost"),
 				getEnv("DB_USER", "postgres"),
 				getEnv("DB_PASSWORD", "postgres"),

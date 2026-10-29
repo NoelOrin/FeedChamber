@@ -4,11 +4,11 @@ import (
 	"context"
 	"testing"
 
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg/testnats"
-	"orinforum/internal/repository"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg/testnats"
+	"feedchamber/internal/repository"
 
 	"github.com/stretchr/testify/require"
 )

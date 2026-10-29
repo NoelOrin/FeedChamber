@@ -51,3 +51,5 @@
 2. 实现 `sqlXxxRepo`（GORM），每个方法用 `WrapDBErr` 包装错误
 3. 工厂函数返回 `&sqlXxxRepo{db: store.SQL()}`
 4. 在 `internal/container/container.go` 装配，并在对应 service 构造函数里接收接口
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

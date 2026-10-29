@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
 	"time"
 
 	"gorm.io/gorm/clause"

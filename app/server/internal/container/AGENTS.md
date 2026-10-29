@@ -64,3 +64,5 @@ func (r *Runtime) Shutdown()                                 // 冲刷浏览量 
 - 「HTTP 层到底依赖哪些服务」可以从一个文件读出，而不是散落在 42 个 handler 文件里的 `h.c.XxxSvc`。
 
 后台 worker 的生命周期同样不归 handler：`Handler.Shutdown()` 已删除，关停由 `server/iris.go` 调 `runtime.Shutdown()`。
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

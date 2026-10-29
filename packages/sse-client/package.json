@@ -1,5 +1,5 @@
 {
-	"name": "@orinforum/sse-client",
+	"name": "@feedchamber/sse-client",
 	"version": "0.1.0",
 	"private": true,
 	"type": "module",
@@ -25,7 +25,7 @@
 		"check": "biome check ./src"
 	},
 	"dependencies": {
-		"@orinforum/api-client": "workspace:*"
+		"@feedchamber/api-client": "workspace:*"
 	},
 	"devDependencies": {
 		"tsup": "^8.4.0",

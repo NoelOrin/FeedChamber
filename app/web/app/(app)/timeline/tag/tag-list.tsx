@@ -1,6 +1,6 @@
 'use client';
 
-import type { Tag } from '@orinforum/api-client';
+import type { Tag } from '@feedchamber/api-client';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 

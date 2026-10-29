@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"orinforum/internal/db"
+	"feedchamber/internal/db"
 )
 
 type FollowRepository interface {

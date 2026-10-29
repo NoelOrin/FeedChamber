@@ -13,7 +13,7 @@
 | Storage.LocalDir | STORAGE_LOCAL_DIR | "uploads" | 本地存储目录 |
 | Storage.Endpoint/Region/Bucket/AccessKey/SecretKey | S3_* | "" | S3 配置 |
 | KV.NATSURL | NATS_URL | "" (**必填**) | 外部 NATS 地址，需启用 JetStream；为空则启动失败 |
-| KV.NATSBucket | NATS_BUCKET | "orin_kv" | JetStream KV bucket |
+| KV.NATSBucket | NATS_BUCKET | "feedchamber_kv" | JetStream KV bucket |
 
 ## 备注
 

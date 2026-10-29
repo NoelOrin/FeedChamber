@@ -52,12 +52,12 @@ lib/                      跨域基础设施（auth / query / api adapter / seo 
 - **query key 一律取自 `~/lib/query/keys.ts` 的 `qk`**，不在域内拼数组。
 - `post/queries.ts` 还负责信息流的**参数归一**（`normalizeListView` / `normalizeSortBy` / `normalizeTag` / `stableFeedKey`）：服务端读 `searchParams` 与客户端读 nuqs 都走同一组函数，非法值当缺省、不改写 URL。
 - **单版信息流按 `space_id` + `include_sub` 递归聚合**：`PostFeedParams` 带 `space_id`（不是 `space_slug`）且 `include_sub: true` 时，后端把过滤展开成「本版 + 全部后代版」。`feedParamsOf` 对两者做互斥处理（有 `spaceId` 就不写 `space_slug`，后端 space_id 优先），父版面首页因此能看到子版帖子，叶子版面等价于只看本版。
-- 域组件不直接调 `authFetch`；一律经 `@orinforum/api-client` 的 service。
+- 域组件不直接调 `authFetch`；一律经 `@feedchamber/api-client` 的 service。
 
 ## 组件写法
 
 - 文件命名：组件用 kebab-case（`post-card.tsx`、`user-card.tsx`），只有后台遗留的两个用 PascalCase（`components/admin/SpaceIcon.tsx`、`components/admin/error/ErrorFallback.tsx`）——新文件跟 kebab-case。
-- 样式：Tailwind + `cn()`（`~/lib/utils`，即 `@orinforum/shared-utils` 的 `cx`）。**不要写 CSS module**（`markdown-editor/editor.css` 是唯一例外，tiptap 必须）。
+- 样式：Tailwind + `cn()`（`~/lib/utils`，即 `@feedchamber/shared-utils` 的 `cx`）。**不要写 CSS module**（`markdown-editor/editor.css` 是唯一例外，tiptap 必须）。
 - 图标：**一律从 `~/lib/icons` 引入**。`biome.json` 的 `noRestrictedImports` 把直接 import `lucide-react` / `lucide-*` 列为 **error**。
 - `'use client'` 只在需要 hooks / 浏览器 API / 事件时加；能被服务端渲染的纯展示组件不要加。
 - 正文排版只用 `components/ui/prose.tsx`（Markdown 渲染的唯一出口），不要就地写 typography 类。

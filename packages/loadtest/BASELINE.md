@@ -53,13 +53,13 @@
 ## 原因假设（需服务端确认）
 
 - **SSR**：frontend 是单容器、compose 里没有 CPU 配额，vinext 每请求重渲染整页；页面级缓存（CDN/nginx `proxy_cache`）或 SSR→CSR 降级会直接抬上限。
-- **API 平台期**：单实例 + `DB_MAX_OPEN_CONNS=25`，与「约 300 req/s 后 p50 线性上涨、错误率仍接近 0」的现象吻合。看 `orinforum_http_request_duration` 与 DB pool wait 即可确认是排队还是计算。
+- **API 平台期**：单实例 + `DB_MAX_OPEN_CONNS=25`，与「约 300 req/s 后 p50 线性上涨、错误率仍接近 0」的现象吻合。看 `feedchamber_http_request_duration` 与 DB pool wait 即可确认是排队还是计算。
 - **Cloudflare 不缓存动态页**，所有页面请求都回源，CF 只是加了 ~200–350 ms 的往返，不承担容量。
 
 ## 复现
 
 ```bash
-pnpm --filter @orinforum/loadtest smoke                       # 端到端自检，必须 100%
+pnpm --filter @feedchamber/loadtest smoke                       # 端到端自检，必须 100%
 k6 run -e KINDS=json -e PROFILE=api k6/stress.js              # API 面千级
 k6 run -e KINDS=html -e MAX_VUS=500 -e PROFILE=ssr k6/stress.js   # SSR 面
 k6 run -e PROFILE=mixed k6/stress.js                          # 混合（会早停，属预期）

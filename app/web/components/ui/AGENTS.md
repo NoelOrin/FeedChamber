@@ -4,7 +4,7 @@ shadcn/ui 基准的原语层：**无业务、无取数、只接收 props**。前
 
 > 上级：[components/AGENTS.md](../AGENTS.md) · 视觉基准：`app/web/app/globals.css`（shadcn token，中性色 + 冷紫主色）
 
-实测规模：33 个文件。token 的唯一载体是 `app/web/app/globals.css`——**Web 不依赖 `@orinforum/tokens`**（该包只服务 Dashboard），daisyUI 已移除。
+实测规模：33 个文件。token 的唯一载体是 `app/web/app/globals.css`——**Web 不依赖 `@feedchamber/tokens`**（该包只服务 Dashboard），daisyUI 已移除。
 
 ## 硬规则
 
@@ -52,7 +52,7 @@ node scripts/axe-audit.mjs   # 可访问性审计（需先起 web，登录态见
 - 改 `button.tsx` 的变体/尺寸会**同时影响前台与整个后台**（41 个页面）。改完至少走查：前台时间线、帖子详情、`/admin` 首页、任一后台列表页。
 - `data-table.tsx` 的 props 是后台 20+ 列表页的共享契约。加必填 prop 等于一次批量改动，优先用可选 prop + 默认值。
 - `prose.tsx` 的 class 表被 Markdown 渲染、公告、评论共用。改层级规则前先确认没有页面在覆写它。
-- 不要在这里引入 `@orinforum/tokens`：Web 的 token 来自 `globals.css`，两套 token 并存会立刻出现色差。
+- 不要在这里引入 `@feedchamber/tokens`：Web 的 token 来自 `globals.css`，两套 token 并存会立刻出现色差。
 
 ## 本文件何时更新
 

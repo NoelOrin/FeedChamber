@@ -1,6 +1,6 @@
-// Solid 版 `~/utils/draft.ts` 平移：localStorage 键语义（前缀 orinforum:draft:）与旧版完全一致，
+// Solid 版 `~/utils/draft.ts` 平移：localStorage 键语义（前缀 feedchamber:draft:）与旧版完全一致，
 // 用户本地已有的草稿可继续被读出。
-const PREFIX = 'orinforum:draft:';
+const PREFIX = 'feedchamber:draft:';
 
 export function saveDraft(key: string, value: unknown) {
 	if (typeof localStorage === 'undefined') return;

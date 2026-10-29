@@ -31,21 +31,21 @@ importers:
 
   app/web:
     dependencies:
+      '@feedchamber/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
+      '@feedchamber/shared-utils':
+        specifier: workspace:^
+        version: link:../../packages/shared-utils
+      '@feedchamber/sse-client':
+        specifier: workspace:^
+        version: link:../../packages/sse-client
+      '@feedchamber/tokens':
+        specifier: workspace:*
+        version: link:../../packages/tokens
       '@hookform/resolvers':
         specifier: ^6.0.1
         version: 6.0.1(@standard-schema/spec@1.1.0)(ajv-formats@2.1.1(ajv@8.20.0))(ajv@8.20.0)(react-hook-form@7.91.0(@types/react@19.2.16)(react@19.3.1))(zod@4.6.7)
-      '@orinforum/api-client':
-        specifier: workspace:*
-        version: link:../../packages/api-client
-      '@orinforum/shared-utils':
-        specifier: workspace:^
-        version: link:../../packages/shared-utils
-      '@orinforum/sse-client':
-        specifier: workspace:^
-        version: link:../../packages/sse-client
-      '@orinforum/tokens':
-        specifier: workspace:*
-        version: link:../../packages/tokens
       '@radix-ui/react-avatar':
         specifier: ^1.1.10
         version: 1.3.1(@types/react-dom@19.2.3(@types/react@19.2.16))(@types/react@19.2.16)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -236,7 +236,7 @@ importers:
 
   packages/sse-client:
     dependencies:
-      '@orinforum/api-client':
+      '@feedchamber/api-client':
         specifier: workspace:*
         version: link:../api-client
     devDependencies:

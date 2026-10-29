@@ -10,7 +10,7 @@ export default async function OAuthPage({
 	searchParams: Promise<{ code?: string | string[]; state?: string | string[]; provider?: string | string[] }>;
 }) {
 	const settings = await loadPublicSettings();
-	const siteName = settings.site_name || 'OrinForum';
+	const siteName = settings.site_name || 'Feed Chamber';
 	const params = await searchParams;
 	const code = typeof params?.code === 'string' ? params.code : '';
 	const state = typeof params?.state === 'string' ? params.state : '';

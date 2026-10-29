@@ -1,6 +1,6 @@
 'use client';
 
-import type { PostListItem } from '@orinforum/api-client';
+import type { PostListItem } from '@feedchamber/api-client';
 import dayjs from 'dayjs';
 import Link from 'next/link';
 

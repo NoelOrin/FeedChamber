@@ -1,4 +1,4 @@
-import type { PostDetail } from '@orinforum/api-client';
+import type { PostDetail } from '@feedchamber/api-client';
 import { dehydrate } from '@tanstack/react-query';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
@@ -45,12 +45,12 @@ export async function generateMetadata({ searchParams }: RouteProps): Promise<Me
 	if (!id) return {};
 
 	const settings = await loadPublicSettings();
-	const siteName = settings.site_name || 'OrinForum';
-	const siteDesc = settings.site_description || 'OrinForum 社区论坛';
+	const siteName = settings.site_name || 'Feed Chamber';
+	const siteDesc = settings.site_description || 'Feed Chamber 社区论坛';
 	// 预取失败（帖子不存在 / 后端异常）不能连累元数据，页面里会渲染错误态
 	const post = await prefetchDetail(id).catch(() => undefined);
-	// title 只给帖子标题：根布局的 template（'%s — OrinForum'）负责补站点名，
-	// 这里再拼一次会得到「X - 站点 — OrinForum — OrinForum」。og/twitter 不受 template 影响，
+	// title 只给帖子标题：根布局的 template（'%s — Feed Chamber'）负责补站点名，
+	// 这里再拼一次会得到「X - 站点 — Feed Chamber — Feed Chamber」。og/twitter 不受 template 影响，
 	// 需要完整标题，故单独拼。
 	const pageTitle = post?.title;
 	const fullTitle = post?.title ? `${post.title} - ${siteName}` : siteName;

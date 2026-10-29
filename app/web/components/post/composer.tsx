@@ -1,6 +1,6 @@
 'use client';
 
-import { draftService, PostStatus, postService, spaceService } from '@orinforum/api-client';
+import { draftService, PostStatus, postService, spaceService } from '@feedchamber/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';

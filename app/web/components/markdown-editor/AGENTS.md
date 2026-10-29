@@ -19,7 +19,7 @@ tiptap（ProseMirror）富文本编辑器 + 双向 Markdown 桥 + **XSS 防线**
 | `markdown-bridge.ts` | md → html 管线（remark-parse → remark-gfm → remark-rehype → **rehype-sanitize** → rehype-stringify）+ 防抖桥 |
 | `sanitize.ts` | `markdownSanitizeSchema`（协议白名单 href: http/https/mailto、src: http/https）+ DOMPurify 兜底 |
 | `safe-url.ts` | URL 白名单：协议集合 + 控制字符拒绝 + **百分号解码后再校验**（防 `%6a%61%76%61%73%63%72%69%70%74:` 这类混淆） |
-| `draft.ts` | localStorage 草稿（前缀 `orinforum:draft:`，与旧版键语义一致，用户已有草稿可续读） |
+| `draft.ts` | localStorage 草稿（前缀 `feedchamber:draft:`，与旧版键语义一致，用户已有草稿可续读） |
 | `editor.css` | tiptap 必需的样式（**本目录是 CSS module 禁令的唯一例外**） |
 
 ## 安全边界（本目录存在的核心理由）
@@ -36,14 +36,14 @@ tiptap（ProseMirror）富文本编辑器 + 双向 Markdown 桥 + **XSS 防线**
 
 - **存储格式是 Markdown**（后端只存 md）。编辑器内部是 ProseMirror doc，进入时 `mdToHtml` → 挂载，离开时 `docToMd` 回写。
 - **两个方向的管线必须对称**：`doc-to-md.ts` 的节点映射与 `markdown-bridge.ts` 的 html 处理要覆盖同一组节点（标题/列表/任务列表/代码块/图片/链接/引用）。加一种节点要同时改两边，否则会出现「编辑后内容变形」。
-- **草稿键语义是兼容契约**：`orinforum:draft:<key>` + `{ v, t }` 结构。改前缀或结构会让用户本地草稿读不出来。
+- **草稿键语义是兼容契约**：`feedchamber:draft:<key>` + `{ v, t }` 结构。改前缀或结构会让用户本地草稿读不出来。
 
 ## 改这里要注意
 
 - **不要直接 `dangerouslySetInnerHTML`**：所有渲染经 `markdown-bridge` 或 `markdown-renderer`。
 - **图片上传的魔数校验不要省**：只信 `file.type` 会被伪造的扩展名绕过。
 - **`editor.css` 只放 tiptap 必需样式**，业务样式用 Tailwind。
-- 编辑器依赖 `uploadService`（`@orinforum/api-client`）——后端上传接口变化时这里要同步。
+- 编辑器依赖 `uploadService`（`@feedchamber/api-client`）——后端上传接口变化时这里要同步。
 - 加扩展先确认后端 Markdown 渲染端（`markdown-renderer.tsx` + `sanitize.ts` schema）也认这种节点，否则「编辑器里能看、详情页被剥掉」。
 
 ## 本文件何时更新

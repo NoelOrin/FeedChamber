@@ -1,4 +1,4 @@
-import type { User } from '@orinforum/api-client';
+import type { User } from '@feedchamber/api-client';
 import { create } from 'zustand';
 
 import { broadcastAuthEvent } from './sync';

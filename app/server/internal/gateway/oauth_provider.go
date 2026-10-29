@@ -12,8 +12,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
 
 	"github.com/kataras/iris/v12"
 )

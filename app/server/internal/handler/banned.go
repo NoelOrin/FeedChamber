@@ -6,9 +6,9 @@ import (
 	"errors"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/service"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/service"
 
 	"github.com/kataras/iris/v12"
 	"github.com/sirupsen/logrus"

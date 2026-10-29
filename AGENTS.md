@@ -1,4 +1,4 @@
-# OrinForum
+# Feed Chamber
 
 Go + React 社区论坛 monorepo。后端 Iris v12，前端 Web (React 19 + vinext + TanStack Query + shadcn 原语)；管理后台内嵌在 Web 的 `/admin` 段（与前台共用 shadcn 原语，纯 CSR）。
 
@@ -202,7 +202,7 @@ func NewUserRepository(store db.Store) UserRepository {
 11. `packages/api-client/src/services/xxx.ts` — API service 模块
 12. `packages/api-client/src/constants.ts` — 若有新的权限码/设置 key
 13. `app/web/app/(app)/…` + `app/web/components/<domain>/` — Web 页面与组件（App Router）
-14. `app/web/app/admin/<route>/page.tsx` — 后台管理页面（DataTable/Descriptions + useQuery，直接调 `@orinforum/api-client`；新建目录即新增 `/admin/<route>` 路由，菜单在 `app/web/components/admin/layout/admin-shell.tsx` 的 `menuItems` 登记，权限码在 `app/web/lib/admin/auth/route-access.ts` 登记）
+14. `app/web/app/admin/<route>/page.tsx` — 后台管理页面（DataTable/Descriptions + useQuery，直接调 `@feedchamber/api-client`；新建目录即新增 `/admin/<route>` 路由，菜单在 `app/web/components/admin/layout/admin-shell.tsx` 的 `menuItems` 登记，权限码在 `app/web/lib/admin/auth/route-access.ts` 登记）
 
 ## 模块说明
 
@@ -243,7 +243,7 @@ func NewUserRepository(store db.Store) UserRepository {
 文件上传抽象层，支持本地存储和 S3。提供预签名签名、上传确认、文件列表和删除。
 
 ### Notification — 通知 (`model/notification.go`, `handler/notification.go`, `service/notification.go`, `repository/notification.go`)
-用户通知系统，支持列表、未读计数、标记已读、批量标记已读和删除。`/stream` 端点以 SSE 方式推送未读数，前端通过 `@orinforum/sse-client` 的 `SSEClient` 订阅（自动重连 + token 刷新）。未读计数使用 KV Store 缓存，实时更新无需查 DB。
+用户通知系统，支持列表、未读计数、标记已读、批量标记已读和删除。`/stream` 端点以 SSE 方式推送未读数，前端通过 `@feedchamber/sse-client` 的 `SSEClient` 订阅（自动重连 + token 刷新）。未读计数使用 KV Store 缓存，实时更新无需查 DB。
 
 ### Report — 举报 (`model/report.go`, `handler/report.go`, `service/report.go`, `repository/report.go`)
 内容举报系统，支持创建、列表和状态更新（待处理/已处理/已关闭）。
@@ -353,7 +353,7 @@ KV 存储抽象层，支持 TTL、原子计数器、Pub/Sub、前缀扫描。唯
 `make swag` 重新生成 Swagger 文档并同步到 `openapi.json`。`make swag-check` 在 CI 中校验 swagger 是否过期。
 
 ### Rate Limiter (`internal/pkg/ratelimit/`)
-唯一的限流引擎：滑动窗口近似（SetNX 起窗 + Incr 计数 + 比较），基于 KV Store。`Limiter.Check(ctx, policy, key, limit, window)` 返回 `Allowed`/`Denied`/`FailOpen`，并在此单点发出 `orinforum_ratelimit_*{name}` 指标与带 trace 的 fail-open 日志。两个调用方：`middleware.RateLimit`（路由注册的每端点预算，键 `rl:<ip>:<policy>`）与 `internal/gateway.RateLimiter`（`rate_limit_enabled` 开关下的全局每 IP 上限，键 `rl:ratelimit:<ip>`，策略名 `global`）。键形状由 `EndpointKey`/`GlobalKey` 单点生成并有测试钉住——改形状等于清零在计数的窗口。用于防登录/注册暴力破解。
+唯一的限流引擎：滑动窗口近似（SetNX 起窗 + Incr 计数 + 比较），基于 KV Store。`Limiter.Check(ctx, policy, key, limit, window)` 返回 `Allowed`/`Denied`/`FailOpen`，并在此单点发出 `feedchamber_ratelimit_*{name}` 指标与带 trace 的 fail-open 日志。两个调用方：`middleware.RateLimit`（路由注册的每端点预算，键 `rl:<ip>:<policy>`）与 `internal/gateway.RateLimiter`（`rate_limit_enabled` 开关下的全局每 IP 上限，键 `rl:ratelimit:<ip>`，策略名 `global`）。键形状由 `EndpointKey`/`GlobalKey` 单点生成并有测试钉住——改形状等于清零在计数的窗口。用于防登录/注册暴力破解。
 
 ### EventBus (`internal/pkg/eventbus/`)
 基于 NATS core pub/sub 的分布式事件总线，每个事件类型使用队列订阅，集群内每事件只消费一次。业务 Service 发布事件（如 `EventContentReplied`、`EventContentLiked`），NotificationService 订阅并创建通知，解耦业务逻辑与通知发送。
@@ -363,7 +363,7 @@ KV 存储抽象层，支持 TTL、原子计数器、Pub/Sub、前缀扫描。唯
 
 ## 前端共享包
 
-### `@orinforum/api-client` (`packages/api-client/`)
+### `@feedchamber/api-client` (`packages/api-client/`)
 前端 API 共享包，Web 和 Dashboard 共同依赖。包含：
 - `client.ts` — authFetch 封装，自动携带 Bearer token，401 自动刷新并重试
 - `auth.ts` — 认证工具 (`setTokens` / `getAccessToken` / `getRefreshToken` / `clearAuthTokens` / `isAuthenticated`)
@@ -371,10 +371,10 @@ KV 存储抽象层，支持 TTL、原子计数器、Pub/Sub、前缀扫描。唯
 - `constants.ts` — 类型化常量（ErrorCode、PermissionCode、SettingKey、RoleName、PostStatus、API_BASE_URL）
 - `services/*.ts` — 20+ 个 API service 模块（auth、post、content、admin、notification 等）
 
-### `@orinforum/sse-client` (`packages/sse-client/`)
+### `@feedchamber/sse-client` (`packages/sse-client/`)
 框架无关 SSE 客户端。`SSEClient` 类提供：Bearer token 鉴权、401 自动刷新 token 重连、指数退避（3s→30s，最多 5 次）、ReadableStream 解析、AbortController 取消。Web 端通过 `app/web/lib/hooks/use-notification-sse.ts` 调用。
 
-### `@orinforum/shared-utils` (`packages/shared-utils/`)
+### `@feedchamber/shared-utils` (`packages/shared-utils/`)
 跨前端共享工具函数：
 - `formatSmartDate()` — 相对时间格式化（"3 分钟前"）
 - `formatTime()` — `YY-MM-DD HH:mm:ss` 格式化
@@ -403,7 +403,7 @@ Cobra 根命令 + 持久标志 `-e/--env`（默认 `dev`）。**不存在 `dev`/
 | S3_ACCESS_KEY_ID | (空) | S3 access key (仅 s3 模式) |
 | S3_SECRET_ACCESS_KEY | (空) | S3 secret key (仅 s3 模式) |
 | NATS_URL | (空) | **必填**：外部 NATS 地址（需 `-js`），为空则启动失败 |
-| NATS_BUCKET | orin_kv | JetStream KV bucket |
+| NATS_BUCKET | feedchamber_kv | JetStream KV bucket |
 | METRICS_ENABLED | true | 是否启用 Prometheus 中间件与指标 listener |
 | METRICS_PORT | 9091 | 指标端口，**仅内部可达**：不在 nginx 上游中，compose 用 `expose` 而非 `ports` |
 | TRACING_ENABLED | true | 是否解析入站 `traceparent` 并回写该头（false 时仍生成 trace 供日志关联） |
@@ -420,16 +420,16 @@ Cobra 根命令 + 持久标志 `-e/--env`（默认 `dev`）。**不存在 `dev`/
 
 ## API 测试
 
-项目根目录有 `orinforum_test.sh` 全量 API 测试脚本。启动服务器后运行：
+项目根目录有 `feedchamber_test.sh` 全量 API 测试脚本。启动服务器后运行：
 
 ```bash
 # 全量测试（建议在新的 SQLite 数据库上运行）
 cd app/server && DB_TYPE=sqlite DB_DSN=/tmp/of_test.db go run main.go -e dev &
 sleep 4
-bash ../orinforum_test.sh -all
+bash ../feedchamber_test.sh -all
 
 # 按模块测试
-bash ../orinforum_test.sh -auth -post -user
+bash ../feedchamber_test.sh -auth -post -user
 ```
 
 详细用法见 `.agents/skills/api-test/SKILL.md`。

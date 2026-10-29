@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"orinforum/internal/service"
+	"feedchamber/internal/service"
 )
 
 // Runtime owns everything that exists only after the graph is built: event

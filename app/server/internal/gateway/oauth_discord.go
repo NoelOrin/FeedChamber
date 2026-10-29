@@ -9,7 +9,7 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // DiscordEndpoint is the OAuth2 endpoint for Discord.

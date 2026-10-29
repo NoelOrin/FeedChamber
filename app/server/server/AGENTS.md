@@ -33,3 +33,5 @@
 | seed.go | 种子数据（角色、权限、管理员、设置、内容） |
 | seed_spaces.go | 基础版面定义与幂等补齐（`ensureSeedSpaces`） |
 | seed_tags.go | 基础标签定义与幂等补齐（`ensureSeedTags`） |
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

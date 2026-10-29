@@ -1,6 +1,6 @@
 'use client';
 
-import { settingService } from '@orinforum/api-client';
+import { settingService } from '@feedchamber/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 

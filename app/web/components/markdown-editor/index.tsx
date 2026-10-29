@@ -1,6 +1,6 @@
 'use client';
 
-import { uploadService } from '@orinforum/api-client';
+import { uploadService } from '@feedchamber/api-client';
 import type { Editor } from '@tiptap/core';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { JSX } from 'react';

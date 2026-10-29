@@ -6,8 +6,8 @@ import (
 
 	"gorm.io/gorm"
 
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/kvstore"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/kvstore"
 
 	"github.com/kataras/iris/v12"
 )

@@ -1,6 +1,6 @@
 'use client';
 
-import { favoriteService } from '@orinforum/api-client';
+import { favoriteService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseAsInteger, useQueryState } from 'nuqs';
 import { useState } from 'react';

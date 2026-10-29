@@ -12,16 +12,16 @@ docker compose -f deploy/docker-compose.yml up -d --build
 
 | 组成 | 说明 |
 |------|------|
-| 数据库 | PostgreSQL 16，数据在 named volume `orin_pg` |
-| KV / 事件 | NATS 2.10（`-js` 启用 JetStream），数据在 named volume `orin_nats` |
-| 上传 | named volume `orin_uploads` |
+| 数据库 | PostgreSQL 16，数据在 named volume `feedchamber_pg` |
+| KV / 事件 | NATS 2.10（`-js` 启用 JetStream），数据在 named volume `feedchamber_nats` |
+| 上传 | named volume `feedchamber_uploads` |
 | 入口 | nginx，`/` → web SSR（匿名页面带 60s 共享缓存），`/api/v1/` → backend |
 
 后端进程内嵌的 nats-server 已剥离：`NATS_URL` 必须指向外部 NATS，
 为空时后端启动即失败（fail fast），不再静默降级成只有本进程可见的存储。
 
 数据库默认账号/库名可用环境变量覆盖：
-`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`（默认均为 `orinforum`）。
+`POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB`（默认均为 `feedchamber`）。
 
 所有变量都有默认值，不建 `.env` 也能起。要覆盖时先复制样例：
 
@@ -78,11 +78,11 @@ deploy/
 - 前端 SSR 用 `API_BASE_URL` 直连 `backend:8080`；浏览器侧走同源 `/api/v1`
   由 nginx 转发，两条链路不共用同一个地址。
 - **线上镜像来自 CI，不在服务器构建**：push 到 `develop` 后
-  `.github/workflows/docker-build.yml` 构建 `orinforum-server` / `orinforum-web`
+  `.github/workflows/docker-build.yml` 构建 `feedchamber-server` / `feedchamber-web`
   并推 GHCR，随后调 Dokploy 部署 hook；Dokploy 档 compose 只有 `image:`，
   部署等价于 `docker compose pull && up -d`。回滚：`.env` 里设
   `IMAGE_TAG=sha-<短哈希>` 再部署一次。
-- **匿名 SSR 页面在 nginx 里缓 60s**（`proxy_cache_path` → `/var/cache/nginx/orinforum`）。
+- **匿名 SSR 页面在 nginx 里缓 60s**（`proxy_cache_path` → `/var/cache/nginx/feedchamber`）。
   响应头 `X-Cache-Status` 直接暴露命中情况：`HIT` / `MISS` / `BYPASS`。
   带会话 cookie、RSC/Next-Router-* 预取请求、`/login` `/admin` 等非公开路径一律
   `BYPASS`，不读也不写缓存——登录态页面绝不进共享缓存。改这块前先读

@@ -1,8 +1,8 @@
 package main
 
-// @title           OrinForum API
+// @title           Feed Chamber API
 // @version         1.0
-// @description     OrinForum 社区论坛 API 文档
+// @description     Feed Chamber 社区论坛 API 文档
 // @host            localhost:8080
 // @BasePath        /api/v1
 // @securityDefinitions.apikey BearerAuth
@@ -14,7 +14,7 @@ package main
 
 import (
 	"fmt"
-	"orinforum/cmd"
+	"feedchamber/cmd"
 	"os"
 	"path/filepath"
 	"runtime"

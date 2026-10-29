@@ -1,7 +1,7 @@
 'use client';
 
-import type { Notification } from '@orinforum/api-client';
-import { notificationService } from '@orinforum/api-client';
+import type { Notification } from '@feedchamber/api-client';
+import { notificationService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { parseAsInteger, parseAsString, useQueryState } from 'nuqs';

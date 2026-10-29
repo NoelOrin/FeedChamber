@@ -43,3 +43,5 @@
 > **关注目标类型只有 `post` / `tag`**：`watch.go` 的 `WatchTargetSpace` 已于 2026-10-28 删除（产品决定，与「关注话题」语义重叠），`validTargetType` 不再接受 `"space"`，存量行见 `db/migrations/cleanup_space_watches.sql`。
 >
 > 上表为早期模块，未覆盖全部（现共 49 个模型文件 / 68 个 struct）。另含：`space.go`(SpaceRolePermission)、`group.go`(Group/Member/Permission)、`session.go`、`apikey.go`、`mfa.go`、`oauth_client.go`/`oauth_authorize.go`/`oauth_token.go`、`conversation.go`/`message.go`、`webhook.go`、`plugin.go`、`backup.go`、`draft.go`、`revision.go`、`badge.go`、`theme.go`/`user_preference.go`、`invite.go`、`watch.go`、`user_block.go`、`security_event.go`/`login_history.go`、`upload.go`、`import_map.go` 等。
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

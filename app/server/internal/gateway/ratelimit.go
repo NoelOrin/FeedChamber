@@ -4,10 +4,10 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/ratelimit"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/ratelimit"
 
 	"github.com/kataras/iris/v12"
 )

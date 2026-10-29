@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"orinforum/internal/pkg/kvstore"
+	"feedchamber/internal/pkg/kvstore"
 )
 
 // errUnusedKV marks a kvstore.Store verb that a given test double never

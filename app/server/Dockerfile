@@ -24,7 +24,7 @@ COPY app/server/ ./
 # CGO 必须开：sqlite 驱动是 mattn/go-sqlite3。
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=1 GOOS=linux go build -trimpath -ldflags="-s -w" -o /build/orinforum .
+    CGO_ENABLED=1 GOOS=linux go build -trimpath -ldflags="-s -w" -o /build/feedchamber .
 
 # ── Stage 2: Production ────────────────────────────────────────────────
 FROM alpine:3.21
@@ -33,7 +33,7 @@ RUN apk add --no-cache sqlite-libs ca-certificates tzdata wget
 
 WORKDIR /app/server
 
-COPY --from=builder /build/orinforum ./orinforum
+COPY --from=builder /build/feedchamber ./feedchamber
 
 # 这两个目录会被 compose 挂成 named volume；提前建好并归 root，
 # 避免首次挂载时由 app 以非预期属主创建。
@@ -47,5 +47,5 @@ EXPOSE 8080
 # WORKDIR 固定在 /app/server：main.go 的 chdir(自身源码目录) 在镜像里指向构建
 # 期的 /build，那里不存在，只会打印一条 warning 并留在当前目录。显式设 WORKDIR
 # 让「相对路径的 db / uploads」始终落在 /app/server 下，与 volume 挂载点一致。
-ENTRYPOINT ["./orinforum"]
+ENTRYPOINT ["./feedchamber"]
 CMD ["-e", "prod"]

@@ -26,7 +26,7 @@
 
 Iris 先跑 app 级中间件再跑 per-party；恢复点若在 Logger 之前，panic 请求不会留下完成日志，而"哪个 trace 崩了"正是最需要日志的时候。响应已开始写出时只 `StopExecution`，不追加半截信封。
 
-指标 `orinforum_http_panics_total` 不带标签：panic 文本与路由是无界取值，带标签会打爆序列——这与既有基数护栏一致。
+指标 `feedchamber_http_panics_total` 不带标签：panic 文本与路由是无界取值，带标签会打爆序列——这与既有基数护栏一致。
 
 ### D5 容器拆 `New` / `Start`，HTTP 层改为显式 `Deps`
 

@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/repository"
 )
 
 // TrustRepository 是 repository.TrustRepository 的内存替身。

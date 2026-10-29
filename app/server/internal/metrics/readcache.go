@@ -10,7 +10,7 @@ var (
 	// ReadCacheHits 命中次数，按缓存名（固定枚举）区分。
 	ReadCacheHits = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_readcache_hits_total",
+			Name: "feedchamber_readcache_hits_total",
 			Help: "Read-through cache hits, labelled by cache name.",
 		},
 		[]string{"name"},
@@ -19,7 +19,7 @@ var (
 	// ReadCacheMisses 未命中次数（含 KV 故障与反序列化失败）。
 	ReadCacheMisses = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_readcache_misses_total",
+			Name: "feedchamber_readcache_misses_total",
 			Help: "Read-through cache misses, labelled by cache name.",
 		},
 		[]string{"name"},

@@ -4,8 +4,8 @@ import (
 	"net/http"
 	"testing"
 
-	"orinforum/internal/middleware"
-	"orinforum/internal/pkg/tracing"
+	"feedchamber/internal/middleware"
+	"feedchamber/internal/pkg/tracing"
 
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/httptest"

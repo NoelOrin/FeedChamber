@@ -5,8 +5,8 @@ import (
 	"io"
 	"mime/multipart"
 
-	"orinforum/internal/model"
-	"orinforum/internal/storage"
+	"feedchamber/internal/model"
+	"feedchamber/internal/storage"
 )
 
 type UploadService interface {

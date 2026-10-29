@@ -2,7 +2,7 @@
 
 HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 
-实测规模：43 个生产文件 / 8700 行，39 个 `XxxHandler` 接口 + 一个 `Handler` 聚合体。本层测试很少：`sse_metrics_test.go` 覆盖 SSE 连接数指标 `orinforum_sse_connections{channel}` 的连接/断开计数，`post_status_test.go` 覆盖 `POST /posts/{id}/status` 的参数解析与统一响应信封（用嵌入 nil 接口的 stub 只实现被测方法），`seo_sitemap_test.go` 钉住 `/sitemap-spaces.xml` 只收录匿名可读的版面（login / level 版面不得进爬虫面）。
+实测规模：43 个生产文件 / 8700 行，39 个 `XxxHandler` 接口 + 一个 `Handler` 聚合体。本层测试很少：`sse_metrics_test.go` 覆盖 SSE 连接数指标 `feedchamber_sse_connections{channel}` 的连接/断开计数，`post_status_test.go` 覆盖 `POST /posts/{id}/status` 的参数解析与统一响应信封（用嵌入 nil 接口的 stub 只实现被测方法），`seo_sitemap_test.go` 钉住 `/sitemap-spaces.xml` 只收录匿名可读的版面（login / level 版面不得进爬虫面）。
 
 ## 约定
 

@@ -1,7 +1,7 @@
 'use client';
 
-import type { Message } from '@orinforum/api-client';
-import { pmService } from '@orinforum/api-client';
+import type { Message } from '@feedchamber/api-client';
+import { pmService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import Link from 'next/link';

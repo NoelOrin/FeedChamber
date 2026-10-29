@@ -1,7 +1,7 @@
 'use client';
 
+import { authService } from '@feedchamber/api-client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { authService } from '@orinforum/api-client';
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';

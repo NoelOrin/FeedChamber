@@ -29,16 +29,16 @@ export async function generateMetadata(): Promise<Metadata> {
 		return { title: '管理后台', robots: { index: false, follow: false } };
 	}
 	const settings = await loadPublicSettings();
-	const siteName = settings.site_name || 'OrinForum';
+	const siteName = settings.site_name || 'Feed Chamber';
 	const base = siteBase(settings);
 	/*
 	 * seo_title 是「站点默认标题」。它此前只落到 title.default，而 template 把
-	 * 「OrinForum」硬编码成后缀——由于每个页面都带自己的 title，default 永远轮不到，
+	 * 「Feed Chamber」硬编码成后缀——由于每个页面都带自己的 title，default 永远轮不到，
 	 * 于是管理员改 seo_title 后首页/列表页标题毫无变化（spec 要求首页 title MUST 包含
 	 * seo_title）。改成 template 也用配置标题，default 与后缀就都跟着设置走。
 	 */
 	const defaultTitle = settings.seo_title || siteName;
-	const description = settings.seo_description || settings.site_description || 'OrinForum 社区论坛';
+	const description = settings.seo_description || settings.site_description || 'Feed Chamber 社区论坛';
 	const ogImage = settings.og_image || settings.site_logo;
 
 	return {
@@ -81,7 +81,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Site-wide WebSite + SearchAction structured data. */
 function websiteJsonLd(settings: Record<string, string>) {
 	const base = siteBase(settings);
-	const siteName = settings.site_name || 'OrinForum';
+	const siteName = settings.site_name || 'Feed Chamber';
 	/*
 	 * SearchAction 的 urlTemplate 按 Google 规范应为绝对 URL，故优先用 base。
 	 * 但「首页 MUST 声明站内搜索入口」是无条件的：base 为空（部署未配 site_url）时

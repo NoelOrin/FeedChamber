@@ -25,7 +25,7 @@
 
 - [x] 4.1 修复前基线：`rate_limit_enabled=true`、上限 60/分钟/IP，protected `/dashboard` 第 **30** 次请求即 429（≈2× 计数，2×30=60 吻合）
 - [x] 4.2 修复后同探测：第一个 429 落在第 **58** 次（窗口内 3 次前置公开计数 + 每请求一次），与 1× 计数吻合
-- [x] 4.3 `orinforum_test.sh -all` 113/113
+- [x] 4.3 `feedchamber_test.sh -all` 113/113
 
 ## 5. 文档与规范
 

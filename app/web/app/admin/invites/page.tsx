@@ -1,7 +1,7 @@
 'use client';
 
+import { type Invite, inviteService } from '@feedchamber/api-client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { type Invite, inviteService } from '@orinforum/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';

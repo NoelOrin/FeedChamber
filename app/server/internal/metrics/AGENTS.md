@@ -10,13 +10,13 @@ Prometheus 指标埋点模块，独立于 Iris 框架的指标注册表。
 | collector.go | `dbPoolCollector` — DB 连接池指标收集器（max_open/open/in_use/idle/wait_count/wait_duration） |
 | http.go | `Serve(addr)` — 在 `METRICS_PORT` 上起内部指标监听（同步 bind，端口冲突即时上报；随 app 关闭而 Shutdown） |
 | eventbus.go | 发布/分发耗时/handler panic/队列深度/丢弃 |
-| readcache.go | `ReadCacheHits` / `ReadCacheMisses`（`orinforum_readcache_{hits,misses}_total{name}`）；`name` 由 `readcache` 调用方给固定枚举 |
+| readcache.go | `ReadCacheHits` / `ReadCacheMisses`（`feedchamber_readcache_{hits,misses}_total{name}`）；`name` 由 `readcache` 调用方给固定枚举 |
 | kv.go | `KVOperationDuration{op,outcome}`（outcome ∈ ok/miss/error）+ `KVCasExhaustedTotal`；埋点经 `observe()` 单点 helper |
 | gateway.go | 限流拒绝与 fail-open `{name}`；唯一埋点调用方是 `internal/pkg/ratelimit.Check`，`name` 为端点名或常量 `global` |
 | permission.go | 权限判定 `{scope,result}`；`ObservePermission()` |
-| sse.go | `orinforum_sse_connections{channel}` gauge + `orinforum_sse_write_failures_total{channel}`；两族在 `init()` seed 两个静态 channel |
-| auth.go | `orinforum_login_failures_total{reason}`（三值常量） |
-| nats.go | `orinforum_nats_connected{client}` gauge + `_disconnects_total` / `_reconnects_total`；`client` 静态两值 `kv` / `eventbus` |
+| sse.go | `feedchamber_sse_connections{channel}` gauge + `feedchamber_sse_write_failures_total{channel}`；两族在 `init()` seed 两个静态 channel |
+| auth.go | `feedchamber_login_failures_total{reason}`（三值常量） |
+| nats.go | `feedchamber_nats_connected{client}` gauge + `_disconnects_total` / `_reconnects_total`；`client` 静态两值 `kv` / `eventbus` |
 | webhook.go | 投递结果/耗时/积压（积压取真实 `COUNT(*)`，非批大小） |
 | observability_test.go | 指标族存在性与标签名契约 |
 | nats_sse_test.go | NATS 连接状态机与 SSE 写失败语义 |

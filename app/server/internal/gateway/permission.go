@@ -4,8 +4,8 @@ import (
 	"strings"
 	"sync"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
 
 	"github.com/kataras/iris/v12"
 	"github.com/sirupsen/logrus"

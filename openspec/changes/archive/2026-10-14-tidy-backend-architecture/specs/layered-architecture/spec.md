@@ -54,7 +54,7 @@ HTTP 层的依赖 MUST 以显式的 `handler.Deps` 服务列表传入，由 comp
 
 应用 MUST 在请求链路上安装 panic 恢复边界（`middleware.Recover()`），位置 MUST 在 `Logger` 之后：Iris 先执行 app 级中间件再执行 per-party 中间件，恢复点若排在 `Logger` 之前，被 panic 的请求不会留下完成日志。
 
-恢复后 MUST 返回标准信封的 `500 / code 5001`；堆栈与 panic 值 MUST 只写入日志（`panic`/`method`/`path`/`stack` 字段），MUST NOT 出现在响应体中。响应已开始写出时 MUST NOT 追加或伪造信封。恢复计数 MUST 暴露为无标签指标 `orinforum_http_panics_total`（panic 文本与路由为无界取值，不得成为标签）。
+恢复后 MUST 返回标准信封的 `500 / code 5001`；堆栈与 panic 值 MUST 只写入日志（`panic`/`method`/`path`/`stack` 字段），MUST NOT 出现在响应体中。响应已开始写出时 MUST NOT 追加或伪造信封。恢复计数 MUST 暴露为无标签指标 `feedchamber_http_panics_total`（panic 文本与路由为无界取值，不得成为标签）。
 
 #### Scenario: handler panic 不打断连接
 

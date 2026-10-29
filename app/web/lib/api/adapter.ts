@@ -1,5 +1,5 @@
-import { setApiBaseUrl } from '@orinforum/api-client';
-import { registerWebAdapter } from '@orinforum/api-client/adapters/web';
+import { setApiBaseUrl } from '@feedchamber/api-client';
+import { registerWebAdapter } from '@feedchamber/api-client/adapters/web';
 import { headers } from 'next/headers';
 
 const API_PREFIX = '/api/v1';

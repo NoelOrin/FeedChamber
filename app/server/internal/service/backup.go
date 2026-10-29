@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"orinforum/internal/db"
-	"orinforum/internal/metrics"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/repository"
-	"orinforum/internal/storage"
+	"feedchamber/internal/db"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/repository"
+	"feedchamber/internal/storage"
 )
 
 type backupService struct {

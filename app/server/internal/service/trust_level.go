@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/repository"
 
 	"github.com/sirupsen/logrus"
 )

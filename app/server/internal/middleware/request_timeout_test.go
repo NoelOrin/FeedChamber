@@ -4,8 +4,8 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/pkg/ratelimit"
-	"orinforum/internal/pkg/testnats"
+	"feedchamber/internal/pkg/ratelimit"
+	"feedchamber/internal/pkg/testnats"
 
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/httptest"

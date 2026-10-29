@@ -3,9 +3,9 @@ package middleware
 import (
 	"time"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/ratelimit"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/ratelimit"
 
 	"github.com/kataras/iris/v12"
 )

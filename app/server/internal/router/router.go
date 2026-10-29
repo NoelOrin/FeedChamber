@@ -22,9 +22,9 @@ package router
 import (
 	"time"
 
-	"orinforum/internal/gateway"
-	"orinforum/internal/handler"
-	"orinforum/internal/middleware"
+	"feedchamber/internal/gateway"
+	"feedchamber/internal/handler"
+	"feedchamber/internal/middleware"
 
 	"github.com/kataras/iris/v12"
 )

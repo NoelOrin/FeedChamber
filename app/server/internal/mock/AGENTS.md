@@ -10,3 +10,5 @@
 | `StorageProvider` | 跟踪 PutKeys/DeleteKeys 调用，可配置 PutErr/DeleteErr |
 | `SettingService` | 内存 `map[string]string`，支持 Get/GetAll/Set/BatchSet，Builder 模式 `WithSetting(key, value)` |
 | `TrustRepository` | 内存 `repository.TrustRepository`：配置四表 + 人工调整；指标由测试直接灌（`Metrics` / `Daily` / `Streak` / `ActiveDays` / `Upheld`），`SaveLevelSnapshot` 记录最后一次调用供断言 |
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

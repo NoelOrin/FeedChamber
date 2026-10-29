@@ -6,7 +6,7 @@ import { loadPublicSettings } from '~/lib/queries/server';
 
 export default async function RegisterPage() {
 	const settings = await loadPublicSettings();
-	const siteName = settings.site_name || 'OrinForum';
+	const siteName = settings.site_name || 'Feed Chamber';
 
 	return (
 		<AuthSplitShell

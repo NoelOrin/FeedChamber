@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/repository"
 
 	"github.com/sirupsen/logrus"
 )

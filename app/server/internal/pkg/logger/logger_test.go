@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	"orinforum/internal/pkg/tracing"
+	"feedchamber/internal/pkg/tracing"
 
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"

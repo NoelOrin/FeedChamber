@@ -1,6 +1,6 @@
 'use client';
 
-import { postService } from '@orinforum/api-client';
+import { postService } from '@feedchamber/api-client';
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import type * as React from 'react';

@@ -119,3 +119,5 @@ protected.Use(gw.Enforce())
 - `/api/v1/admin/levels/`、`/admin/xp-rules/`、`/admin/xp-adjustments/`、`/admin/trust/recompute`、`/admin/users/{id}/xp*` → `level:manage`
 - `/api/v1/admin/gates/` → `gate:manage`
 - `/api/v1/posts/{id}/feature` → `report:manage`
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

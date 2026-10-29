@@ -1,4 +1,4 @@
-import type { PostDetail as PostDetailData } from '@orinforum/api-client';
+import type { PostDetail as PostDetailData } from '@feedchamber/api-client';
 import { dehydrate } from '@tanstack/react-query';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
@@ -43,8 +43,8 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 	if (!id) return {};
 
 	const settings = await loadPublicSettings();
-	const siteName = settings.site_name || 'OrinForum';
-	const siteDesc = settings.site_description || 'OrinForum 社区论坛';
+	const siteName = settings.site_name || 'Feed Chamber';
+	const siteDesc = settings.site_description || 'Feed Chamber 社区论坛';
 	const base = (settings.site_url || '').replace(/\/$/, '');
 	const post = await prefetchDetail(id).catch(() => undefined);
 
@@ -142,7 +142,7 @@ export default async function PostShortLinkPage({ params }: { params: Params }) 
 	await queryClient.prefetchQuery(postContentsOptions(id, 1, pageSize));
 
 	const base = (settings.site_url || '').replace(/\/$/, '');
-	const siteName = settings.site_name || 'OrinForum';
+	const siteName = settings.site_name || 'Feed Chamber';
 
 	return (
 		<>

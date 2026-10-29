@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"orinforum/internal/metrics"
+	"feedchamber/internal/metrics"
 
 	"github.com/nats-io/nats.go/jetstream"
 )
@@ -34,7 +34,7 @@ func observe(op string, err *error) func() {
 // seedOperationMetrics creates the zero-valued series for every op name so the
 // family exists before the first KV call. Without this a healthy, freshly
 // started instance looks the same as broken wiring to the absent() canary in
-// deploy/prometheus/rules/orinforum.yml.
+// deploy/prometheus/rules/feedchamber.yml.
 func seedOperationMetrics() {
 	for _, op := range observedOps {
 		metrics.SeedKVOperation(op)

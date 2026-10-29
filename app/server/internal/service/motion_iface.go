@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // MotionConfig 动议子系统可调参数（可由 settings 扩展，本期用默认值）。

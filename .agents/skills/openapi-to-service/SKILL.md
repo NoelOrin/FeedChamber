@@ -1,15 +1,15 @@
 ---
 name: openapi-to-service
-description: Use when generating TypeScript API service files for packages/api-client from the OrinForum OpenAPI spec (openapi.json at project root, or fetched from http://localhost:8080/swagger/doc.json). Outputs per-tag service files to packages/api-client/src/services/.
+description: Use when generating TypeScript API service files for packages/api-client from the Feed Chamber OpenAPI spec (openapi.json at project root, or fetched from http://localhost:8080/swagger/doc.json). Outputs per-tag service files to packages/api-client/src/services/.
 ---
 
-# OpenAPI to Service — OrinForum
+# OpenAPI to Service — Feed Chamber
 
 ## Overview
 
-将 OrinForum 的 Swagger 2.0 规范（项目根目录 `openapi.json`，basePath `/api/v1`）转换为按 tag 分组的 TypeScript service 文件，输出到 `packages/api-client/src/services/`。
+将 Feed Chamber 的 Swagger 2.0 规范（项目根目录 `openapi.json`，basePath `/api/v1`）转换为按 tag 分组的 TypeScript service 文件，输出到 `packages/api-client/src/services/`。
 
-分割脚本 `index.js`（与本 skill 同目录）读取 `doc/orinforum/api.v1.json`，按 tag 拆分为独立 JSON，再逐个生成 service 文件。
+分割脚本 `index.js`（与本 skill 同目录）读取 `doc/feedchamber/api.v1.json`，按 tag 拆分为独立 JSON，再逐个生成 service 文件。
 
 ## 项目约定
 
@@ -194,15 +194,15 @@ export const followService = {
 
 ### Step 0：获取并分割规范（可选）
 
-如果 `doc/orinforum/` 下已有分割好的 JSON，跳过此步。
+如果 `doc/feedchamber/` 下已有分割好的 JSON，跳过此步。
 
 ```bash
 # 直接使用项目根目录的 openapi.json
-mkdir -p .agents/skills/openapi-to-service/doc/orinforum
-cp openapi.json .agents/skills/openapi-to-service/doc/orinforum/api.v1.json
+mkdir -p .agents/skills/openapi-to-service/doc/feedchamber
+cp openapi.json .agents/skills/openapi-to-service/doc/feedchamber/api.v1.json
 
 # 或从运行中的服务器获取最新版本
-curl -o .agents/skills/openapi-to-service/doc/orinforum/api.v1.json \
+curl -o .agents/skills/openapi-to-service/doc/feedchamber/api.v1.json \
   http://localhost:8080/swagger/doc.json
 
 # 按 tag 分割
@@ -211,7 +211,7 @@ node .agents/skills/openapi-to-service/index.js
 
 ### Step 1：读取规范
 
-优先从 `doc/orinforum/{tag}.json` 读取，或直接从项目根目录 `openapi.json` 中提取该 tag 的 paths 和 definitions。
+优先从 `doc/feedchamber/{tag}.json` 读取，或直接从项目根目录 `openapi.json` 中提取该 tag 的 paths 和 definitions。
 
 **重要**：openapi.json 中的路径可能与实际路由不一致（如 openapi 用 GET，实际用 POST）。以 `app/server/internal/router/router.go` 中的实际路由为准，同时参考 `packages/api-client/src/services/` 下已有的 service 文件。
 

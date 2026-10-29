@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"orinforum/internal/db"
+	"feedchamber/internal/db"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -24,32 +24,32 @@ func RegisterDBPoolCollector(store db.Store) {
 	c := &dbPoolCollector{
 		store: store,
 		maxOpenConns: prometheus.NewDesc(
-			"orinforum_db_pool_max_open_connections",
+			"feedchamber_db_pool_max_open_connections",
 			"Maximum number of open connections to the database.",
 			nil, nil,
 		),
 		openConns: prometheus.NewDesc(
-			"orinforum_db_pool_open_connections",
+			"feedchamber_db_pool_open_connections",
 			"Number of currently open connections to the database.",
 			nil, nil,
 		),
 		inUse: prometheus.NewDesc(
-			"orinforum_db_pool_in_use",
+			"feedchamber_db_pool_in_use",
 			"Number of database connections currently in use.",
 			nil, nil,
 		),
 		idle: prometheus.NewDesc(
-			"orinforum_db_pool_idle",
+			"feedchamber_db_pool_idle",
 			"Number of idle database connections.",
 			nil, nil,
 		),
 		waitCount: prometheus.NewDesc(
-			"orinforum_db_pool_wait_count_total",
+			"feedchamber_db_pool_wait_count_total",
 			"Total number of connections waited for.",
 			nil, nil,
 		),
 		waitDuration: prometheus.NewDesc(
-			"orinforum_db_pool_wait_duration_seconds_total",
+			"feedchamber_db_pool_wait_duration_seconds_total",
 			"Total time waited for connections in seconds.",
 			nil, nil,
 		),

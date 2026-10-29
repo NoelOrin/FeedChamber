@@ -1,7 +1,7 @@
 'use client';
 
+import { type Plugin, pluginService } from '@feedchamber/api-client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { type Plugin, pluginService } from '@orinforum/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';

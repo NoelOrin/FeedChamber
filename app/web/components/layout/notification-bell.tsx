@@ -1,6 +1,6 @@
 'use client';
 
-import { type Notification, notificationService } from '@orinforum/api-client';
+import { type Notification, notificationService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';

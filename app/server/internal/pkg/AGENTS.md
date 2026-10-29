@@ -53,7 +53,7 @@ Pub/Sub 机制：NATS core pub/sub（subject 前缀 `nats.kv.`），跨实例。
 - **分钟级 TTL**：KV 的 per-key TTL 存储精度是秒，亚秒 TTL 会被写成"当前秒"立即过期，`New` 里统一向上取整到秒。
 - **key 用哈希**：`Key(prefix, parts...)` 把参数序列化后取 SHA-256 前 32 hex。直接拼参数会把用户输入带进 JetStream key（字符集受限、长度无上限）。
 - **前缀失效**：`InvalidatePrefix` 供写路径按类清空（帖子写 → `cache:postlist:`，版面写 → 树/扁平 + 帖子列表）。
-- **指标**：`orinforum_readcache_hits_total{name}` / `_misses_total{name}`，`name` 只取固定枚举（`post_list` / `tag_list` / `space_tree` / `space_flat`）。
+- **指标**：`feedchamber_readcache_hits_total{name}` / `_misses_total{name}`，`name` 只取固定枚举（`post_list` / `tag_list` / `space_tree` / `space_flat`）。
 
 已接入：匿名帖子列表（10s）、标签列表（60s）、版面树/扁平（60s）。**登录态列表不进共享缓存**——它带已读状态、拉黑排除与等级可见性，跟着人变。
 

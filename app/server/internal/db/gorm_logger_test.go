@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/config"
+	"feedchamber/internal/config"
 )
 
 // TestSlowQueryIsClassified pins the two halves of the DB instrumentation: the

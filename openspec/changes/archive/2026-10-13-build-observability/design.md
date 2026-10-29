@@ -22,7 +22,7 @@
 
 ### 2. 包位置 `internal/pkg/tracing`
 
-`pkg/gateway` 已经 import `orinforum/internal/...`（`apikey.go:15-16`、`auth.go:8-9`），所以 gateway、`internal/middleware`、`internal/pkg/eventbus`、`internal/service` 都能单向依赖同一个包，不产生反向依赖。
+`pkg/gateway` 已经 import `feedchamber/internal/...`（`apikey.go:15-16`、`auth.go:8-9`），所以 gateway、`internal/middleware`、`internal/pkg/eventbus`、`internal/service` 都能单向依赖同一个包，不产生反向依赖。
 
 ### 3. 一个关联 id，不做双 id
 
@@ -93,7 +93,7 @@ server { log_format main '... rid=$http_x_request_id ...';
 
 ### 13. `deploy/prometheus.yml` 与告警规则
 
-抓取 `backend:9091`，`rule_files: [/etc/prometheus/rules/*.yml]`，规则文件落 `deploy/prometheus/rules/orinforum.yml`，8 条告警至少覆盖：`High5xxErrorRate`（`RequestsTotal{status=~"5.."}` 比率）、`HighP99Latency`（`histogram_quantile` over `RequestDuration`）、`DBPoolSaturation`（`in_use` / `max_open` 或 `wait_count` 增率）、`SlowKVOperations`、`EventBusDrops`、`WebhookTerminalFailures`、`LoginFailureSpike`、`HealthEndpointDown`（`probe_success{job="orinforum"}` 或 `/api/v1/health` up）。
+抓取 `backend:9091`，`rule_files: [/etc/prometheus/rules/*.yml]`，规则文件落 `deploy/prometheus/rules/feedchamber.yml`，8 条告警至少覆盖：`High5xxErrorRate`（`RequestsTotal{status=~"5.."}` 比率）、`HighP99Latency`（`histogram_quantile` over `RequestDuration`）、`DBPoolSaturation`（`in_use` / `max_open` 或 `wait_count` 增率）、`SlowKVOperations`、`EventBusDrops`、`WebhookTerminalFailures`、`LoginFailureSpike`、`HealthEndpointDown`（`probe_success{job="feedchamber"}` 或 `/api/v1/health` up）。
 
 ### 14. Grafana provisioning 与口令
 

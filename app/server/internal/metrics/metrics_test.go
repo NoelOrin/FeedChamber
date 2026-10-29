@@ -16,10 +16,10 @@ func TestMetricsRegistered(t *testing.T) {
 	}
 
 	expected := []string{
-		"orinforum_http_request_duration_seconds",
-		"orinforum_http_requests_total",
-		"orinforum_http_request_size_bytes",
-		"orinforum_http_response_size_bytes",
+		"feedchamber_http_request_duration_seconds",
+		"feedchamber_http_requests_total",
+		"feedchamber_http_request_size_bytes",
+		"feedchamber_http_response_size_bytes",
 		"go_goroutines", // from GoCollector
 	}
 	for _, name := range expected {

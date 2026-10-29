@@ -25,9 +25,9 @@
 ## 跑法
 
 ```bash
-pnpm --filter @orinforum/loadtest smoke     # 先过自检
-pnpm --filter @orinforum/loadtest baseline  # 50 VU × 60s
-pnpm --filter @orinforum/loadtest stress    # 0 → 1000 VU 阶梯
+pnpm --filter @feedchamber/loadtest smoke     # 先过自检
+pnpm --filter @feedchamber/loadtest baseline  # 50 VU × 60s
+pnpm --filter @feedchamber/loadtest stress    # 0 → 1000 VU 阶梯
 ```
 
 `reports/` 是生成产物，已 gitignore。报告里的 `429`（限流）与 `403`（Cloudflare/WAF）要和源站 `5xx` 分开读。

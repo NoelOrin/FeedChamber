@@ -1,4 +1,4 @@
-# OrinForum — Dokploy 档：入口交给 Dokploy 的 Traefik，nginx 不占宿主机端口。
+# Feed Chamber — Dokploy 档：入口交给 Dokploy 的 Traefik，nginx 不占宿主机端口。
 #
 #   Compose Path → ./deploy/docker-compose.dokploy.yml
 #   Domains      → Service 选 nginx、Container Port 80、开 HTTPS
@@ -13,21 +13,21 @@
 # 为什么整份复制：Compose 的 include 会报 "services.nginx conflicts with imported
 # resource"，!override 虽能替换 nginx 但会丢掉 image/volumes/depends_on。两者实测均不可行。
 
-name: orinforum
+name: feedchamber
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-orinforum}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orinforum}
-      POSTGRES_DB: ${POSTGRES_DB:-orinforum}
+      POSTGRES_USER: ${POSTGRES_USER:-feedchamber}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-feedchamber}
+      POSTGRES_DB: ${POSTGRES_DB:-feedchamber}
       TZ: Asia/Shanghai
-    volumes: ["orin_pg:/var/lib/postgresql/data"]
+    volumes: ["feedchamber_pg:/var/lib/postgresql/data"]
     expose: ["5432"]
     healthcheck:
       # pg_isready 而非 TCP 探测：postgres 初始化阶段也监听端口，但还不能接连接
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orinforum} -d ${POSTGRES_DB:-orinforum}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-feedchamber} -d ${POSTGRES_DB:-feedchamber}"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -38,7 +38,7 @@ services:
     image: nats:2.10-alpine
     # -js 必须开：KV Store 与 EventBus 都依赖 JetStream；-sd 落卷，容器重建不丢
     command: ["-js", "-sd", "/data", "-m", "8222"]
-    volumes: ["orin_nats:/data"]
+    volumes: ["feedchamber_nats:/data"]
     expose: ["4222", "8222"]
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8222/healthz || exit 1"]
@@ -50,21 +50,21 @@ services:
 
   backend:
     # 线上**只拉镜像、不构建**：镜像是 GitHub Actions 推的
-    # （.github/workflows/docker-build.yml → ghcr.io/<owner>/orinforum-server）。
+    # （.github/workflows/docker-build.yml → ghcr.io/<owner>/feedchamber-server）。
     # 这台机器 2 vCPU / 3.9G 且 swap 已满，go build + vinext build 一起跑会
     # 直接把内存打穿（实测 load 131、全站不可用），所以 Dokploy 档必须去掉 build。
     # IMAGE_TAG 默认跟 develop 分支 tag；回滚时在 .env 里改成 sha-<短哈希> 再部署。
-    image: ghcr.io/noelorin/orinforum-server:${IMAGE_TAG:-develop}
+    image: ghcr.io/noelorin/feedchamber-server:${IMAGE_TAG:-develop}
     # CI 每次推的是同一个 tag（develop），本地若已有该 tag，compose 默认不会去拉。
     # always 才能让「push → 构建 → 部署」真正换上新镜像；拉取失败时 compose 会
     # 在替换容器前中止，旧容器继续服务。
     pull_policy: always
     environment:
       DB_TYPE: postgres
-      DB_DSN: "host=postgres user=${POSTGRES_USER:-orinforum} password=${POSTGRES_PASSWORD:-orinforum} dbname=${POSTGRES_DB:-orinforum} port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+      DB_DSN: "host=postgres user=${POSTGRES_USER:-feedchamber} password=${POSTGRES_PASSWORD:-feedchamber} dbname=${POSTGRES_DB:-feedchamber} port=5432 sslmode=disable TimeZone=Asia/Shanghai"
       # 必填：内嵌 nats-server 已剥离，为空时后端启动即 Fatal
       NATS_URL: nats://nats:4222
-      NATS_BUCKET: orin_kv
+      NATS_BUCKET: feedchamber_kv
       PORT: "8080"
       METRICS_ENABLED: "true"
       METRICS_PORT: "9091"
@@ -80,7 +80,7 @@ services:
       # （Cloudflare / Traefik / nginx），对外就是 HTTPS。
       # 本地 http 直连调试时用 MASTER_COOKIE_SECURE=false 覆盖。
       MASTER_COOKIE_SECURE: ${MASTER_COOKIE_SECURE:-true}
-    volumes: ["orin_uploads:/app/server/uploads"]
+    volumes: ["feedchamber_uploads:/app/server/uploads"]
     expose: ["8080", "9091"]
     depends_on:
       postgres:
@@ -97,7 +97,7 @@ services:
 
   frontend:
     # 同 backend：镜像来自 CI，服务器不构建。
-    image: ghcr.io/noelorin/orinforum-web:${IMAGE_TAG:-develop}
+    image: ghcr.io/noelorin/feedchamber-web:${IMAGE_TAG:-develop}
     pull_policy: always
     environment:
       API_BASE_URL: http://backend:8080
@@ -128,9 +128,9 @@ services:
     restart: unless-stopped
 
 volumes:
-  orin_pg:
-  orin_nats:
-  orin_uploads:
+  feedchamber_pg:
+  feedchamber_nats:
+  feedchamber_uploads:
 
 networks:
   dokploy-network:

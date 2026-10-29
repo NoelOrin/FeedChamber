@@ -1,7 +1,7 @@
 'use client';
 
-import { reportService } from '@orinforum/api-client';
-import { formatTime } from '@orinforum/shared-utils';
+import { reportService } from '@feedchamber/api-client';
+import { formatTime } from '@feedchamber/shared-utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Badge } from '~/components/ui/badge';

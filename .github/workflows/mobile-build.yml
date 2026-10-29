@@ -1,4 +1,4 @@
-# OrinForum Mobile Build
+# Feed Chamber Mobile Build
 # 通过 GitHub Actions 构建 Android APK/AAB 和 iOS IPA
 #
 # 触发条件：手动触发 workflow_dispatch（可选平台 + 构建类型）
@@ -46,8 +46,8 @@ on:
           - debug
 
 env:
-  CAPACITOR_APP_ID: ${{ secrets.CAPACITOR_APP_ID || 'com.orinforum.app' }}
-  CAPACITOR_APP_NAME: ${{ secrets.CAPACITOR_APP_NAME || 'OrinForum' }}
+  CAPACITOR_APP_ID: ${{ secrets.CAPACITOR_APP_ID || 'com.feedchamber.app' }}
+  CAPACITOR_APP_NAME: ${{ secrets.CAPACITOR_APP_NAME || 'Feed Chamber' }}
   NODE_VERSION: '20'
   PNPM_VERSION: '10'
 
@@ -133,10 +133,10 @@ jobs:
           if [ "${{ matrix.build_type }}" = "release" ] && [ -f app/release.keystore ]; then
             ./gradlew assembleRelease
             APK=$(find app/build/outputs/apk/release -name "*.apk" | head -1)
-            cp "$APK" ../app-orinforum-release.apk
+            cp "$APK" ../app-feedchamber-release.apk
           else
             ./gradlew assembleDebug
-            cp app/build/outputs/apk/debug/app-debug.apk ../app-orinforum-debug.apk
+            cp app/build/outputs/apk/debug/app-debug.apk ../app-feedchamber-debug.apk
           fi
 
       - name: Build AAB (release only)
@@ -144,15 +144,15 @@ jobs:
         working-directory: android
         run: |
           ./gradlew bundleRelease
-          cp app/build/outputs/bundle/release/app-release.aab ../app-orinforum.aab
+          cp app/build/outputs/bundle/release/app-release.aab ../app-feedchamber.aab
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-${{ matrix.build_type }}
           path: |
-            app-orinforum*.apk
-            app-orinforum*.aab
+            app-feedchamber*.apk
+            app-feedchamber*.aab
           retention-days: 30
 
   # ===================================================================
@@ -263,12 +263,12 @@ jobs:
             -workspace ios/App/App.xcworkspace \
             -scheme App \
             -configuration $CONFIGURATION \
-            -archivePath build/OrinForum.xcarchive \
+            -archivePath build/Feed Chamber.xcarchive \
             -allowProvisioningUpdates \
             | tee build.log | xcpretty
 
           xcodebuild -exportArchive \
-            -archivePath build/OrinForum.xcarchive \
+            -archivePath build/Feed Chamber.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
             -exportPath build/export \
             | tee export.log | xcpretty

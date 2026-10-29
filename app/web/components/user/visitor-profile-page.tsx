@@ -1,6 +1,6 @@
 'use client';
 
-import { followService, pmService, userBlockService } from '@orinforum/api-client';
+import { followService, pmService, userBlockService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useRouter } from 'next/navigation';

@@ -1,6 +1,6 @@
 'use client';
 
-import { AuthError, HttpError, permissionService, type User, userService } from '@orinforum/api-client';
+import { AuthError, HttpError, permissionService, type User, userService } from '@feedchamber/api-client';
 import { useQuery } from '@tanstack/react-query';
 
 /**

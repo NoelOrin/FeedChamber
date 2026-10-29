@@ -85,11 +85,11 @@
 - [x] 6.11 `app/web/app/(app)/t/[slug]/[id]/page.tsx` 与 `app/(app)/timeline/post/page.tsx`：`openGraph` 显式转发站点分享图，`twitter.card` 按有无图切换 `summary_large_image` / `summary`
 - [x] 6.12 验收（实测）：配 `og_image` 后 `/timeline`、`/t/{slug}/{id}`、`/timeline/post?id=` 三类页面均输出 `og:image` 与 `og:site_name`；清空 `og_image` 而设 `site_logo` → 回退到 logo；两者都空 → 不输出 `og:image`（不产生空标签）
 
-> 6.13 是**回填**：`title.template` 把后缀硬编码成「OrinForum」，而每个页面都带自己的 title，
+> 6.13 是**回填**：`title.template` 把后缀硬编码成「Feed Chamber」，而每个页面都带自己的 title，
 > `title.default` 永远轮不到——于是管理员改 `seo_title` 对首页**毫无效果**，直接违反 spec 的
 > 「首页 `<title>` MUST 包含 `seo_title`」场景。
 
-- [x] 6.13 `app/web/app/layout.tsx`：`title.template` 后缀改用配置标题（`seo_title || site_name`），不再硬编码 `OrinForum`；`title.default` 去掉重复后缀
+- [x] 6.13 `app/web/app/layout.tsx`：`title.template` 后缀改用配置标题（`seo_title || site_name`），不再硬编码 `Feed Chamber`；`title.default` 去掉重复后缀
 - [x] 6.14 `app/web/lib/seo.ts` + `app/(app)/timeline/page.tsx`：新增 `absoluteTitle` 选项（走 Next 的 `title.absolute` 跳过模板）；`/timeline` 作为站点首页时用 `seo_title` 且不叠后缀
 - [x] 6.15 验收（实测）：`seo_title=示例论坛` → 首页 `<title>示例论坛</title>`（含设置值且**不重复**）、`/spaces` 为「版面 — 示例论坛」；`seo_title` 清空 → 首页回退「时间线」、其他页后缀回退 `site_name`
 
@@ -124,7 +124,7 @@
 
 - [x] 10.1 `cd app/server && go build ./... && go test ./...` 全绿
 - [x] 10.2 `cd app/web && pnpm typecheck && pnpm lint` 全绿
-- [x] 10.3 `bash orinforum_test.sh -all` 全绿（后端未改业务逻辑，须无回归）
+- [x] 10.3 `bash feedchamber_test.sh -all` 全绿（后端未改业务逻辑，须无回归）
 - [x] 10.4 `node e2e-test.js`：`/timeline/post?id=` 用例 MUST 仍通过（URL 契约未变）
 - [x] 10.5 手工验收清单：sitemap 索引 → 各分片 → 抽 3 条 `<loc>` 逐个 `curl -I` 确认 `200`（**不得有 3xx**，这是本轮核心缺陷的回归项）
 - [x] 10.6 `openspec validate 2026-10-28-seo-public-indexing --strict` 通过

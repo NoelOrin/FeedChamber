@@ -102,7 +102,7 @@ export function listPageMetadataFromSettings(
 		path: input.path,
 		description: input.description ?? (settings.seo_description || settings.site_description),
 		base: siteBase(settings),
-		siteName: settings.site_name || 'OrinForum',
+		siteName: settings.site_name || 'Feed Chamber',
 		image: siteImage(settings),
 		indexable: input.indexable,
 	});

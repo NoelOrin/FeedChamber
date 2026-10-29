@@ -10,9 +10,9 @@
 
 - React 19 + vinext 1.1 — App Router（`app/` 目录、RSC、Server Actions），`proxy.ts` 取代 `middleware.ts`
 - TanStack Query 5 — 取数/缓存（**不再使用 TanStack Router**，路由由 vinext 承担；`TanStack` 在本包只指 Query）
-- shadcn/ui 基准的原语 + `app/globals.css` 自带的 shadcn token（中性色 + 冷紫主色）。**Web 不再依赖 `@orinforum/tokens`**（该包只服务 Dashboard）；daisyUI 已移除
-- `@orinforum/api-client` — 唯一请求层（`authFetch` + 401 单飞刷新），SSR cookie 经 `next/headers` 转发
-- `@orinforum/sse-client` — 实时未读数
+- shadcn/ui 基准的原语 + `app/globals.css` 自带的 shadcn token（中性色 + 冷紫主色）。**Web 不再依赖 `@feedchamber/tokens`**（该包只服务 Dashboard）；daisyUI 已移除
+- `@feedchamber/api-client` — 唯一请求层（`authFetch` + 401 单飞刷新），SSR cookie 经 `next/headers` 转发
+- `@feedchamber/sse-client` — 实时未读数
 - nuqs — URL 查询参数校验（取代 TanStack 的 `validateSearch`）
 - **容器运行时是 Bun，本地开发仍是 Node**：`Dockerfile` Stage 2 用 `oven/bun:1.4.4-alpine` + `bun node_modules/vinext/dist/cli.js start`，Stage 1 构建仍走 `node:22-alpine` + pnpm（产物是纯 JS，换运行时不碰锁文件）。**不要降到 Bun 1.3.x**：那版 `node:http` 对 HTTP/1.0 请求返回 200 后不关连接，`ab`/`curl --http1.0` 会挂死，1.4.4 已修。
 

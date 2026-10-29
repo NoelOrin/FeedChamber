@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"orinforum/internal/mailer"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/kvstore"
+	"feedchamber/internal/mailer"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/kvstore"
 )
 
 type emailService struct {

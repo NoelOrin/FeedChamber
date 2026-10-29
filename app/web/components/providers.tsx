@@ -1,6 +1,6 @@
 'use client';
 
-import type { User } from '@orinforum/api-client';
+import type { User } from '@feedchamber/api-client';
 import { type DehydratedState, hydrate, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import type * as React from 'react';

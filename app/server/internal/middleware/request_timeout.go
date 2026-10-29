@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"orinforum/internal/pkg"
+	"feedchamber/internal/pkg"
 
 	"github.com/kataras/iris/v12"
 )

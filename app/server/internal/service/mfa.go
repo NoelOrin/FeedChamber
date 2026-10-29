@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/repository"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -54,7 +54,7 @@ func (s *mfaService) SetupTOTP(ctx context.Context, userID, username string) (*M
 	if err := s.repo.Upsert(ctx, m); err != nil {
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	issuer := pkg.GetSettingOrDefault(ctx, s.settingSvc, "site_name", "SITE_NAME", "OrinForum")
+	issuer := pkg.GetSettingOrDefault(ctx, s.settingSvc, "site_name", "SITE_NAME", "Feed Chamber")
 	return &MFASetupResult{
 		Secret:     secret,
 		OTPAuthURL: BuildOTPAuthURL(issuer, username, secret),

@@ -5,9 +5,9 @@ import (
 	"regexp"
 	"strings"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/repository"
 )
 
 var mentionRe = regexp.MustCompile(`(?:^|[\s(])@([A-Za-z0-9_]{2,32})`)

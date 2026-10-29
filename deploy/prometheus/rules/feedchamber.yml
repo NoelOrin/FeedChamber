@@ -1,16 +1,16 @@
-# OrinForum alerting rules. Mount into an external Prometheus
+# Feed Chamber alerting rules. Mount into an external Prometheus
 # (./prometheus/rules -> /etc/prometheus/rules); the repo ships no compose that
 # starts it.
 #
 # Thresholds are starting points for a small self-hosted forum, not SLAs.
 
 groups:
-  - name: orinforum-availability
+  - name: feedchamber-availability
     rules:
       - alert: High5xxErrorRate
         expr: |
-          sum(rate(orinforum_http_requests_total{status=~"5.."}[5m]))
-            / clamp_min(sum(rate(orinforum_http_requests_total[5m])), 0.001) > 0.05
+          sum(rate(feedchamber_http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(feedchamber_http_requests_total[5m])), 0.001) > 0.05
         for: 5m
         labels: { severity: page }
         annotations:
@@ -20,7 +20,7 @@ groups:
       - alert: HighP99Latency
         expr: |
           histogram_quantile(0.99,
-            sum by (le) (rate(orinforum_http_request_duration_seconds_bucket[5m]))) > 1
+            sum by (le) (rate(feedchamber_http_request_duration_seconds_bucket[5m]))) > 1
         for: 10m
         labels: { severity: ticket }
         annotations:
@@ -28,7 +28,7 @@ groups:
           description: "P99 = {{ $value }}s，持续 10 分钟。"
 
       - alert: BackendMetricsEndpointDown
-        expr: up{job="orinforum"} == 0
+        expr: up{job="feedchamber"} == 0
         for: 2m
         labels: { severity: page }
         annotations:
@@ -36,23 +36,23 @@ groups:
           description: "METRICS_PORT 抓取失败，进程可能已退出或端口未暴露。"
 
       - alert: HealthEndpointDown
-        expr: probe_success{job="orinforum-health"} == 0
+        expr: probe_success{job="feedchamber-health"} == 0
         for: 2m
         labels: { severity: page }
         annotations:
           summary: "/api/v1/health 探测失败"
           description: "db / kvstore / storage 三项检查未全部通过。"
 
-  - name: orinforum-saturation
+  - name: feedchamber-saturation
     rules:
       - alert: DBPoolSaturation
         expr: |
           (
-            orinforum_db_pool_in_use
-              / clamp_min(orinforum_db_pool_max_open_connections, 1) > 0.9
+            feedchamber_db_pool_in_use
+              / clamp_min(feedchamber_db_pool_max_open_connections, 1) > 0.9
           )
           or
-            (increase(orinforum_db_pool_wait_count_total[5m]) > 10)
+            (increase(feedchamber_db_pool_wait_count_total[5m]) > 10)
         for: 5m
         labels: { severity: ticket }
         annotations:
@@ -62,7 +62,7 @@ groups:
       - alert: SlowKVOperations
         expr: |
           histogram_quantile(0.99,
-            sum by (le, op) (rate(orinforum_kv_operation_duration_seconds_bucket[5m]))) > 0.5
+            sum by (le, op) (rate(feedchamber_kv_operation_duration_seconds_bucket[5m]))) > 0.5
         for: 10m
         labels: { severity: ticket }
         annotations:
@@ -70,17 +70,17 @@ groups:
           description: "op={{ $labels.op }} P99 = {{ $value }}s。"
 
       - alert: KVCasRetryExhausted
-        expr: increase(orinforum_kv_cas_exhausted_total[10m]) > 0
+        expr: increase(feedchamber_kv_cas_exhausted_total[10m]) > 0
         for: 0m
         labels: { severity: ticket }
         annotations:
           summary: "KV 原子计数 50 次 CAS 全部失败"
           description: "存在热 key 竞争，计数已丢失。"
 
-  - name: orinforum-business
+  - name: feedchamber-business
     rules:
       - alert: EventBusDrops
-        expr: increase(orinforum_eventbus_dropped_total[5m]) > 0
+        expr: increase(feedchamber_eventbus_dropped_total[5m]) > 0
         for: 0m
         labels: { severity: page }
         annotations:
@@ -88,7 +88,7 @@ groups:
           description: "event={{ $labels.event }} 5 分钟内丢弃 {{ $value }} 条（通知/积分会永久缺失）。"
 
       - alert: EventBusHandlerPanics
-        expr: increase(orinforum_eventbus_dispatch_errors_total[5m]) > 0
+        expr: increase(feedchamber_eventbus_dispatch_errors_total[5m]) > 0
         for: 0m
         labels: { severity: ticket }
         annotations:
@@ -96,7 +96,7 @@ groups:
           description: "event={{ $labels.event }}，已被 recover，但业务逻辑未完成。"
 
       - alert: WebhookTerminalFailures
-        expr: increase(orinforum_webhook_deliveries_total{outcome="failed_terminal"}[10m]) > 0
+        expr: increase(feedchamber_webhook_deliveries_total{outcome="failed_terminal"}[10m]) > 0
         for: 0m
         labels: { severity: ticket }
         annotations:
@@ -110,9 +110,9 @@ groups:
       # baseline cannot make the ratio trigger on a handful of typos.
       - alert: LoginFailureSpike
         expr: |
-          sum(increase(orinforum_login_failures_total[5m]))
+          sum(increase(feedchamber_login_failures_total[5m]))
             > clamp_min(
-                5 * (sum(increase(orinforum_login_failures_total[7d])) / 2016),
+                5 * (sum(increase(feedchamber_login_failures_total[7d])) / 2016),
                 10
               )
         for: 5m
@@ -122,7 +122,7 @@ groups:
           description: "最近 5 分钟失败 {{ $value }} 次，超过该实例 7 天均值（按 5 分钟切片）的 5 倍且高于下限 10，可能是撞库。"
 
       - alert: RateLimiterFailOpen
-        expr: increase(orinforum_ratelimit_failopen_total[5m]) > 0
+        expr: increase(feedchamber_ratelimit_failopen_total[5m]) > 0
         for: 0m
         labels: { severity: ticket }
         annotations:
@@ -130,7 +130,7 @@ groups:
           description: "name={{ $labels.name }}：此刻暴力破解防护实际不存在。"
 
       - alert: NATSDisconnected
-        expr: orinforum_nats_connected == 0
+        expr: feedchamber_nats_connected == 0
         for: 2m
         labels: { severity: page }
         annotations:
@@ -141,7 +141,7 @@ groups:
       # rather than the worker's 20-row batch. Before that fix this alert could
       # not fire at all: the value was structurally capped at 20.
       - alert: WebhookBacklogGrowing
-        expr: orinforum_webhook_pending_deliveries > 100
+        expr: feedchamber_webhook_pending_deliveries > 100
         for: 15m
         labels: { severity: ticket }
         annotations:
@@ -153,7 +153,7 @@ groups:
       # Kept separate from the connection gauge, which also drops on a normal
       # tab close and therefore cannot carry this signal.
       - alert: SSEWriteFailures
-        expr: increase(orinforum_sse_write_failures_total[10m]) > 5
+        expr: increase(feedchamber_sse_write_failures_total[10m]) > 5
         for: 0m
         labels: { severity: ticket }
         annotations:
@@ -162,8 +162,8 @@ groups:
 
       - alert: DBSlowQueries
         expr: |
-          sum(rate(orinforum_db_slow_queries_total[5m]))
-            / clamp_min(sum(rate(orinforum_db_queries_total[5m])), 0.001) > 0.05
+          sum(rate(feedchamber_db_slow_queries_total[5m]))
+            / clamp_min(sum(rate(feedchamber_db_queries_total[5m])), 0.001) > 0.05
         for: 10m
         labels: { severity: ticket }
         annotations:
@@ -171,7 +171,7 @@ groups:
           description: "最近 5 分钟慢查询占比 {{ $value | humanizePercentage }}，通常是缺索引或全表扫描。"
 
       - alert: BackupJobFailed
-        expr: increase(orinforum_backup_jobs_total{outcome="failed"}[1h]) > 0
+        expr: increase(feedchamber_backup_jobs_total{outcome="failed"}[1h]) > 0
         for: 0m
         labels: { severity: ticket }
         annotations:
@@ -180,7 +180,7 @@ groups:
 
   # NATS 服务器与 JetStream 自身指标（经 nats-exporter，见 deploy/prometheus.yml）。
   # 这些是"后端看不见的"故障：KV/EventBus 依赖 NATS，NATS 慢了后端只能表现为超时。
-  - name: orinforum-nats
+  - name: feedchamber-nats
     rules:
       - alert: NatsServerDown
         expr: up{job="nats"} == 0
@@ -224,7 +224,7 @@ groups:
           summary: "NATS 连接数异常偏高"
           description: "当前 {{ $value }} 个连接，检查是否有连接泄漏或多实例误配。"
 
-  - name: orinforum-metric-gaps
+  - name: feedchamber-metric-gaps
     rules:
       # Runtime-labelled families are seeded with zero-valued series at their
       # wiring point (eventbus.New, kvstore startup, rate-limit registration),
@@ -235,10 +235,10 @@ groups:
       # _count series or this alert fires forever on a healthy instance.
       - alert: MetricsFamilyMissing
         expr: |
-          absent(orinforum_eventbus_publish_total)
-            or absent(orinforum_kv_operation_duration_seconds_count)
-            or absent(orinforum_ratelimit_rejections_total)
-            or absent(orinforum_nats_connected)
+          absent(feedchamber_eventbus_publish_total)
+            or absent(feedchamber_kv_operation_duration_seconds_count)
+            or absent(feedchamber_ratelimit_rejections_total)
+            or absent(feedchamber_nats_connected)
         for: 15m
         labels: { severity: ticket }
         annotations:

@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/pkg/testnats"
-	"orinforum/internal/pkg/tracing"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/pkg/testnats"
+	"feedchamber/internal/pkg/tracing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -116,7 +116,7 @@ func TestPublishDoesNotLeakCallerContext(t *testing.T) {
 func TestHandlerPanicIsCountedAndDoesNotBreakOthers(t *testing.T) {
 	bus := testnats.NewEventBus(t)
 
-	before := familyCounterSum(t, "orinforum_eventbus_dispatch_errors_total")
+	before := familyCounterSum(t, "feedchamber_eventbus_dispatch_errors_total")
 
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -137,6 +137,6 @@ func TestHandlerPanicIsCountedAndDoesNotBreakOthers(t *testing.T) {
 		t.Fatal("panic in one handler must not stop the others")
 	}
 
-	after := familyCounterSum(t, "orinforum_eventbus_dispatch_errors_total")
+	after := familyCounterSum(t, "feedchamber_eventbus_dispatch_errors_total")
 	assert.Greater(t, after, before, "recovered panic must increment the error counter")
 }

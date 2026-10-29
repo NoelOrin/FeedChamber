@@ -1,6 +1,6 @@
 'use client';
 
-import { type ErrorView, resolveErrorView } from '@orinforum/api-client';
+import { type ErrorView, resolveErrorView } from '@feedchamber/api-client';
 import { QueryClientContext } from '@tanstack/react-query';
 import { useContext, useMemo } from 'react';
 

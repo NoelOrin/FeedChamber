@@ -1,6 +1,6 @@
 'use client';
 
-import type { ContentListItem } from '@orinforum/api-client';
+import type { ContentListItem } from '@feedchamber/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type * as React from 'react';
 import { useCallback, useMemo, useState } from 'react';

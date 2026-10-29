@@ -62,7 +62,7 @@ export default async function Page() {
 }
 ```
 
-- **import `~/lib/api/adapter`**：任何会经 `@orinforum/api-client` 取数的页面都要先导入它，SSR 才能带上请求 cookie。
+- **import `~/lib/api/adapter`**：任何会经 `@feedchamber/api-client` 取数的页面都要先导入它，SSR 才能带上请求 cookie。
 - **`HydrationBoundary` 必须从 `~/components/query-hydration` 导入**，不能直接从 `@tanstack/react-query` 导——后者在服务端组件里会调 `useQueryClient`（此时无 Provider）。
 - **query key 一律取自 `~/lib/query/keys.ts` 的 `qk`**，页面与组件不得本地拼数组，否则 `invalidateQueries` 会漏。
 - **取数走 RSC 接缝 `~/lib/queries/server.ts`（`loadPublicSettings` / `loadProfile` / `loadSpaceTree`）**，它们都用 `cache()` 包过，同一次请求内 `generateMetadata → layout → page` 只发一次后端调用。
@@ -74,7 +74,7 @@ export default async function Page() {
 | 文件 | 说明 |
 |------|------|
 | `layout.tsx` | 根文档：`viewport.themeColor`、首绘前主题脚本、`Providers`（Query/Nuqs/Tooltip/Toast）、`JsonLd`；检测 `/admin/**` 时**跳过**外壳取数并返回 noindex 元信息 |
-| `globals.css` | shadcn token 的**唯一载体**（Web 不依赖 `@orinforum/tokens`） |
+| `globals.css` | shadcn token 的**唯一载体**（Web 不依赖 `@feedchamber/tokens`） |
 | `error.tsx` / `global-error.tsx` / `not-found.tsx` | 错误边界与 404 |
 | `admin/admin.css` | 只打进 `/admin` 的 CSS 分块，不污染前台 |
 

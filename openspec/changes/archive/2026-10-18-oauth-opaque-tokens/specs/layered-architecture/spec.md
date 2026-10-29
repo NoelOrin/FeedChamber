@@ -18,7 +18,7 @@
 #### Scenario: 放进 pkg/ 需给出消费者证据
 
 - WHEN 某包申请位于 `app/server/pkg/` 下
-- THEN MUST 能指出至少一个 `orinforum` 模块之外的 import 方；指不出时评审 MUST 要求移入 `internal/`
+- THEN MUST 能指出至少一个 `feedchamber` 模块之外的 import 方；指不出时评审 MUST 要求移入 `internal/`
 
 #### Scenario: 现存例外已清空
 

@@ -1,7 +1,7 @@
 'use client';
 
-import { type AuditLog, adminService } from '@orinforum/api-client';
-import { formatTime } from '@orinforum/shared-utils';
+import { type AuditLog, adminService } from '@feedchamber/api-client';
+import { formatTime } from '@feedchamber/shared-utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';

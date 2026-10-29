@@ -7,10 +7,10 @@ import (
 	"log/slog"
 	"time"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/service"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/service"
 
 	"github.com/kataras/iris/v12"
 )

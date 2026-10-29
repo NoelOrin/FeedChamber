@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg/kvstore"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg/kvstore"
 
 	"gorm.io/gorm"
 )

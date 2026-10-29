@@ -1,6 +1,6 @@
 'use client';
 
-import { authService, type User, uploadService, userService } from '@orinforum/api-client';
+import { authService, type User, uploadService, userService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import { useState } from 'react';

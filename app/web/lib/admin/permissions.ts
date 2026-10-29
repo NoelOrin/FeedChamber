@@ -1,4 +1,4 @@
-import type { Permission } from '@orinforum/api-client';
+import type { Permission } from '@feedchamber/api-client';
 
 // 后端 Permission 不返回 group 字段，这里按权限码前缀（冒号前的部分）推导分组标签。
 const GROUP_LABELS: Record<string, string> = {

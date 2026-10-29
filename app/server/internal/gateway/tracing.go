@@ -1,7 +1,7 @@
 package gateway
 
 import (
-	"orinforum/internal/pkg/tracing"
+	"feedchamber/internal/pkg/tracing"
 
 	"github.com/kataras/iris/v12"
 )

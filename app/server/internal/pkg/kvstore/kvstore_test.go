@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/pkg/testnats"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/pkg/testnats"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -1,4 +1,4 @@
-import { resolveErrorView } from '@orinforum/api-client';
+import { resolveErrorView } from '@feedchamber/api-client';
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Button } from '~/components/ui/button';
 import ErrorFallback from './ErrorFallback';

@@ -4,7 +4,7 @@ import { MessageSquare } from '~/lib/icons';
 
 /* 字标：实心主色方块 + 名称。 */
 export function SiteName({ settings }: { settings: Record<string, string> }) {
-	const siteName = settings.site_name || 'OrinForum';
+	const siteName = settings.site_name || 'Feed Chamber';
 	const siteLogo = settings.site_logo || '';
 
 	return (

@@ -12,7 +12,7 @@ var (
 	// KVOperationDuration records latency of each KV operation.
 	KVOperationDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "orinforum_kv_operation_duration_seconds",
+			Name:    "feedchamber_kv_operation_duration_seconds",
 			Help:    "KV store operation latency in seconds.",
 			Buckets: prometheus.DefBuckets,
 		},
@@ -22,7 +22,7 @@ var (
 	// KVCasExhaustedTotal counts compare-and-swap retries that gave up.
 	KVCasExhaustedTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "orinforum_kv_cas_exhausted_total",
+			Name: "feedchamber_kv_cas_exhausted_total",
 			Help: "KV increment operations that exhausted all CAS attempts.",
 		},
 	)

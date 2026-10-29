@@ -1,7 +1,7 @@
 'use client';
 
-import type { ContentListItem } from '@orinforum/api-client';
-import { contentService, likeService, revisionService } from '@orinforum/api-client';
+import type { ContentListItem } from '@feedchamber/api-client';
+import { contentService, likeService, revisionService } from '@feedchamber/api-client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import type { ReactNode } from 'react';

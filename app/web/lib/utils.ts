@@ -1,1 +1,1 @@
-export { cx as cn } from '@orinforum/shared-utils';
+export { cx as cn } from '@feedchamber/shared-utils';

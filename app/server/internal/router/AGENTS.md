@@ -174,3 +174,5 @@
 - 所有列表响应格式：`{ code, msg, data, pagination: { currentPage, pageSize, totalItems, totalPages } }`
 - `/comments/list` 挂在 `/posts` party 下（admin 全局评论列表），`/comments/{id}/delete` 单独 party
 - Admin search 支持各实体独立分页参数：`users_page/users_page_size`, `posts_page/posts_page_size`, `comments_page/comments_page_size`
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

@@ -8,10 +8,10 @@
 
 | 文件 | 说明 |
 |------|------|
-| `docker-compose.yml` | 默认档：postgres 16 + nats 2.10(`-js`) + nats-exporter + backend + frontend + nginx；named volumes `orin_pg` / `orin_nats` / `orin_uploads` |
+| `docker-compose.yml` | 默认档：postgres 16 + nats 2.10(`-js`) + nats-exporter + backend + frontend + nginx；named volumes `feedchamber_pg` / `feedchamber_nats` / `feedchamber_uploads` |
 | `docker-compose.dokploy.yml` | Dokploy 档：入口交给 Traefik，nginx 用 `expose` 而非 `ports`、接入 `dokploy-network`，且 backend/frontend 用 `image:` 而非 `build:`（镜像由 CI 推 GHCR）。**与默认档只差这三处，改基础档时必须同步这里** |
 | `nginx/nginx.conf` | 反向代理：`/api/v1/` → backend，`/` → web SSR（匿名页 60s 共享缓存），另有 6 条**精确匹配**的爬虫路由 |
-| `prometheus.yml` + `prometheus/rules/orinforum.yml` | 抓取配置与告警规则 |
+| `prometheus.yml` + `prometheus/rules/feedchamber.yml` | 抓取配置与告警规则 |
 | `grafana/` | 数据源与仪表盘 provisioning |
 | `blackbox/blackbox.yml` | 探针（外部可达性） |
 | `.env.example` | 环境变量样例（生产必配项用 ⚠ 标出） |
@@ -32,13 +32,13 @@
 ## 匿名 SSR 页面缓存（`proxy_cache`）
 
 前端 SSR 实测只有约 10 req/s，是整站第一道天花板；nginx 因此对**匿名公开页面**做
-60s 共享缓存（`keys_zone=orin_html`，`max_size=1g`，落在容器内
-`/var/cache/nginx/orinforum`）。
+60s 共享缓存（`keys_zone=feedchamber_html`，`max_size=1g`，落在容器内
+`/var/cache/nginx/feedchamber`）。
 
 不变量（改配置前必须保住）：
 
 1. **带会话的请求不读不写缓存**。`master_session=` / `master_auth=` 命中
-   `$orin_has_session` → `BYPASS`。SSR 的 HTML 里嵌着登录态外壳（头像、未读角标），
+   `$feedchamber_has_session` → `BYPASS`。SSR 的 HTML 里嵌着登录态外壳（头像、未读角标），
    缓存它就是**跨用户泄露**。
 2. **RSC / 预取请求不读不写缓存**。`RSC`、`Next-Router-{Prefetch,State-Tree,Segment-Prefetch}`、
    `X-Vinext-*` 任一出现即 `BYPASS`——同一 URL 上是 flight payload 而不是文档，
@@ -67,7 +67,7 @@ bash scripts/check-metrics-exposure.sh                        # 本地跑护栏
 
 ## 改这里要注意
 
-- **Dokploy 档绝不能有 `build:`**：镜像由 `.github/workflows/docker-build.yml` 构建推 GHCR（`ghcr.io/<owner>/orinforum-{server,web}`），线上 `docker compose up` 只做 pull。这台机器 2 vCPU / 3.9G 且 swap 常满，服务器上跑 `go build` + `vinext build` 会打穿内存（实测 load 131、全站不可用）。回滚靠改 `IMAGE_TAG=sha-<短哈希>` 而不是重构建。
+- **Dokploy 档绝不能有 `build:`**：镜像由 `.github/workflows/docker-build.yml` 构建推 GHCR（`ghcr.io/<owner>/feedchamber-{server,web}`），线上 `docker compose up` 只做 pull。这台机器 2 vCPU / 3.9G 且 swap 常满，服务器上跑 `go build` + `vinext build` 会打穿内存（实测 load 131、全站不可用）。回滚靠改 `IMAGE_TAG=sha-<短哈希>` 而不是重构建。
 - **改 `docker-compose.yml` 的服务定义时同步 `docker-compose.dokploy.yml`**。两份是整份复制而非 `include`（Compose 的 include 会报 `services.nginx conflicts`，`!override` 会丢 `image`/`volumes`/`depends_on`，两者实测都不可行）。
 - **不要给 backend 加 `ports: 9091`**，也不要在 nginx 加指向 9091 的 `location`。
 - **nginx 改路径规则时同步检查 6 条爬虫 location 与 `/swagger/`、`/health`**。

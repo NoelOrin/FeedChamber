@@ -1,8 +1,8 @@
 #!/bin/bash
 # ============================================================
-# OrinForum 全量 API 接口测试脚本
-# 支持分模块测试: ./orinforum_test.sh -auth -post -user ...
-# 全部测试:      ./orinforum_test.sh -all
+# Feed Chamber 全量 API 接口测试脚本
+# 支持分模块测试: ./feedchamber_test.sh -auth -post -user ...
+# 全部测试:      ./feedchamber_test.sh -all
 # ============================================================
 
 BASE="${BASE_URL:-http://localhost:8080/api/v1}"
@@ -339,14 +339,14 @@ test_admin() {
     check "全部设置" POST "/admin/settings" '{}' "$token" 200
     check "获取设置" POST "/admin/settings/site_name" '{}' "$token" 200
     check "批量设置" POST "/admin/settings/batch" \
-      '{"settings":{"site_name":"OrinForum测试"}}' "$token" 200
+      '{"settings":{"site_name":"Feed Chamber测试"}}' "$token" 200
     # 单项设置更新 & 删除
     check "更新设置" POST "/admin/settings/site_name/update" \
-      '{"value":"OrinForum更新"}' "$token" 200
+      '{"value":"Feed Chamber更新"}' "$token" 200
     check "删除设置" POST "/admin/settings/site_name/delete" '{}' "$token" 200
     # 重新设置回来
     check "还原设置" POST "/admin/settings/site_name/update" \
-      '{"value":"OrinForum"}' "$token" 200
+      '{"value":"Feed Chamber"}' "$token" 200
 
     # 用户活动记录
     local uid; uid=$(curl -s -X POST "$BASE/user/list" \
@@ -633,6 +633,6 @@ else
 fi
 
 echo "╔═══════════════════════════════════════════╗"
-echo "║    OrinForum 全量 API 接口测试            ║"
+echo "║    Feed Chamber 全量 API 接口测试            ║"
 echo "╚═══════════════════════════════════════════╝"
 run_tests "${modules[@]}"

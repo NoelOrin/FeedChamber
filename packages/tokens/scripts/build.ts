@@ -1,10 +1,10 @@
 /**
- * @orinforum/tokens build script — W3C Design Tokens (DTCG) driven.
+ * @feedchamber/tokens build script — W3C Design Tokens (DTCG) driven.
  *
  * w3c-tokens.json is the single source of truth. All outputs are derived
  * from `$value` / `$type` entries; no hand-written token values live here.
  *
- * Run: pnpm --filter @orinforum/tokens tokens:build
+ * Run: pnpm --filter @feedchamber/tokens tokens:build
  */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -210,8 +210,8 @@ function buildTokensCss(): string {
 		.map(([k, v]) => `  --font-${kebab(k)}: ${fontFamilyToCss(v)};`)
 		.join('\n');
 
-	return `/* @orinforum/tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
-   Run: pnpm --filter @orinforum/tokens tokens:build */
+	return `/* @feedchamber/tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
+   Run: pnpm --filter @feedchamber/tokens tokens:build */
 
 @theme {
   /* Brand primitive palette (light) */
@@ -267,8 +267,8 @@ function buildShadcnCss(): string {
 	const l = lightSemantic;
 	const d = darkSemantic;
 
-	return `/* @orinforum/tokens - shadcn/ui theme vars — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
-   Run: pnpm --filter @orinforum/tokens tokens:build */
+	return `/* @feedchamber/tokens - shadcn/ui theme vars — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
+   Run: pnpm --filter @feedchamber/tokens tokens:build */
 
 :root {
   --background: ${l.bg};
@@ -536,8 +536,8 @@ function buildAntdJs(): string {
       titleFontSize: 14,
     },`;
 
-	return `/* @orinforum/tokens - AntD ThemeConfig — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
-   Run: pnpm --filter @orinforum/tokens tokens:build */
+	return `/* @feedchamber/tokens - AntD ThemeConfig — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
+   Run: pnpm --filter @feedchamber/tokens tokens:build */
 
 import { theme as antdTheme } from 'antd';
 
@@ -586,8 +586,8 @@ export declare function getAntdTheme(isDark: boolean): ThemeConfig;
 // ---------------------------------------------------------------------------
 
 function buildLayoutJs(): string {
-	return `/* @orinforum/tokens - Layout tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
-   Run: pnpm --filter @orinforum/tokens tokens:build */
+	return `/* @feedchamber/tokens - Layout tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
+   Run: pnpm --filter @feedchamber/tokens tokens:build */
 
 export const lightLayoutTokens = {
   headerBg: '${layoutLight.headerBg}',
@@ -663,8 +663,8 @@ function buildDashboardJs(): string {
 	const lightEntries = DASHBOARD_KEYS.map((k) => `  ${k}: '${dashboardLight[k]}',`).join('\n');
 	const darkEntries = DASHBOARD_KEYS.map((k) => `  ${k}: '${dashboardDark[k]}',`).join('\n');
 
-	return `/* @orinforum/tokens - Dashboard tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
-   Run: pnpm --filter @orinforum/tokens tokens:build */
+	return `/* @feedchamber/tokens - Dashboard tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
+   Run: pnpm --filter @feedchamber/tokens tokens:build */
 
 export const lightDashboardTokens = {
 ${lightEntries}
@@ -714,7 +714,7 @@ for (const [name, content] of outputs) {
 	writeFileSync(join(distDir, name), content, 'utf-8');
 }
 
-console.log('@orinforum/tokens built successfully (W3C DTCG driven)');
+console.log('@feedchamber/tokens built successfully (W3C DTCG driven)');
 for (const [name] of outputs) {
 	console.log(`  -> dist/${name}`);
 }

@@ -1,12 +1,12 @@
 package container
 
 import (
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/service"
-	"orinforum/internal/storage"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/service"
+	"feedchamber/internal/storage"
 )
 
 // Deps 是 container.New 的全部输入，替代此前 11 个位置参数。

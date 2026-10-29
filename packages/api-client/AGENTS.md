@@ -37,3 +37,5 @@ Web 和 Dashboard 共同依赖，封装所有后端 API 调用。
 - 响应类型固定 `Response<T>` 结构
 - `post<T>(url, body?)` 泛型函数自动解包 `data` 字段
 - `postPaginated<T>(url, body?)` 返回 `{ data: T; total: number }`（`data` 即 items 数组）
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

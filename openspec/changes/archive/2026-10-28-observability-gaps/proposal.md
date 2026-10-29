@@ -26,17 +26,17 @@ G3 余项（本轮一并做完）：
 
 ## What Changes
 
-- **NATS 连接指标**（`orinforum_nats_connected` / `_disconnects_total` / `_reconnects_total`，标签 `client` ∈ `kv`/`eventbus`）。两处 `nats.Connect` 都挂 `DisconnectErrHandler` / `ReconnectHandler`；gauge 在连接成功时置 1，断连置 0，重连再置 1。client 标签是**静态两值**，符合既有基数护栏。
-- **SSE 写失败指标**（`orinforum_sse_write_failures_total{channel}`）。两个 handler 的写函数在写失败时计数；与连接 gauge **分开**，因为后者的下降包含正常关连接。
+- **NATS 连接指标**（`feedchamber_nats_connected` / `_disconnects_total` / `_reconnects_total`，标签 `client` ∈ `kv`/`eventbus`）。两处 `nats.Connect` 都挂 `DisconnectErrHandler` / `ReconnectHandler`；gauge 在连接成功时置 1，断连置 0，重连再置 1。client 标签是**静态两值**，符合既有基数护栏。
+- **SSE 写失败指标**（`feedchamber_sse_write_failures_total{channel}`）。两个 handler 的写函数在写失败时计数；与连接 gauge **分开**，因为后者的下降包含正常关连接。
 - **webhook 积压改真值**：`WebhookRepository` 新增 `CountPendingDeliveries`，`processPending` 每 tick 先 `COUNT(*)` 设 gauge，再取批处理。计数与列表使用同一谓词（`status='pending' AND attempts<5`），并由测试钉住二者选同一批行。
 - **CI 护栏**（`scripts/check-metrics-exposure.sh`）：断言任何 compose 档的 backend 都不发布 9091，且 nginx 不引用 9091。新增一个 `metrics-exposure` CI job，跑在 40 分钟镜像构建之前。
 - **`X-Request-ID` 端到端**：nginx 的 `/swagger/`、`/`（前端）location 补透传；`/health`（nginx 本地应答）回写该头。`api-client` 的 `AuthAdapter` 新增 `getSsrRequestId()`，SSR 请求把它作为 `X-Request-ID` 转发给后端，使后端沿用同一个 trace id。
-- **DB 慢查询**：`internal/db/gorm_logger.go` 自定义 GORM logger，每语句计 `orinforum_db_queries_total`，超 200ms 另计 `orinforum_db_slow_queries_total` 并写结构化 warn（SQL 只进日志、不进标签）。因 `metrics` 已 import `db`，经 `db.SetQueryObserver` 钩子注入，避免 import cycle。
-- **权限缓存规模**：`orinforum_permission_cache_entries{cache}`，在 `LoadCache` 持写锁期间设置（重建完成态，非中间态）。
-- **备份任务**：`orinforum_backup_jobs_total{kind,outcome}` + `orinforum_backup_job_duration_seconds{kind}`，outcome 由 `err` 推导。
+- **DB 慢查询**：`internal/db/gorm_logger.go` 自定义 GORM logger，每语句计 `feedchamber_db_queries_total`，超 200ms 另计 `feedchamber_db_slow_queries_total` 并写结构化 warn（SQL 只进日志、不进标签）。因 `metrics` 已 import `db`，经 `db.SetQueryObserver` 钩子注入，避免 import cycle。
+- **权限缓存规模**：`feedchamber_permission_cache_entries{cache}`，在 `LoadCache` 持写锁期间设置（重建完成态，非中间态）。
+- **备份任务**：`feedchamber_backup_jobs_total{kind,outcome}` + `feedchamber_backup_job_duration_seconds{kind}`，outcome 由 `err` 推导。
 - **告警阈值改相对基线**：`LoginFailureSpike` 从「>50/5m」改为「> 7 天均值的 5 倍，下限 10」。
 - **ADR**：新增 `docs/adr/no-otel-sdk-yet.md`，记录决策、理由、保留的兼容缝与明确代价。
-- **告警与面板**：告警 13 → **18** 条（`NATSDisconnected`、`WebhookBacklogGrowing`、`SSEWriteFailures`、`DBSlowQueries`、`BackupJobFailed`），`MetricsFamilyMissing` 补探 `orinforum_nats_connected`；Grafana 9 → **13** 面板。
+- **告警与面板**：告警 13 → **18** 条（`NATSDisconnected`、`WebhookBacklogGrowing`、`SSEWriteFailures`、`DBSlowQueries`、`BackupJobFailed`），`MetricsFamilyMissing` 补探 `feedchamber_nats_connected`；Grafana 9 → **13** 面板。
 - **文档修正**（findings D2/D3/D4）：`AGENTS.md` 与 `app/server/AGENTS.md` 仍写「Cobra 分发 dev/prod 子命令」，实际只有持久标志 `-e/--env`。D1（operations spec）此前已修正。
 
 ## Capabilities
@@ -49,8 +49,8 @@ G3 余项（本轮一并做完）：
 
 - **后端**：`internal/metrics/nats.go`（新）、`internal/metrics/sse.go`、`internal/metrics/webhook.go`、`internal/pkg/kvstore/nats.go`、`internal/pkg/eventbus/eventbus.go`、`internal/handler/{notification,realtime}.go`、`internal/repository/webhook{,_sql}.go`、`internal/service/webhook.go`。
 - **前端**：`packages/api-client/src/{adapter,client}.ts`、`packages/api-client/src/adapters/web/index.ts`、`app/web/lib/api/adapter.ts`。`AuthAdapter` 新增方法，但 `defaultAdapter` 提供默认实现，dashboard 适配器继承它，无需改动。
-- **部署**：`deploy/nginx/nginx.conf`（两处 location + health 回写）、`deploy/prometheus/rules/orinforum.yml`、`deploy/grafana/dashboards/orinforum.json`。
+- **部署**：`deploy/nginx/nginx.conf`（两处 location + health 回写）、`deploy/prometheus/rules/feedchamber.yml`、`deploy/grafana/dashboards/feedchamber.json`。
 - **CI**：`.github/workflows/docker-build.yml` 新增 job；`scripts/check-metrics-exposure.sh`（新）。
 - **新增指标文件**：`internal/metrics/{nats,db,permission_cache,backup}.go`、`internal/db/gorm_logger.go`、`docs/adr/no-otel-sdk-yet.md`。
-- **非破坏性**：不新增/删除任何 HTTP 端点；`orinforum_webhook_pending_deliveries` 名称不变，仅语义从「批大小」改为「真实积压」——历史数据在改动点是断点，看板需以改动时间分段解读。
+- **非破坏性**：不新增/删除任何 HTTP 端点；`feedchamber_webhook_pending_deliveries` 名称不变，仅语义从「批大小」改为「真实积压」——历史数据在改动点是断点，看板需以改动时间分段解读。
 - **不在本轮范围**：NATS server 自身指标（`/varz` / JetStream 存储水位）——需在容器网络内多一个 scrape target；G2 的其余阈值（5xx/P99/DB 池）按真实流量回归校准——那些需要真实分位数，本轮只改了能用相对基线表达的那条。

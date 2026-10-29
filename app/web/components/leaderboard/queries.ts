@@ -1,4 +1,4 @@
-import { leaderboardService } from '@orinforum/api-client';
+import { leaderboardService } from '@feedchamber/api-client';
 import { queryOptions } from '@tanstack/react-query';
 
 import { qk } from '~/lib/query/keys';

@@ -13,7 +13,7 @@
 #   PROM_URL=http://prom.internal:9090 ./scripts/calibrate-alert-thresholds.sh
 #   WINDOW=7d ./scripts/calibrate-alert-thresholds.sh            # 拉长观察窗口
 #
-# 输出每一行都带"怎么读"的注释，直接照结论调 deploy/prometheus/rules/orinforum.yml。
+# 输出每一行都带"怎么读"的注释，直接照结论调 deploy/prometheus/rules/feedchamber.yml。
 
 set -euo pipefail
 
@@ -47,10 +47,10 @@ echo "════════════════════════�
 echo
 echo "── 1) 5xx 错误率（当前告警阈值 5%）───────────────────────────"
 query_instant \
-  "sum(rate(orinforum_http_requests_total{status=~\"5..\"}[${WINDOW}])) / clamp_min(sum(rate(orinforum_http_requests_total[${WINDOW}])), 0.001)" \
+  "sum(rate(feedchamber_http_requests_total{status=~\"5..\"}[${WINDOW}])) / clamp_min(sum(rate(feedchamber_http_requests_total[${WINDOW}])), 0.001)" \
   "窗口内 5xx 占比"
 query_instant \
-  "sum(rate(orinforum_http_requests_total[${WINDOW}]))" \
+  "sum(rate(feedchamber_http_requests_total[${WINDOW}]))" \
   "总请求速率 (req/s)"
 cat <<'READ'
   怎么读：健康站点通常 <0.1%。若长窗口值本身就 >1%，说明阈值太松（已在持续错误）
@@ -61,7 +61,7 @@ echo
 echo "── 2) P99 延迟（当前告警阈值 1s）─────────────────────────────"
 for q in 0.50 0.90 0.99 0.999; do
   query_instant \
-    "histogram_quantile(${q}, sum by (le) (rate(orinforum_http_request_duration_seconds_bucket[${WINDOW}])))" \
+    "histogram_quantile(${q}, sum by (le) (rate(feedchamber_http_request_duration_seconds_bucket[${WINDOW}])))" \
     "P$(( ${q#0.} ))  延迟 (s)"
 done
 cat <<'READ'
@@ -72,12 +72,12 @@ READ
 echo
 echo "── 3) DB 连接池（当前告警阈值 90% 使用率 / 5min 等待 >10）─────"
 query_instant \
-  "orinforum_db_pool_in_use / clamp_min(orinforum_db_pool_max_open_connections, 1)" \
+  "feedchamber_db_pool_in_use / clamp_min(feedchamber_db_pool_max_open_connections, 1)" \
   "池使用率"
-query_instant "orinforum_db_pool_in_use" "in_use"
-query_instant "orinforum_db_pool_max_open_connections" "max_open"
+query_instant "feedchamber_db_pool_in_use" "in_use"
+query_instant "feedchamber_db_pool_max_open_connections" "max_open"
 query_instant \
-  "increase(orinforum_db_pool_wait_count_total[${WINDOW}])" \
+  "increase(feedchamber_db_pool_wait_count_total[${WINDOW}])" \
   "窗口内累计等待次数"
 cat <<'READ'
   怎么读：若"窗口内累计等待次数"在长窗口下仍为 0，说明池容量充足，90% 阈值可维持；
@@ -98,5 +98,5 @@ READ
 
 echo
 echo "══════════════════════════════════════════════════════════════"
-echo "结论写回：deploy/prometheus/rules/orinforum.yml 的 orinforum-http / orinforum-business 组"
+echo "结论写回：deploy/prometheus/rules/feedchamber.yml 的 feedchamber-http / feedchamber-business 组"
 echo "══════════════════════════════════════════════════════════════"

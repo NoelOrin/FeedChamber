@@ -1,6 +1,6 @@
 'use client';
 
-import type { Notification } from '@orinforum/api-client';
+import type { Notification } from '@feedchamber/api-client';
 import dayjs from 'dayjs';
 
 import { Button } from '~/components/ui/button';

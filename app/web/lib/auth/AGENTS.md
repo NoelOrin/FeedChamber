@@ -74,3 +74,5 @@ export * from './sync';
 - `guards.ts` 新增/修改服务端门
 - 导入边界（barrel 导出）变化
 - 凭据形态变化（cookie 名、是否 HttpOnly）
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

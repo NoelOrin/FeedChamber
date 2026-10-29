@@ -25,7 +25,7 @@
 **生成 keystore**（首次）：
 ```bash
 keytool -genkey -v -keystore release.keystore \
-  -alias orinforum -keyalg RSA -keysize 2048 -validity 10000
+  -alias feedchamber -keyalg RSA -keysize 2048 -validity 10000
 ```
 
 **修改 `android/app/build.gradle`** 让 CI 能识别签名配置：
@@ -80,8 +80,8 @@ android {
 | `IOS_APP_STORE_CONNECT_API_KEY` | TestFlight 上传（API Key JSON） |
 | `IOS_APP_STORE_CONNECT_API_KEY_ID` | API Key ID |
 | `IOS_APP_STORE_CONNECT_ISSUER_ID` | Issuer ID |
-| `CAPACITOR_APP_ID` | 覆盖默认 `com.orinforum.app` |
-| `CAPACITOR_APP_NAME` | 覆盖显示名 `OrinForum` |
+| `CAPACITOR_APP_ID` | 覆盖默认 `com.feedchamber.app` |
+| `CAPACITOR_APP_NAME` | 覆盖显示名 `Feed Chamber` |
 
 ## 使用方式
 
@@ -142,7 +142,7 @@ GitHub Actions 的 `macos-latest` runner 对私有仓库**收费**。确认：
 
 ### Q: 如何切换 App ID？
 
-在 GitHub Secrets 添加 `CAPACITOR_APP_ID`（如 `com.yourname.orinforum`），CI 会自动覆盖 `capacitor.config.ts` 默认值。
+在 GitHub Secrets 添加 `CAPACITOR_APP_ID`（如 `com.yourname.feedchamber`），CI 会自动覆盖 `capacitor.config.ts` 默认值。
 
 ### Q: 如何禁用 iOS job？
 

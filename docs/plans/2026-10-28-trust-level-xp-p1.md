@@ -66,7 +66,7 @@
 
 运行：
 ```bash
-cd /Users/noelorin/OrinForum
+cd /Users/noelorin/Feed Chamber
 git log --oneline -1 f62a083 && git log --oneline -1 917c040
 git cherry-pick --no-commit f62a083 917c040
 git status --short
@@ -270,9 +270,9 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 
 	"github.com/stretchr/testify/require"
 	"gorm.io/gorm"
@@ -321,8 +321,8 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/db"
-	"orinforum/internal/model"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 )
 
 // UserMetricsRepository 把成长体系需要的指标从既有业务表聚合出来。
@@ -416,7 +416,7 @@ package service
 import (
 	"testing"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 func TestEvaluateXP_AppliesDailyCapPerDay(t *testing.T) {
@@ -459,7 +459,7 @@ func TestEvaluateXP_IgnoresDisabledRules(t *testing.T) {
 ```go
 package service
 
-import "orinforum/internal/model"
+import "feedchamber/internal/model"
 
 // EvaluateXP 是纯函数：XP = Σ(按自然日截断的指标计数 × 分值) + Σ(签到里程碑) 。
 // 人工调整不在本函数内（由调用方加上 xp_adjustments 之和）。
@@ -518,7 +518,7 @@ package service
 import (
 	"testing"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 var testLevels = []model.TrustLevel{
@@ -576,7 +576,7 @@ package service
 import (
 	"sort"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // EvaluateLevel 是纯函数：先按累计 XP 取候选等级，再自顶向下校验该级的保级条件，
@@ -663,8 +663,8 @@ import (
 	"context"
 	"testing"
 
-	"orinforum/internal/mock"
-	"orinforum/internal/model"
+	"feedchamber/internal/mock"
+	"feedchamber/internal/model"
 )
 
 func TestXPConfig_LoadCachesAndInvalidates(t *testing.T) {
@@ -833,8 +833,8 @@ import (
 	"context"
 	"testing"
 
-	"orinforum/internal/mock"
-	"orinforum/internal/model"
+	"feedchamber/internal/mock"
+	"feedchamber/internal/model"
 
 	"github.com/stretchr/testify/require"
 )
@@ -1227,7 +1227,7 @@ git commit -m "feat(admin-web): 等级管理 / XP 规则 / 用户 XP 分解与�
 
 - [ ] **步骤 2：前端全量 + 文档门**
 
-运行：`cd app/web && pnpm typecheck && pnpm check`；`cd /Users/noelorin/OrinForum && node scripts/check-agents-docs.mjs --base HEAD`
+运行：`cd app/web && pnpm typecheck && pnpm check`；`cd /Users/noelorin/Feed Chamber && node scripts/check-agents-docs.mjs --base HEAD`
 预期：全部通过（改了模块代码必须同步该模块 AGENTS.md）。
 
 - [ ] **步骤 3：迁移脚本演练**

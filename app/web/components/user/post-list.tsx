@@ -1,4 +1,4 @@
-import type { PostListItem } from '@orinforum/api-client';
+import type { PostListItem } from '@feedchamber/api-client';
 
 import { Pager } from '~/components/pagination/pager';
 import { Card } from '~/components/ui/card';
