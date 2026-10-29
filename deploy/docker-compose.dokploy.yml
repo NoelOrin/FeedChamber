@@ -7,13 +7,11 @@
 #   1. nginx 用 expose 而非 ports —— 80/443 归 dokploy-traefik，再 bind 报
 #      "Bind for 0.0.0.0:80 failed: port is already allocated"
 #   2. nginx 额外接入 dokploy-network —— Traefik 的 docker provider 只发现这个网络
-#   3. backend / frontend 用 `image:` 而不是 `build:` —— 镜像由 GitHub Actions
+#   3. backend / frontend 用 image: 而不是 build: —— 镜像由 GitHub Actions
 #      构建推 GHCR，线上只 pull。服务器上构建会打穿这台机器的内存（见 backend 注释）。
 #
 # 为什么整份复制：Compose 的 include 会报 "services.nginx conflicts with imported
 # resource"，!override 虽能替换 nginx 但会丢掉 image/volumes/depends_on。两者实测均不可行。
-
-name: feedchamber
 
 services:
   postgres:
@@ -128,8 +126,8 @@ services:
     restart: unless-stopped
 
 # 每个卷都写成显式映射（含 name）：Dokploy 保存 compose 时会丢弃值为空的
-# 条目（`feedchamber_pg:` 解析成 null 后被丢掉），导致部署时报
-# `service "postgres" refers to undefined volume feedchamber_pg`。
+# 条目（feedchamber_pg: 解析成 null 后被丢掉），导致部署时报
+# service "postgres" refers to undefined volume feedchamber_pg。
 volumes:
   feedchamber_pg:
     name: feedchamber_pg
