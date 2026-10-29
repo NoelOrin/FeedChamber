@@ -1,0 +1,246 @@
+# OrinForum alerting rules. Mount into an external Prometheus
+# (./prometheus/rules -> /etc/prometheus/rules); the repo ships no compose that
+# starts it.
+#
+# Thresholds are starting points for a small self-hosted forum, not SLAs.
+
+groups:
+  - name: orinforum-availability
+    rules:
+      - alert: High5xxErrorRate
+        expr: |
+          sum(rate(orinforum_http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(orinforum_http_requests_total[5m])), 0.001) > 0.05
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "5xx 占比超过 5%"
+          description: "最近 5 分钟 5xx 比率为 {{ $value | humanizePercentage }}。"
+
+      - alert: HighP99Latency
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(orinforum_http_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "P99 请求延迟超过 1s"
+          description: "P99 = {{ $value }}s，持续 10 分钟。"
+
+      - alert: BackendMetricsEndpointDown
+        expr: up{job="orinforum"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "backend 指标端口不可抓取"
+          description: "METRICS_PORT 抓取失败，进程可能已退出或端口未暴露。"
+
+      - alert: HealthEndpointDown
+        expr: probe_success{job="orinforum-health"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "/api/v1/health 探测失败"
+          description: "db / kvstore / storage 三项检查未全部通过。"
+
+  - name: orinforum-saturation
+    rules:
+      - alert: DBPoolSaturation
+        expr: |
+          (
+            orinforum_db_pool_in_use
+              / clamp_min(orinforum_db_pool_max_open_connections, 1) > 0.9
+          )
+          or
+            (increase(orinforum_db_pool_wait_count_total[5m]) > 10)
+        for: 5m
+        labels: { severity: ticket }
+        annotations:
+          summary: "数据库连接池饱和"
+          description: "in_use/max_open > 0.9 或 5 分钟内等待次数增加 {{ $value }}。"
+
+      - alert: SlowKVOperations
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, op) (rate(orinforum_kv_operation_duration_seconds_bucket[5m]))) > 0.5
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "KV 操作 P99 超过 500ms"
+          description: "op={{ $labels.op }} P99 = {{ $value }}s。"
+
+      - alert: KVCasRetryExhausted
+        expr: increase(orinforum_kv_cas_exhausted_total[10m]) > 0
+        for: 0m
+        labels: { severity: ticket }
+        annotations:
+          summary: "KV 原子计数 50 次 CAS 全部失败"
+          description: "存在热 key 竞争，计数已丢失。"
+
+  - name: orinforum-business
+    rules:
+      - alert: EventBusDrops
+        expr: increase(orinforum_eventbus_dropped_total[5m]) > 0
+        for: 0m
+        labels: { severity: page }
+        annotations:
+          summary: "EventBus 缓冲满导致事件被丢弃"
+          description: "event={{ $labels.event }} 5 分钟内丢弃 {{ $value }} 条（通知/积分会永久缺失）。"
+
+      - alert: EventBusHandlerPanics
+        expr: increase(orinforum_eventbus_dispatch_errors_total[5m]) > 0
+        for: 0m
+        labels: { severity: ticket }
+        annotations:
+          summary: "事件订阅 handler 发生 panic"
+          description: "event={{ $labels.event }}，已被 recover，但业务逻辑未完成。"
+
+      - alert: WebhookTerminalFailures
+        expr: increase(orinforum_webhook_deliveries_total{outcome="failed_terminal"}[10m]) > 0
+        for: 0m
+        labels: { severity: ticket }
+        annotations:
+          summary: "webhook 投递进入终态失败"
+          description: "已重试 5 次仍失败，投递不再重试。"
+
+      # Absolute thresholds were the wrong shape for this alert: a small forum
+      # never reaches 50 failures in 5 minutes (so it never fires), while a
+      # large one sits above it permanently (so it always fires). Anchor on the
+      # instance's own 7-day baseline instead, and keep a floor so a near-zero
+      # baseline cannot make the ratio trigger on a handful of typos.
+      - alert: LoginFailureSpike
+        expr: |
+          sum(increase(orinforum_login_failures_total[5m]))
+            > clamp_min(
+                5 * (sum(increase(orinforum_login_failures_total[7d])) / 2016),
+                10
+              )
+        for: 5m
+        labels: { severity: ticket }
+        annotations:
+          summary: "登录失败相对基线突增 5 倍"
+          description: "最近 5 分钟失败 {{ $value }} 次，超过该实例 7 天均值（按 5 分钟切片）的 5 倍且高于下限 10，可能是撞库。"
+
+      - alert: RateLimiterFailOpen
+        expr: increase(orinforum_ratelimit_failopen_total[5m]) > 0
+        for: 0m
+        labels: { severity: ticket }
+        annotations:
+          summary: "限流因 KV 故障而放行"
+          description: "name={{ $labels.name }}：此刻暴力破解防护实际不存在。"
+
+      - alert: NATSDisconnected
+        expr: orinforum_nats_connected == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "backend 与 NATS 的连接断开超过 2 分钟"
+          description: "client={{ $labels.client }}：会话缓存、限流、事件总线与权限同步全部降级。连接是无限重试的，所以进程不会退出——这正是需要告警的原因。"
+
+      # The backlog gauge is only meaningful now that it comes from COUNT(*)
+      # rather than the worker's 20-row batch. Before that fix this alert could
+      # not fire at all: the value was structurally capped at 20.
+      - alert: WebhookBacklogGrowing
+        expr: orinforum_webhook_pending_deliveries > 100
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: "webhook 积压超过 100 条"
+          description: "积压 {{ $value }} 条。worker 每 15s 只取 20 条，投递速度跟不上入队速度。"
+
+      # A write failure means the server could not deliver to a client it still
+      # counts as connected: usually a proxy buffering or killing the stream.
+      # Kept separate from the connection gauge, which also drops on a normal
+      # tab close and therefore cannot carry this signal.
+      - alert: SSEWriteFailures
+        expr: increase(orinforum_sse_write_failures_total[10m]) > 5
+        for: 0m
+        labels: { severity: ticket }
+        annotations:
+          summary: "SSE 写失败增多"
+          description: "channel={{ $labels.channel }}：10 分钟内 {{ $value }} 次写失败，实时推送可能被代理截断。"
+
+      - alert: DBSlowQueries
+        expr: |
+          sum(rate(orinforum_db_slow_queries_total[5m]))
+            / clamp_min(sum(rate(orinforum_db_queries_total[5m])), 0.001) > 0.05
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "慢查询占全部查询 5% 以上"
+          description: "最近 5 分钟慢查询占比 {{ $value | humanizePercentage }}，通常是缺索引或全表扫描。"
+
+      - alert: BackupJobFailed
+        expr: increase(orinforum_backup_jobs_total{outcome="failed"}[1h]) > 0
+        for: 0m
+        labels: { severity: ticket }
+        annotations:
+          summary: "备份任务失败"
+          description: "kind={{ $labels.kind }}：备份在无人察觉时失败，恢复时才会暴露。"
+
+  # NATS 服务器与 JetStream 自身指标（经 nats-exporter，见 deploy/prometheus.yml）。
+  # 这些是"后端看不见的"故障：KV/EventBus 依赖 NATS，NATS 慢了后端只能表现为超时。
+  - name: orinforum-nats
+    rules:
+      - alert: NatsServerDown
+        expr: up{job="nats"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "NATS exporter 抓取失败"
+          description: "nats-exporter 不可达，KV Store 与 EventBus 的健康状况对监控不可见。"
+
+      - alert: NatsSlowConsumers
+        expr: gnatsd_varz_slow_consumers > 0
+        for: 5m
+        labels: { severity: ticket }
+        annotations:
+          summary: "NATS 出现慢消费者"
+          description: "{{ $value }} 个慢消费者：订阅方消费不过来，消息可能被丢弃（EventBus 丢事件、通知/Webhook 延迟）。"
+
+      - alert: NatsJetStreamStorageHigh
+        expr: |
+          gnatsd_jetstream_storage_used_bytes / gnatsd_jetstream_storage_max_bytes > 0.85
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "JetStream 存储水位超过 85%"
+          description: "已用 {{ $value | humanizePercentage }}。写满后 KV 写入与事件发布开始失败。"
+
+      - alert: NatsJetStreamConsumerLag
+        expr: gnatsd_jetstream_consumer_num_pending > 1000
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: "JetStream 消费者积压"
+          description: "consumer={{ $labels.consumer }} 待处理 {{ $value }} 条，消费侧已跟不上生产速率。"
+
+      - alert: NatsConnectionsSpike
+        expr: |
+          gnatsd_varz_connections > 200
+        for: 5m
+        labels: { severity: info }
+        annotations:
+          summary: "NATS 连接数异常偏高"
+          description: "当前 {{ $value }} 个连接，检查是否有连接泄漏或多实例误配。"
+
+  - name: orinforum-metric-gaps
+    rules:
+      # Runtime-labelled families are seeded with zero-valued series at their
+      # wiring point (eventbus.New, kvstore startup, rate-limit registration),
+      # so absence means "wiring never ran" rather than "no traffic yet".
+      #
+      # Histograms exist in TSDB only as <name>_bucket/_sum/_count: absent() on
+      # the bare histogram name is ALWAYS true, so the KV clause MUST target the
+      # _count series or this alert fires forever on a healthy instance.
+      - alert: MetricsFamilyMissing
+        expr: |
+          absent(orinforum_eventbus_publish_total)
+            or absent(orinforum_kv_operation_duration_seconds_count)
+            or absent(orinforum_ratelimit_rejections_total)
+            or absent(orinforum_nats_connected)
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: "关键业务指标族缺失"
+          description: "eventbus_publish_total / kv_operation_duration_seconds_count / ratelimit_rejections_total / nats_connected 之一在 15 分钟内没有任何序列，埋点接线可能未执行。"

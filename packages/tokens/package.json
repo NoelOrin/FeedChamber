@@ -1,0 +1,49 @@
+{
+	"name": "@orinforum/tokens",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"main": "./dist/antd.js",
+	"module": "./dist/antd.js",
+	"types": "./dist/antd.d.ts",
+	"exports": {
+		"./tokens.css": "./dist/tokens.css",
+		"./shadcn.css": "./dist/shadcn.css",
+		"./antd": {
+			"types": "./dist/antd.d.ts",
+			"import": "./dist/antd.js",
+			"default": "./dist/antd.js",
+			"browser": "./dist/antd.js"
+		},
+		"./layout": {
+			"types": "./dist/layout.d.ts",
+			"import": "./dist/layout.js",
+			"default": "./dist/layout.js",
+			"browser": "./dist/layout.js"
+		},
+		"./dashboard": {
+			"types": "./dist/dashboard.d.ts",
+			"import": "./dist/dashboard.js",
+			"default": "./dist/dashboard.js",
+			"browser": "./dist/dashboard.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsx scripts/build.ts",
+		"lint": "biome lint ./src ./scripts",
+		"format": "biome format ./src ./scripts",
+		"check": "biome check ./src ./scripts",
+		"tokens:build": "tsx scripts/build.ts",
+		"check-parity": "tsx scripts/check-parity.ts",
+		"verify": "tsx scripts/build.ts && tsx scripts/check-parity.ts"
+	},
+	"devDependencies": {
+		"antd": "^6.4.3",
+		"@types/node": "^25.9.1",
+		"tsx": "^4.19.0",
+		"typescript": "~5.9.3"
+	}
+}

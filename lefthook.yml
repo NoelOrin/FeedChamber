@@ -1,0 +1,33 @@
+pre-commit:
+  parallel: true
+  commands:
+    "lint-staged":
+      glob: "*.{js,ts,jsx,tsx,mjs,cjs,mts}"
+      run: npx biome check --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+    # 模块代码有改动但对应 AGENTS.md 没更新时提示一句。只提示不阻断
+    # （|| true）：本地不该因为文档被卡住，真正的门在 CI 的 docs job。
+    "agents-docs-hint":
+      run: node scripts/check-agents-docs.mjs --staged || true
+
+commit-msg:
+  commands:
+    "commit-msg lint":
+      run: npx commitlint --edit {1}
+
+# 分支名校验：放行 main/develop，其余必须 <type>/<scope?>/<short-desc>，
+# type 取自 commitlint 的 type-enum。纯 POSIX，跨平台安全。
+pre-push:
+  commands:
+    "branch-name":
+      run: |
+        branch=$(git rev-parse --abbrev-ref HEAD)
+        case "$branch" in
+          main|develop) exit 0 ;;
+        esac
+        if printf '%s' "$branch" | grep -Eq '^(feat|fix|docs|style|refactor|perf|test|chore|build|ci|revert|types|wip)(/[a-z0-9._-]+)+$'; then
+          exit 0
+        fi
+        echo "branch '$branch' does not match <type>/<scope?>/<short-desc>"
+        echo "allowed types: feat fix docs style refactor perf test chore build ci revert types wip"
+        echo "allowed branches: main develop"
+        exit 1

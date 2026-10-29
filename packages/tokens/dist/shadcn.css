@@ -1,0 +1,131 @@
+/* @orinforum/tokens - shadcn/ui theme vars — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
+   Run: pnpm --filter @orinforum/tokens tokens:build */
+
+:root {
+  --background: #ffffff;
+  --foreground: #141416;
+  --card: #ffffff;
+  --card-foreground: #141416;
+  --popover: #ffffff;
+  --popover-foreground: #141416;
+  --primary: #8c2de4;
+  --primary-foreground: #ffffff;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #141416;
+  --muted: #f5f5f5;
+  --muted-foreground: #6f6b68;
+  --accent: #f1d6ff;
+  --accent-foreground: #6a1cbd;
+  --destructive: #c62222;
+  --destructive-foreground: #ffffff;
+  --border: #d6d0ca;
+  /* 表单控件边界是形状的唯一指示，必须 ≥3:1 非文本对比，因此比 --border 更深 */
+  --input: #94918d;
+  --ring: #8c2de4;
+  /* 品牌文字色：主色在浅底上作为小字/链接时对比不足，单独给一支 */
+  --brand-text: #7e479c;
+  --success: #137337;
+  --warning: #a24b08;
+  --info: #3b82f6;
+
+  --chart-1: #e0adff;
+  --chart-2: #ab56f0;
+  --chart-3: #6a1cbd;
+  --chart-4: #320670;
+  --chart-5: #3b82f6;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #141416;
+  --sidebar-primary: #8c2de4;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #f1d6ff;
+  --sidebar-accent-foreground: #6a1cbd;
+  --sidebar-border: #d6d0ca;
+  --sidebar-ring: #8c2de4;
+
+  --radius: 0.5rem;
+
+  /* 登录/首改密页的整屏背景：复合值，只能整段作为变量下发 */
+  --dashboard-bg-gradient: linear-gradient(180deg, #ffffff 0%, #ffffff 55%, #f5f5f5 100%);
+}
+
+.dark {
+  --background: #0f0f11;
+  --foreground: #f0f0ea;
+  --card: #1a1a1d;
+  --card-foreground: #f0f0ea;
+  --popover: #1a1a1d;
+  --popover-foreground: #f0f0ea;
+  --primary: #9b4fd9;
+  --primary-foreground: #ffffff;
+  --secondary: #26262a;
+  --secondary-foreground: #f0f0ea;
+  --muted: #26262a;
+  --muted-foreground: #909097;
+  --accent: #24103a;
+  --accent-foreground: #daa8f8;
+  --border: #3a3a3d;
+  --input: #68686a;
+  --ring: #9b4fd9;
+  --brand-text: #a859ff;
+  --success: #4ade80;
+  --warning: #fbbf24;
+  --info: #60a5fa;
+  --destructive: #ef4444;
+
+  --chart-1: #32164e;
+  --chart-2: #5f2199;
+  --chart-3: #9b4fd9;
+  --chart-4: #daa8f8;
+  --chart-5: #60a5fa;
+
+  --sidebar: #0f0f11;
+  --sidebar-foreground: #f0f0ea;
+  --sidebar-primary: #9b4fd9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #24103a;
+  --sidebar-accent-foreground: #daa8f8;
+  --sidebar-border: #3a3a3d;
+  --sidebar-ring: #9b4fd9;
+
+  --dashboard-bg-gradient: linear-gradient(180deg, #0f0f11 0%, #1a1a1d 60%, #0f0f11 100%);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-brand-text: var(--brand-text);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}

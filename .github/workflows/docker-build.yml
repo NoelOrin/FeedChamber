@@ -1,0 +1,191 @@
+name: Build images
+
+# 构建产物只做一件事：把两个镜像推到 GHCR，供服务器上的 Dokploy 直接 `image:` 拉取。
+# 因此仓库里不需要任何环境编排文件——部署描述放在 Dokploy 面板里。
+#
+# 两个镜像的构建上下文都是**仓库根**（Dockerfile 的 COPY 路径按仓库根书写），
+# 此前写成 ./app/server 与 ./app/web，会在第一条 COPY 就失败。
+#
+# 架构默认只出 linux/amd64：生产机是 x86_64。要出 arm64 时把两个 job 的
+# `platforms` 改成 linux/amd64,linux/arm64，并在 buildx 之前加
+# docker/setup-qemu-action（QEMU 下 CGO 编译与 pnpm 安装都会慢一个量级；
+# 私有仓库的 arm64 原生 runner 需要付费）。
+on:
+  push:
+    branches: [main, develop]
+    tags: ["v*"]
+    paths-ignore:
+      - "**.md"
+      - "docs/**"
+      - "openspec/**"
+      - "agent_briefs/**"
+      - "agent_test_logs/**"
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+# 同一分支上新的推送取消旧的构建，避免排队等半小时的过期镜像。
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write # 推 GHCR 的唯一依赖；用内置 GITHUB_TOKEN，不需要额外 secret
+
+jobs:
+  # Cheap static guard, runs before the 40-minute image builds so a leak is
+  # rejected in seconds rather than after a full build.
+  #
+  # The metrics listener (METRICS_PORT, default 9091) is unauthenticated by
+  # design and safe only because it is never published to the host and never
+  # proxied by nginx. Both are one-line edits away from being wrong, and no
+  # compiler or test would notice. This job is what notices.
+  metrics-exposure:
+    name: Metrics exposure guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check METRICS_PORT is not published or proxied
+        run: bash scripts/check-metrics-exposure.sh
+
+  server:
+    name: Server image
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Docker 要求镜像名全小写，而 GitHub 账号可能带大写（NoelOrin）。
+      - name: Compute image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/orinforum-server" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.description=OrinForum backend (Iris v12)
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: app/server/Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+
+  web:
+    name: Web image
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Compute image name
+        run: echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/orinforum-web" >> "$GITHUB_ENV"
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha,format=short
+            type=raw,value=latest,enable={{is_default_branch}}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.description=OrinForum web (React 19 + vinext SSR)
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: app/web/Dockerfile
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+
+  deploy:
+    name: Trigger Dokploy deploy
+    needs: [server, web]
+    # develop 的 push 与 v* tag 触发部署；PR 只构建不部署。
+    if: >-
+      github.event_name == 'push' &&
+      (github.ref == 'refs/heads/develop' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Dokploy 应用 → General → Refresh Token 拼出的部署 Webhook。
+      # 仓库 Secret 名：DOKPLOY_DEPLOY_HOOK（完整 URL）。没配就跳过，不阻断构建。
+      - name: Call Dokploy deploy hook
+        env:
+          HOOK: ${{ secrets.DOKPLOY_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "DOKPLOY_DEPLOY_HOOK 未配置，跳过部署触发"
+            exit 0
+          fi
+          # 失败原因必须打出来：Dokploy 的 4xx 响应体里写着到底是 Refresh Token
+          # 失效（网页上刷新过 token 或重建过应用）还是该应用上一次部署还没结束。
+          # 只用 `curl -f` 时，日志里只剩一行 `curl: (22) error: 400`，等于没说。
+          for i in 1 2 3; do
+            rm -f /tmp/dokploy.out
+            code=$(curl -sS -m 120 -o /tmp/dokploy.out -w '%{http_code}' -X POST "$HOOK") || code=000
+            case "$code" in
+              2??)
+                echo "Dokploy 部署已触发 (HTTP ${code})"
+                exit 0
+                ;;
+            esac
+            echo "第 ${i} 次触发失败：HTTP ${code}"
+            if [ -s /tmp/dokploy.out ]; then cat /tmp/dokploy.out; echo; fi
+            sleep 10
+          done
+          echo "连续 3 次触发失败（最后一次 HTTP ${code}）："
+          case "$code" in
+            404) echo "  404 = Dokploy 不认这个 refresh token（响应是 Compose Not Found）：应用重建过就回 General 重新复制 hook URL，更新 Secret DOKPLOY_DEPLOY_HOOK。" ;;
+            400) echo "  400 = 请求被拒，原因看上面打印的 message：\"Automatic deployments are disabled for this compose\" 就是该 compose 的 Auto Deploy 开关没开；也有可能是上一次部署还没结束。" ;;
+            000) echo "  000 = 连不上 Dokploy（域名/网络/服务不可达），跟 token 无关。" ;;
+            *) echo "  5xx = Dokploy 自己出错，去看它的服务端日志。" ;;
+          esac
+          exit 1

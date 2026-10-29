@@ -1,0 +1,14 @@
+{
+	"name": "@orinforum/server",
+	"version": "1.0.0",
+	"private": true,
+	"scripts": {
+		"predev": "[ -f \"$(go env GOPATH)/bin/air\" ] || go install github.com/air-verse/air@latest",
+		"dev": "$(go env GOPATH)/bin/air",
+		"prod": "go run main.go server -e prod",
+		"build": "go build -buildvcs=false -o orinforum main.go",
+		"lint": "test -z \"$(gofmt -l .)\" || (gofmt -l . && echo 'gofmt 漂移：请运行 gofmt -w .' && exit 1)",
+		"format": "gofmt -w .",
+		"check": "go vet ./... && go test ./..."
+	}
+}

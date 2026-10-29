@@ -1,0 +1,44 @@
+{
+	"name": "@orinforum/api-client",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"main": "./dist/index.js",
+	"module": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./adapters/web": {
+			"types": "./dist/adapters/web/index.d.ts",
+			"import": "./dist/adapters/web/index.js",
+			"default": "./dist/adapters/web/index.js"
+		},
+		"./adapters/dashboard": {
+			"types": "./dist/adapters/dashboard/index.d.ts",
+			"import": "./dist/adapters/dashboard/index.js",
+			"default": "./dist/adapters/dashboard/index.js"
+		}
+	},
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup && tsc -b tsconfig.build.json",
+		"clean": "rm -rf dist node_modules/.cache/tsconfig.build.tsbuildinfo",
+		"dev": "tsup --watch & tsc -b tsconfig.build.json --watch",
+		"lint": "biome lint ./src",
+		"format": "biome format ./src",
+		"check": "biome check ./src",
+		"test": "vitest run",
+		"test:watch": "vitest"
+	},
+	"devDependencies": {
+		"tsup": "^8.4.0",
+		"typescript": "~5.9.3",
+		"vitest": "^4.1.8"
+	}
+}

@@ -1,0 +1,5 @@
+{
+	"extends": "./tsconfig.json",
+	"include": ["**/*.ts", "**/*.tsx", "vinext-env.d.ts", ".vinext/**/*.d.ts"],
+	"exclude": ["node_modules", ".vinext", ".output", ".next", "dist", "capacitor.config.ts"]
+}

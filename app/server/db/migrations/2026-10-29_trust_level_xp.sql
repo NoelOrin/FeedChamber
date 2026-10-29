@@ -1,0 +1,40 @@
+-- 2026-10-29 trust-level-xp-system P1：存量库升级
+--
+-- 背景：users.trust_level 由字符串（basic/member/regular/leader）改为数值
+--       （0-4），users.total_points 改名为 total_xp，并新增 XP / 等级快照列。
+--
+-- 是否可选：非 SQLite 部署（PostgreSQL / MySQL）必须执行；SQLite 由启动时的
+--           server.migrateTrustData 自动完成，无需手跑。
+-- 幂等性：是。可重复执行。
+-- 兼容性：旧版本代码不认识 total_xp / trust_levels 等新列，回滚前请先备份。
+
+-- ── PostgreSQL ───────────────────────────────────────────────────────────────
+-- ALTER TABLE users RENAME COLUMN total_points TO total_xp;
+-- UPDATE users SET trust_level = CASE trust_level
+--   WHEN 'member' THEN '1' WHEN 'regular' THEN '2'
+--   WHEN 'leader' THEN '3' WHEN 'basic' THEN '0' ELSE '0' END
+--   WHERE trust_level !~ '^[0-9]+$';
+-- ALTER TABLE users ALTER COLUMN trust_level TYPE integer USING trust_level::integer;
+-- ALTER TABLE users ALTER COLUMN trust_level SET DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS level_evaluated_at timestamptz;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS level_metrics text;
+-- ALTER TABLE users ADD COLUMN IF NOT EXISTS level_manual boolean DEFAULT false;
+-- CREATE INDEX IF NOT EXISTS idx_users_trust_level ON users (trust_level);
+
+-- ── MySQL ────────────────────────────────────────────────────────────────────
+-- ALTER TABLE users CHANGE COLUMN total_points total_xp INT NOT NULL DEFAULT 0;
+-- UPDATE users SET trust_level = CASE trust_level
+--   WHEN 'member' THEN '1' WHEN 'regular' THEN '2'
+--   WHEN 'leader' THEN '3' WHEN 'basic' THEN '0' ELSE '0' END;
+-- ALTER TABLE users MODIFY COLUMN trust_level INT NOT NULL DEFAULT 0;
+-- ALTER TABLE users ADD COLUMN level_evaluated_at DATETIME NULL;
+-- ALTER TABLE users ADD COLUMN level_metrics TEXT NULL;
+-- ALTER TABLE users ADD COLUMN level_manual TINYINT(1) NOT NULL DEFAULT 0;
+-- CREATE INDEX idx_users_trust_level ON users (trust_level);
+
+-- ── 迁移后 ───────────────────────────────────────────────────────────────────
+-- 1) 启动一次服务（AutoMigrate 建 xp_rules / xp_streak_bonuses / trust_levels /
+--    xp_adjustments 并 seed 默认值），或手工执行 `go run main.go -e prod`。
+-- 2) 跑一次全量重算，把 total_xp / trust_level 按行为聚合重建：
+--      go run main.go -e prod recompute-xp
+--    或后台「等级体系 → 全量重算」。

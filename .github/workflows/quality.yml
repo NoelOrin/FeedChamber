@@ -1,0 +1,137 @@
+name: Quality
+
+# 仓库此前没有任何 lint / 格式化 / 测试门禁：docker-build.yml 只构建镜像，
+# mobile-build.yml 只出移动包，于是 54 个 gofmt 漂移文件和 207 个 biome 错误
+# 能一路提交进主干（2026-10-28 一次性清理）。这个 workflow 是那道门。
+#
+# 两个 job 都是几分钟级的静态检查，故意排在 40 分钟镜像构建之外并与之并行。
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: '1.25'
+  NODE_VERSION: '20'
+
+jobs:
+  backend:
+    name: Go format / vet / test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: app/server/go.sum
+
+      # gofmt 用 -l 只列出不修改，所以这一步永远不会替作者改文件，
+      # 只负责让漂移暴露在 PR 上。
+      - name: Check gofmt drift
+        working-directory: app/server
+        run: |
+          drift=$(gofmt -l .)
+          if [ -n "$drift" ]; then
+            echo "以下文件未按 gofmt 格式化，请本地运行：cd app/server && gofmt -w ."
+            echo "$drift"
+            exit 1
+          fi
+
+      - name: go vet
+        working-directory: app/server
+        run: go vet ./...
+
+      - name: go test
+        working-directory: app/server
+        run: go test ./...
+
+      # swagger 产物是提交进仓库的（openapi.json + app/server/docs）。忘记
+      # make swag 会让接口文档与注解长期脱节，且没有任何编译错误提醒。
+      # swag-check 依赖 $(go env GOPATH)/bin/swag，先按 go.mod 锁定的版本装。
+      - name: Install swag
+        run: go install github.com/swaggo/swag/cmd/swag@v1.16.6
+
+      - name: Check swagger is up to date
+        working-directory: app/server
+        run: make swag-check
+
+  frontend:
+    name: Biome lint / format
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 单条命令覆盖全仓库：格式化、import 组织、lint 规则。
+      # biome.json 已开启 useIgnoreFile 并排除构建产物，所以这里不会再
+      # 扫到 .turbo 缓存或生成的 swagger JSON。
+      - name: Biome check
+        run: pnpm exec biome check .
+
+  docs:
+    name: AGENTS.md coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # --base 要 diff 到 PR 的基线分支，浅克隆（默认 fetch-depth: 1）拿不到，
+      # 所以取全量历史。仓库不大，这一步是秒级。
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # 1) 索引块必须与仓库里的 AGENTS.md 集合一致（新增/删除/改名文档后忘了
+      #    跑 --write-index 会在这里暴露），并顺带校验索引里的链接都真实存在。
+      - name: Check module doc index
+        run: node scripts/check-agents-docs.mjs --check-index
+
+      # 2) 模块代码改了却没改对应 AGENTS.md 就阻断。只在 PR 上跑：push 到
+      #    develop 时 base_ref 为空，无法确定比较基线。
+      - name: Check module docs are in sync
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-agents-docs.mjs --base "origin/${{ github.base_ref }}"
+
+  typecheck:
+    name: TypeScript typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 共享包要先出 dist，web 的 tsconfig 才解析得到 @orinforum/*
+      - name: Build shared packages
+        run: pnpm exec turbo run build --filter='./packages/*'
+
+      - name: tsc
+        working-directory: app/web
+        run: pnpm exec tsc -p tsconfig.check.json

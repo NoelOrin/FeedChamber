@@ -1,0 +1,6 @@
+/dist/
+.vinext/
+.cloudflare/
+.next/
+# Solid 时代的树，仅作本地翻译参照；原始文件在 git 历史里仍可读
+.solid-legacy/

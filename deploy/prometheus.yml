@@ -1,0 +1,48 @@
+# Prometheus configuration for OrinForum (optional material — mount into an
+# external Prometheus; the repo ships no compose that starts it).
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    stack: orinforum
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: [] # point at an Alertmanager once one is deployed
+
+scrape_configs:
+  - job_name: orinforum
+    metrics_path: /metrics
+    static_configs:
+      # Internal metrics listener (METRICS_PORT), never proxied by nginx.
+      - targets: ["backend:9091"]
+
+  - job_name: orinforum-health
+    metrics_path: /probe
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets: ["http://backend:8080/api/v1/health"]
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox:9115
+
+  # NATS 服务器与 JetStream 指标（经 nats-exporter 转 Prometheus 格式）。
+  # 关注 gnatsd_varz_*（连接/内存/慢消费者）与 gnatsd_jetstream_*（存储水位、
+  # 流/消费者滞后）——后者的告警规则见 rules/orinforum.yml。
+  - job_name: nats
+    static_configs:
+      - targets: ["nats-exporter:7777"]
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

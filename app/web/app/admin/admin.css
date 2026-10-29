@@ -1,0 +1,28 @@
+/*
+ * 后台专属样式。只被 `app/admin/layout.tsx` 引入，因此只打进 /admin 的 CSS 分块。
+ *
+ * 色彩词汇与主站统一：后台**不引入** `@orinforum/tokens/tokens.css`。
+ * 根布局已引入 `globals.css`（shadcn 变量：--background / --foreground /
+ * --muted / --card / --border / --primary / --accent / --brand-text …），
+ * 后台直接复用同一套变量名。
+ *
+ * 后台已全量去 antd（2026-10-28），此前针对 .ant-pro-layout / .ant-card /
+ * .ant-table 的 12 处覆盖全部删除——那些 DOM 不再存在，留着只是死代码。
+ * 现在壳层与页面都由 shadcn 原语渲染，样式在组件内，本文件只剩两件事：
+ *   1. 首改密页的整屏渐变（复合值无法用工具类表达）
+ *   2. 后台内部的滚动条细化
+ */
+
+/* 首改密页的背景渐变。复合值只能整段下发。 */
+:root {
+	--dashboard-bg-gradient: linear-gradient(180deg, var(--background) 0%, var(--background) 55%, var(--muted) 100%);
+}
+
+.dark {
+	--dashboard-bg-gradient: linear-gradient(180deg, var(--background) 0%, var(--popover) 60%, var(--background) 100%);
+}
+
+/* 后台内部滚动条细一些；用 :where 把优先级压到最低，方便页面覆盖。 */
+.admin-surface :where(*) {
+	scrollbar-width: thin;
+}

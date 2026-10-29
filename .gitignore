@@ -1,0 +1,86 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# agent workspace (local memory / session data)
+.workbuddy/
+
+# build outputs
+dist/
+.output/
+.vinxi/
+
+.umi/
+
+# Go
+app/server/tmp/
+app/server/server/logs/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# env
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Test logs
+agent_test_logs/
+
+# Nested git repos
+app/server/.git
+
+# File uploads
+uploads/
+
+# Claude Code
+.claude/
+
+# Superpowers
+docs/superpowers/
+        
+app/web/.tanstack/
+
+# Turborepo
+.turbo/
+
+# @orinforum/tokens ships committed generated output
+!packages/tokens/dist/
+!packages/tokens/dist/**
+.qoder/settings.local.json
+
+# Capacitor mobile build
+.env.mobile
+app/web/ios/
+app/web/android/
+app/web/resources/
+*.ipa
+*.apk
+*.aab
+
+# Local git worktrees
+.worktrees/
+# Agent run artifacts (not source)
+agent_briefs/
+.superpowers/
+
+# 截图/审计输出（scripts/*.mjs 生成，可重跑再生）
+artifacts/
+
+# 独立原型/演示页（非本站产物，仅本地参考）
+demo/
+
+# Understand Anything 架构图谱：保留图谱本体，忽略临时/中间产物
+.ua
+

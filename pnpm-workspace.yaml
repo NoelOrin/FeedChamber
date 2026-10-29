@@ -1,0 +1,14 @@
+packages:
+  - packages/*
+  - app/*
+
+# scripts/axe-audit.mjs drives a real browser via `playwright`; its postinstall
+# downloads the browser binaries, which pnpm blocks unless the package is
+# allow-listed here.
+onlyBuiltDependencies:
+  - playwright
+
+# PWA 在 web 迁移到 vinext 后暂停（见 docs/plans/react-vinext-migration.md D7）。
+# 恢复 vite-plugin-pwa 时取消下面注释即可，补丁文件仍保留在 patches/。
+# patchedDependencies:
+#   vite-plugin-pwa: patches/vite-plugin-pwa.patch

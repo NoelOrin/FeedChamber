@@ -1,0 +1,472 @@
+{
+  "uid": "orinforum-observability",
+  "title": "OrinForum 可观察性总览",
+  "tags": [
+    "orinforum"
+  ],
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "请求速率",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(orinforum_http_requests_total[5m]))",
+          "legendFormat": "all"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (path) (rate(orinforum_http_requests_total[5m]))",
+          "legendFormat": "{{path}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "5xx 占比",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(orinforum_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(orinforum_http_requests_total[5m])), 0.001)",
+          "legendFormat": "5xx ratio"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "max": 1,
+          "min": 0
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "请求延迟分位",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.50, sum by (le) (rate(orinforum_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50"
+        },
+        {
+          "refId": "B",
+          "expr": "histogram_quantile(0.90, sum by (le) (rate(orinforum_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p90"
+        },
+        {
+          "refId": "C",
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(orinforum_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "DB 连接池",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 8
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "orinforum_db_pool_in_use",
+          "legendFormat": "in use"
+        },
+        {
+          "refId": "B",
+          "expr": "orinforum_db_pool_idle",
+          "legendFormat": "idle"
+        },
+        {
+          "refId": "C",
+          "expr": "orinforum_db_pool_max_open_connections",
+          "legendFormat": "max open"
+        },
+        {
+          "refId": "D",
+          "expr": "increase(orinforum_db_pool_wait_count_total[5m])",
+          "legendFormat": "waits/5m"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "KV 操作 P99（按 op）",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "histogram_quantile(0.99, sum by (le, op) (rate(orinforum_kv_operation_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{op}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "EventBus 发布 / 丢弃 / handler 错误",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 16
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (event, result) (rate(orinforum_eventbus_publish_total[5m]))",
+          "legendFormat": "publish {{event}}/{{result}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (event) (increase(orinforum_eventbus_dropped_total[5m]))",
+          "legendFormat": "dropped {{event}}"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (event) (increase(orinforum_eventbus_dispatch_errors_total[5m]))",
+          "legendFormat": "panic {{event}}"
+        },
+        {
+          "refId": "D",
+          "expr": "orinforum_eventbus_queue_depth",
+          "legendFormat": "queue depth"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Webhook 投递",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (outcome) (increase(orinforum_webhook_deliveries_total[10m]))",
+          "legendFormat": "{{outcome}}"
+        },
+        {
+          "refId": "B",
+          "expr": "orinforum_webhook_pending_deliveries",
+          "legendFormat": "pending backlog"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "SSE 在线 / 登录失败 / 限流",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 24
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (channel) (orinforum_sse_connections)",
+          "legendFormat": "sse {{channel}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (reason) (increase(orinforum_login_failures_total[5m]))",
+          "legendFormat": "login fail {{reason}}"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (name) (increase(orinforum_ratelimit_rejections_total[5m]))",
+          "legendFormat": "rl reject {{name}}"
+        },
+        {
+          "refId": "D",
+          "expr": "sum by (name) (increase(orinforum_ratelimit_failopen_total[5m]))",
+          "legendFormat": "rl failopen {{name}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "权限判定 allow / deny",
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 32
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (scope, result) (rate(orinforum_permission_decisions_total[5m]))",
+          "legendFormat": "{{scope}}/{{result}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "NATS 连接状态 / 断连与重连",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 40
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "orinforum_nats_connected",
+          "legendFormat": "connected {{client}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (client) (increase(orinforum_nats_disconnects_total[5m]))",
+          "legendFormat": "disconnects {{client}}"
+        },
+        {
+          "refId": "C",
+          "expr": "sum by (client) (increase(orinforum_nats_reconnects_total[5m]))",
+          "legendFormat": "reconnects {{client}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "SSE 写失败 / Webhook 积压",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 40
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (channel) (increase(orinforum_sse_write_failures_total[10m]))",
+          "legendFormat": "sse write fail {{channel}}"
+        },
+        {
+          "refId": "B",
+          "expr": "orinforum_webhook_pending_deliveries",
+          "legendFormat": "webhook backlog"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 12,
+      "type": "timeseries",
+      "title": "DB 查询量与慢查询",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 48
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(rate(orinforum_db_queries_total[5m]))",
+          "legendFormat": "queries/s"
+        },
+        {
+          "refId": "B",
+          "expr": "sum(rate(orinforum_db_slow_queries_total[5m]))",
+          "legendFormat": "slow/s"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 13,
+      "type": "timeseries",
+      "title": "权限缓存规模 / 备份任务",
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 48
+      },
+      "datasource": {
+        "type": "prometheus",
+        "uid": "orinforum-prom"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "orinforum_permission_cache_entries",
+          "legendFormat": "perm cache {{cache}}"
+        },
+        {
+          "refId": "B",
+          "expr": "sum by (kind, outcome) (increase(orinforum_backup_jobs_total[1h]))",
+          "legendFormat": "backup {{kind}} {{outcome}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      }
+    }
+  ]
+}

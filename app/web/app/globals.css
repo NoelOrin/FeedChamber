@@ -1,0 +1,192 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+/* ============================================================
+   色彩与圆角的唯一来源：@orinforum/tokens（w3c-tokens.json → shadcn.css）。
+   Web 与 Dashboard 共用同一份生成结果，改色只改 w3c-tokens.json 再跑
+   `pnpm --filter @orinforum/tokens tokens:build`，两边同时生效。
+   ============================================================ */
+@import "@orinforum/tokens/shadcn.css";
+
+/* ============================================================
+   设计基准：shadcn/ui（new-york, neutral）
+   1. 面靠底色 + 阴影分层，1px 描边只留给需要边界的控件；
+   2. 圆角收敛到 10px 体系（控件 rounded-md，容器 rounded-lg）；
+   3. 中性灰承载层级，紫色只用于主行动 / 选中 / 焦点；
+   4. 不引入渐变、噪点、网格、装饰性编号与英文大写眉标。
+   ============================================================ */
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+	--radius: 0.625rem;
+
+	/* 层级：唯一一套，供浮层复用 */
+	--z-dropdown: 1000;
+	--z-sticky: 1020;
+	--z-fixed: 1030;
+	--z-modal-backdrop: 1040;
+	--z-modal: 1050;
+	--z-popover: 1060;
+	--z-tooltip: 1070;
+}
+
+@theme inline {
+	--font-sans:
+		ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+		sans-serif;
+	--font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-brand-text: var(--brand-text);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
+	--color-success: var(--success);
+	--color-warning: var(--warning);
+	--color-info: var(--info);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+}
+
+@layer base {
+	* {
+		border-color: var(--border);
+	}
+
+	html {
+		background-color: var(--background);
+		color: var(--foreground);
+		scrollbar-width: thin;
+		scrollbar-color: color-mix(in oklch, var(--foreground) 18%, transparent) transparent;
+		-webkit-tap-highlight-color: transparent;
+	}
+
+	body {
+		min-height: 100vh;
+		background-color: var(--background);
+		color: var(--foreground);
+		font-family: var(--font-sans);
+		font-size: 14px;
+		line-height: 1.5;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	::selection {
+		background: color-mix(in oklch, var(--primary) 18%, transparent);
+	}
+
+	::-webkit-scrollbar {
+		width: 10px;
+		height: 10px;
+	}
+	::-webkit-scrollbar-thumb {
+		background-color: color-mix(in oklch, var(--foreground) 16%, transparent);
+		border-radius: 9999px;
+		border: 3px solid transparent;
+		background-clip: content-box;
+	}
+	::-webkit-scrollbar-thumb:hover {
+		background-color: color-mix(in oklch, var(--foreground) 28%, transparent);
+	}
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--ring);
+		outline-offset: 2px;
+	}
+
+	h1,
+	h2,
+	h3,
+	h4 {
+		text-wrap: balance;
+		letter-spacing: -0.015em;
+	}
+
+	table,
+	[data-numeric] {
+		font-variant-numeric: tabular-nums;
+	}
+
+	/* Tailwind v4 移除了 <button> 的 `cursor: pointer` 默认值（浏览器原生是 default），
+	   于是每个裸 <button> 都得自己写 cursor-pointer —— 漏一个就是「按钮看着能点、指针不变」。
+	   theme-toggle 就漏过。这里统一补回；要特殊指针的元素仍可用 .cursor-default /
+	   .cursor-not-allowed 覆盖（utilities 层优先于 base 层）。 */
+	button:not(:disabled),
+	[role="button"]:not(:disabled) {
+		cursor: pointer;
+	}
+}
+
+/* ——— 主题图标显隐：由首屏内联脚本落到 <html data-theme-mode> ——— */
+[data-theme-mode] [data-theme-icon] {
+	display: none;
+}
+[data-theme-mode="light"] [data-theme-icon="light"] {
+	display: block;
+}
+[data-theme-mode="dark"] [data-theme-icon="dark"] {
+	display: block;
+}
+[data-theme-mode="system"] [data-theme-icon="system"] {
+	display: block;
+}
+[data-theme-mode] .theme-fallback-icon {
+	display: none;
+}
+
+/* ——— View Transition：主题切换直接换色，不做圆形扩散 ——— */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+::view-transition-old(root) {
+	z-index: 1;
+}
+::view-transition-new(root) {
+	z-index: 9999;
+}
+
+/* ============================================================
+   触控目标：视觉尺寸保持紧凑，命中区域扩到 44×44。
+   WCAG 2.2 AA 要求 24×24，Apple HIG 建议 44pt；
+   顶栏图标键视觉 32px，直接放大视觉会撑坏 14px 的导航高度，
+   所以用伪元素向外扩命中区（不影响布局、不影响相邻元素的点击优先级）。
+   ============================================================ */
+@layer utilities {
+	.tap-target {
+		position: relative;
+	}
+	.tap-target::after {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 44px;
+		height: 44px;
+		content: "";
+		transform: translate(-50%, -50%);
+	}
+}

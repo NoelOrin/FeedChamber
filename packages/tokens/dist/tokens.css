@@ -1,0 +1,130 @@
+/* @orinforum/tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
+   Run: pnpm --filter @orinforum/tokens tokens:build */
+
+@theme {
+  /* Brand primitive palette (light) */
+  --color-brand-1: #faf0ff;
+  --color-brand-2: #f1d6ff;
+  --color-brand-3: #e0adff;
+  --color-brand-4: #ca83fc;
+  --color-brand-5: #ab56f0;
+  --color-brand-6: #8c2de4;
+  --color-brand-7: #6a1cbd;
+  --color-brand-8: #4c0f96;
+  --color-brand-9: #320670;
+  --color-brand-10: #1e034a;
+
+  /* Brand primitive palette (dark background) */
+  --color-brand-dark-1: #160c22;
+  --color-brand-dark-2: #24103a;
+  --color-brand-dark-3: #32164e;
+  --color-brand-dark-4: #461b6e;
+  --color-brand-dark-5: #5f2199;
+  --color-brand-dark-6: #7928c4;
+  --color-brand-dark-7: #9b4fd9;
+  --color-brand-dark-8: #c17df0;
+  --color-brand-dark-9: #daa8f8;
+  --color-brand-dark-10: #ecd2fa;
+
+  /* Seed colors */
+  --color-seed-brand-primary: #8c2de4;
+  --color-seed-brand-text-light: #cc73fb;
+  --color-seed-brand-text-dark: #a859ff;
+  --color-seed-text-light: #141416;
+  --color-seed-text-dark: #f0f0ea;
+  --color-seed-bg-light: #fcfaf8;
+  --color-seed-bg-dark: #0c0c0e;
+  --color-seed-bg-light1: #ffffff;
+  --color-seed-bg-dark1: #18181b;
+  --color-seed-bg-light2: #e8e2dc;
+  --color-seed-bg-dark2: #2a2a30;
+  --color-seed-border-dark: #27272a;
+  --color-seed-card-light: #ffffff;
+  --color-seed-card-dark: #18181b;
+  --color-seed-item-light: #f5f1eb;
+  --color-seed-item-dark: #27272a;
+
+  /* Feedback colors */
+  --color-info: #3b82f6;
+  --color-info-dark: #60a5fa;
+  --color-success: #137337;
+  --color-warning: #a24b08;
+  --color-error: #c62222;
+  --color-success-dark: #4ade80;
+  --color-warning-dark: #fbbf24;
+  --color-error-dark: #ef4444;
+
+  /* Semantic colors (light defaults) */
+  --color-primary: #8c2de4;
+  --color-primary-hover: #ab56f0;
+  --color-primary-active: #6a1cbd;
+  --color-primary-content: #ffffff;
+  --color-bg: #ffffff;
+  --color-bg-elevated: #ffffff;
+  --color-card: #ffffff;
+  --color-item: #f5f5f5;
+  --color-text: #141416;
+  --color-text-secondary: #6b625c;
+  --color-text-muted: #6f6b68;
+  --color-border: #d6d0ca;
+  --color-brand-text: #7e479c;
+  --color-input-border: #94918d;
+
+  /* Radius */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
+  --radius-2xl: 1.25rem;
+  --radius-full: 9999px;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+
+  /* Spacing */
+  --spacing-18: 4.5rem;
+  --spacing-88: 22rem;
+  --spacing-128: 32rem;
+
+  /* Duration */
+  --duration-fast: 140ms;
+  --duration-normal: 280ms;
+  --duration-slow: 520ms;
+
+  /* Z-index */
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+
+  /* Font family */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+
+.dark {
+  /* Semantic overrides for dark mode */
+  --color-primary: #9b4fd9;
+  --color-primary-hover: #c17df0;
+  --color-primary-active: #7928c4;
+  --color-primary-content: #ffffff;
+  --color-bg: #0f0f11;
+  --color-bg-elevated: #1a1a1d;
+  --color-card: #1a1a1d;
+  --color-item: #26262a;
+  --color-text: #f0f0ea;
+  --color-text-secondary: #a1a1aa;
+  --color-text-muted: #909097;
+  --color-border: #3a3a3d;
+  --color-brand-text: #a859ff;
+  --color-input-border: #68686a;
+}

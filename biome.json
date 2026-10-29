@@ -1,0 +1,152 @@
+{
+	"$schema": "https://biomejs.dev/schemas/2.5.0/schema.json",
+	"vcs": {
+		"enabled": true,
+		"clientKind": "git",
+		"useIgnoreFile": true,
+		"defaultBranch": "master"
+	},
+	"files": {
+		"ignoreUnknown": false,
+		"includes": [
+			"**",
+			"!!**/dist",
+			"!!**/build",
+			"!!**/.output",
+			"!!**/.next",
+			"!!**/.vinext",
+			"!!**/next-env.d.ts",
+			"!!**/node_modules",
+			"!!**/*.log",
+			"!!**/.env",
+			"!!**/.env.local",
+			"!!**/.env.*.local",
+			"!!**/routeTree.gen.ts",
+			"!!**/.umi",
+			"!!**/tmp",
+			"!!**/.turbo",
+			"!!openapi.json",
+			"!!app/server/docs",
+			"!!deploy/grafana/dashboards",
+			"!!patches"
+		]
+	},
+	"formatter": {
+		"enabled": true,
+		"indentStyle": "tab",
+		"lineEnding": "lf",
+		"lineWidth": 120
+	},
+	"linter": {
+		"enabled": true,
+		"rules": {
+			"preset": "recommended",
+			"correctness": {
+				"noUnusedImports": "error",
+				"noUnusedVariables": "warn",
+				"useExhaustiveDependencies": "warn",
+				"useHookAtTopLevel": "warn"
+			},
+			"suspicious": {
+				"noExplicitAny": "off",
+				"noConsole": "off"
+			},
+			"style": {
+				"noNonNullAssertion": "off",
+				"useImportType": "error",
+				"useSelfClosingElements": "off",
+				"useDefaultParameterLast": "off",
+				"noRestrictedImports": {
+					"level": "error",
+					"options": {
+						"paths": {
+							"lucide-solid": "从 ~/lib/icons 按需引入，禁止直接引用 lucide-solid barrel",
+							"lucide-react": "从 ~/lib/icons 按需引入，禁止直接引用 lucide-react barrel"
+						},
+						"patterns": [
+							{
+								"group": ["lucide-solid/*", "lucide-react/*"],
+								"message": "从 ~/lib/icons 按需引入，禁止直接引用 lucide-*/icons/*"
+							}
+						]
+					}
+				}
+			},
+			"a11y": {
+				"useKeyWithClickEvents": "off",
+				"noSvgWithoutTitle": "off",
+				"noStaticElementInteractions": "warn",
+				"useButtonType": "off",
+				"useSemanticElements": "off"
+			},
+			"complexity": {
+				"noStaticOnlyClass": "off",
+				"noImportantStyles": "off"
+			}
+		}
+	},
+	"javascript": {
+		"formatter": {
+			"quoteStyle": "single",
+			"semicolons": "always",
+			"jsxQuoteStyle": "double"
+		}
+	},
+	"assist": {
+		"enabled": true,
+		"actions": {
+			"source": {
+				"organizeImports": {
+					"level": "on"
+				}
+			}
+		}
+	},
+	"css": {
+		"parser": {
+			"tailwindDirectives": true,
+			"cssModules": true
+		},
+		"formatter": {
+			"enabled": true
+		}
+	},
+	"overrides": [
+		{
+			"includes": ["*.json"],
+			"formatter": {
+				"trailingCommas": "none"
+			}
+		},
+		{
+			"includes": ["**/lib/icons.ts"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["scripts/**/*.mjs"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noUndeclaredEnvVars": "off"
+					}
+				}
+			}
+		},
+		{
+			"includes": ["packages/api-client/src/adapter.ts"],
+			"linter": {
+				"rules": {
+					"suspicious": {
+						"noDocumentCookie": "off"
+					}
+				}
+			}
+		}
+	]
+}

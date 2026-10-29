@@ -1,0 +1,49 @@
+# Dependencies — `**/` matters: a bare `node_modules` only matches the root level,
+# so a host `app/web/node_modules` was being COPYed over the image's pnpm links
+# (host vinext 1.2.0 replaced the installed 1.3.1 and the build died MODULE_NOT_FOUND).
+**/node_modules
+**/.pnpm-store
+
+# Build output
+**/dist
+**/.output
+**/.vinext
+**/.turbo
+
+# Git
+.git
+
+# 本地运行态数据：既不进镜像，也会击穿 `COPY app/server/ ./` 那层
+# （db/*.db 每次跑本地 dev 都会变，一改就触发 Go 全量重编译）。
+# 注意只排数据库文件本身：db/migrations/*.sql 是仓库资源，必须保留。
+app/server/db/*.db
+app/server/db/*.db-shm
+app/server/db/*.db-wal
+app/server/uploads
+app/server/tmp
+
+# Agent / 本地工作产物（非源码，仅在开发机上存在）
+agent_briefs
+artifacts
+.superpowers
+.workbuddy
+.worktrees
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Docs (保留README)
+*.md
+!README.md
+
+# IDE
+.idea
+.vscode
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

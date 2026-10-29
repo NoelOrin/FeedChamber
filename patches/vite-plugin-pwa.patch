@@ -1,0 +1,57 @@
+diff --git a/dist/index.js b/dist/index.js
+index 84bf280f220d12313d0523b2160f7f6eb64fd81a..7b1e901b0ee1c20c06fffa8ac8d654774ab373b7 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -152,14 +152,40 @@ import { promises as fs2 } from "node:fs";
+ import { createRequire } from "node:module";
+ import { dirname, resolve } from "node:path";
+ import { fileURLToPath } from "node:url";
+-var _dirname = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
+-var require2 = createRequire(_dirname);
++var _safeRequire = (() => {
++  try { if (typeof require === "function") return require; } catch (_e) { /* ignore */ }
++  try { return createRequire(process.cwd() + "/noop.js"); } catch (_e) { return null; }
++})();
++var _pluginPkgDir = (() => {
++  const isAbs = (p) => p && (p.startsWith("/") || /^[A-Za-z]:[\\/]/.test(p));
++  if (typeof __dirname !== "undefined" && __dirname !== "." && isAbs(__dirname)) return __dirname;
++  try {
++    const u = import.meta.url;
++    if (u && (u.startsWith("file://") || isAbs(u))) return dirname(fileURLToPath(u));
++  } catch (_e) { /* ignore */ }
++  if (_safeRequire) {
++    try {
++      const pkgMain = _safeRequire.resolve("vite-plugin-pwa", { paths: [process.cwd()] });
++      let d = dirname(pkgMain);
++      for (let i = 0; i < 20; i++) {
++        try { if (_safeRequire("node:fs").existsSync(resolve(d, "package.json"))) return d; } catch (_e) { /* ignore */ }
++        const p = dirname(d); if (p === d) break; d = p;
++      }
++    } catch (_e) { /* ignore */ }
++  }
++  return process.cwd();
++})();
++var _dirname = _pluginPkgDir;
++var require2 = createRequire(_dirname + "/noop.js");
+ async function loadWorkboxBuild() {
+   try {
+     const workbox = await import("workbox-build");
+     return workbox.default ?? workbox;
+   } catch {
+-    return require2("workbox-build");
++    try { return require2("workbox-build"); } catch (_e) {
++      const fallbackReq = createRequire(process.cwd() + "/noop.js");
++      return fallbackReq("workbox-build");
++    }
+   }
+ }
+ async function generateRegisterSW2(options, mode, source = "register") {
+@@ -367,7 +393,7 @@ import { readFileSync } from "node:fs";
+ import { dirname as dirname2, resolve as resolve3 } from "node:path";
+ import { fileURLToPath as fileURLToPath2 } from "node:url";
+ function createContext(userOptions) {
+-  const _dirname2 = typeof __dirname !== "undefined" ? __dirname : dirname2(fileURLToPath2(import.meta.url));
++  const _dirname2 = _pluginPkgDir;
+   const { version } = JSON.parse(
+     readFileSync(resolve3(_dirname2, "../package.json"), "utf-8")
+   );

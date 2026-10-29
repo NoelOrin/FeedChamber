@@ -1,0 +1,25 @@
+{
+	"name": "orinforum",
+	"private": true,
+	"packageManager": "pnpm@10.26.2",
+	"scripts": {
+		"build": "turbo run build --filter='./packages/*' --filter='./app/*' --filter='!@orinforum/server'",
+		"build:server": "pnpm --filter @orinforum/server build",
+		"build:all": "turbo run build --filter='./packages/*' --filter='./app/*' && pnpm build:server",
+		"dev:web": "turbo run dev --filter=@orinforum/web...",
+		"dev:server": "pnpm --filter @orinforum/server dev",
+		"build:web": "turbo run build --filter=@orinforum/web...",
+		"build:docker": "docker compose -f deploy/docker-compose.yml build",
+		"lint": "turbo run lint",
+		"format": "turbo run format",
+		"check": "turbo run check"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.0",
+		"@commitlint/cli": "^19.0.0",
+		"@commitlint/config-conventional": "^19.0.0",
+		"lefthook": "^1.10.0",
+		"playwright": "1.62.1",
+		"turbo": "^2.9.16"
+	}
+}
