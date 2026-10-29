@@ -127,10 +127,16 @@ services:
     networks: [default, dokploy-network]
     restart: unless-stopped
 
+# 每个卷都写成显式映射（含 name）：Dokploy 保存 compose 时会丢弃值为空的
+# 条目（`feedchamber_pg:` 解析成 null 后被丢掉），导致部署时报
+# `service "postgres" refers to undefined volume feedchamber_pg`。
 volumes:
   feedchamber_pg:
+    name: feedchamber_pg
   feedchamber_nats:
+    name: feedchamber_nats
   feedchamber_uploads:
+    name: feedchamber_uploads
 
 networks:
   dokploy-network:
