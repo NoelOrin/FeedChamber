@@ -113,10 +113,7 @@
 	},
 	"overrides": [
 		{
-			"includes": [
-				"app/web/app/layout.tsx",
-				"app/web/components/customization/snippet-slot.tsx"
-			],
+			"includes": ["app/web/app/layout.tsx", "app/web/components/customization/snippet-slot.tsx"],
 			"linter": {
 				"rules": {
 					"security": {
