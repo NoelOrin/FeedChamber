@@ -86,6 +86,19 @@ pnpm --filter @feedchamber/docs check   # tsc --noEmit + biome check
 `https://<owner>.github.io/<repo>/`，缺 `base` 前缀会让站内跳转与 `_astro` 静态资源
 全部 404。换自定义域名时只改 workflow 里那两行，并把 `base` 设回 `/`。
 
+### 首次部署要做的两件事
+
+1. 仓库 Settings → Pages → Source 选 **GitHub Actions**。
+2. `github-pages` environment 的**允许分支**要包含 `develop`（默认只有 `main`）。
+   否则 Build 会绿、Deploy 直接失败在保护规则上。加分支：
+
+```bash
+gh api -X POST repos/<owner>/<repo>/environments/github-pages/deployment-branch-policies \
+  -f name=develop -f type=branch
+```
+
+线上地址：`https://<owner>.github.io/<repo>/`。
+
 ### 两道产物护栏（都在 workflow 里，别删）
 
 | 脚本 | 抓什么 | 为什么必须 |

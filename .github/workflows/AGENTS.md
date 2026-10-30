@@ -41,7 +41,12 @@ GitHub Actions。五个 workflow，分工明确：**质量门（几分钟）与�
 1. **不要给 `pnpm/action-setup` 传 `version`**。根 `package.json` 已有
    `packageManager: pnpm@10.26.2`，两边同时指定会直接报
    `Multiple versions of pnpm specified`（首次运行 13s 失败）。`quality.yml` 也不传。
-2. **`tsc` 之前必须先 `astro sync`**。`astro:content` 等虚拟模块的类型声明生成在
+2. **Pages environment 的允许分支要包含 `develop`**。`github-pages` environment 默认
+   带 branch policy，初始只允许 `main`；在 `develop` 上触发会失败在 Deploy 步骤
+   （Build 是绿的，报 `Branch "develop" is not allowed to deploy ... due to environment
+   protection rules`）。加分支用：
+   `gh api -X POST repos/<owner>/<repo>/environments/github-pages/deployment-branch-policies -f name=develop -f type=branch`
+3. **`tsc` 之前必须先 `astro sync`**。`astro:content` 等虚拟模块的类型声明生成在
    `.astro/` 下，而该目录是 gitignore 的 —— 干净检出（CI）里没有它，直接跑 tsc 会报
    `Cannot find module 'astro:content'`（第二次运行 22s 失败）。
    `app/docs` 的 `check` / `typecheck` 脚本已内置 `astro sync`，本地新克隆同样需要。
