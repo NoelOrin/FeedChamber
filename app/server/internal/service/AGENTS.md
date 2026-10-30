@@ -153,4 +153,5 @@
 
 - `validateSnippetInput`：`position` 一律用 `model.Snippet{…}.EffectivePosition()` 归一化后落库（html 恒为 `body_end`）；`validateSnippetContent` 拒绝 css 含 `</style`、js 含 `</script`——这两类内容会被原样内联进 SSR 的 `<style>` / `<script>`，结束标签能闭合容器并把剩余内容当正常标记执行。
 - `ActiveSnippets(ctx, position)` 按 `EffectivePosition()` 分组（不是按 `position` 列），存量数据里写成 head 的 html 片段因此仍能发出去。
+- `validateNavHref`：只放行 `/…` 与 `http(s)://`；`javascript:` / `data:` / `//host` 一律拒（导航会被渲染进 `<Link href>`，点击即执行）。
 - `validateThemeToken`：token 必须是 `^--[a-zA-Z0-9-_]+$`，值禁 `; { } < >` 与换行、限长 512。token 覆盖只负责改色改圆角，不承担任意 CSS（那是 css 片段）。

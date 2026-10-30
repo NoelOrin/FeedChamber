@@ -136,6 +136,22 @@ func validateSnippetInput(in *SnippetInput) error {
 	return validateSnippetContent(in.Kind, in.Content)
 }
 
+var navHrefRe = regexp.MustCompile(`^(/|https?://)`)
+
+// validateNavHref 只放行站内绝对路径与 http(s) 外链。
+//
+// 导航项会被渲染进 <Link href>，而 `javascript:` / `data:` 这类 scheme 在
+// 点击时就地执行脚本——不管写入方是后台表单还是 MCP 工具，都不该有机会。
+// 只白名单而不是黑名单：黑名单永远漏一个 scheme。
+func validateNavHref(href string) error {
+	trimmed := strings.TrimSpace(href)
+	// 协议相对地址（`//host`）会把访客带到站外，且一眼看不出是外链，一并拒掉。
+	if strings.HasPrefix(trimmed, "//") || !navHrefRe.MatchString(trimmed) {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "href 必须是站内路径（/…）或 http(s) 链接")
+	}
+	return nil
+}
+
 // validateSnippetContent 保证片段内容能安全地放进它将被内联的容器。
 //
 // 片段最终会被原样写进 SSR 出来的 HTML 文档：css → <style>、js → <script>、
@@ -393,6 +409,9 @@ func validateNavInput(in *NavItemInput) error {
 	}
 	if strings.TrimSpace(in.Href) == "" {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "href 不能为空")
+	}
+	if err := validateNavHref(in.Href); err != nil {
+		return err
 	}
 	if in.Visibility == "" {
 		in.Visibility = model.NavVisibilityPublic

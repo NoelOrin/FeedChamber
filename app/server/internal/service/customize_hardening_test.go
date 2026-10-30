@@ -117,3 +117,33 @@ func TestSetThemeTokensValidatesNameAndValue(t *testing.T) {
 		})
 	}
 }
+
+// 导航 href 会被渲染进 <Link href>：`javascript:` 在点击时就地执行。
+// 后台表单与 MCP 工具都能写它，因此只白名单站内路径与 http(s)。
+func TestValidateNavHrefRejectsScriptSchemes(t *testing.T) {
+	svc, _, _ := newCustomizeServiceForTest()
+	ctx := context.Background()
+
+	cases := map[string]bool{
+		"/timeline":               true,
+		"/spaces/go":              true,
+		"https://example.com/x":   true,
+		"http://example.com/x":    true,
+		"javascript:alert(1)":     false,
+		" JavaScript:alert(1)":    false,
+		"data:text/html,<script>": false,
+		"//evil.example.com/x":    false,
+		"timeline":                false,
+	}
+
+	for href, valid := range cases {
+		_, _, err := svc.CreateNavItem(ctx, NavItemInput{Label: "x", Href: href},
+			WriteActor{UserID: "u1", Source: WriteSourceUI})
+		if valid {
+			assert.NoError(t, err, "href=%q 应放行", href)
+			continue
+		}
+		require.Error(t, err, "href=%q 应被拒", href)
+		assert.Equal(t, pkg.INVALID_PARAMS, err.(*pkg.AppError).Code)
+	}
+}
