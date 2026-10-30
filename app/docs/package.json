@@ -12,8 +12,9 @@
 		"sync": "node scripts/sync-openapi.mjs",
 		"lint": "biome lint ./src ./astro.config.mjs ./scripts",
 		"format": "biome format ./src ./astro.config.mjs ./scripts",
-		"check": "tsc --noEmit && biome check ./src ./astro.config.mjs ./scripts",
-		"typecheck": "tsc --noEmit"
+		"check": "astro sync && tsc --noEmit && biome check ./src ./astro.config.mjs ./scripts",
+		"typecheck": "astro sync && tsc --noEmit",
+		"astro:sync": "astro sync"
 	},
 	"dependencies": {
 		"@astrojs/markdown-remark": "^7.3.5",

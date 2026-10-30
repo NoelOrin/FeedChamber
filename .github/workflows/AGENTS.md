@@ -36,6 +36,16 @@ GitHub Actions。五个 workflow，分工明确：**质量门（几分钟）与�
 
 `DOCS_SITE` / `DOCS_BASE` 由 workflow 注入。换自定义域名时改那两行，并把 `base` 设回 `/`。
 
+### 两个已经踩过的坑（别改回去）
+
+1. **不要给 `pnpm/action-setup` 传 `version`**。根 `package.json` 已有
+   `packageManager: pnpm@10.26.2`，两边同时指定会直接报
+   `Multiple versions of pnpm specified`（首次运行 13s 失败）。`quality.yml` 也不传。
+2. **`tsc` 之前必须先 `astro sync`**。`astro:content` 等虚拟模块的类型声明生成在
+   `.astro/` 下，而该目录是 gitignore 的 —— 干净检出（CI）里没有它，直接跑 tsc 会报
+   `Cannot find module 'astro:content'`（第二次运行 22s 失败）。
+   `app/docs` 的 `check` / `typecheck` 脚本已内置 `astro sync`，本地新克隆同样需要。
+
 ## 改这里要注意
 
 - **`quality.yml` 的 `on` 分支列表**与 `docs/branching.md` 的模型一致（`main` + `develop`）；改分支模型时两边同步。

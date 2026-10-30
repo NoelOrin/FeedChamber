@@ -52,6 +52,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # `astro:content` 等虚拟模块的类型声明由 `astro sync` 生成，落在 .astro/ 下，
+      # 而 .astro/ 是 gitignore 的 —— 干净检出（CI）里没有它，直接跑 tsc 会报
+      # Cannot find module 'astro:content'。所以必须先生成再校验。
+      - name: Astro sync (generate virtual module types)
+        working-directory: app/docs
+        run: pnpm exec astro sync
+
       # 文档站要的类型校验与 lint 门。与 quality.yml 的 biome 是两套：
       # 那边扫全仓，这里额外跑 app/docs 的 tsc（Astro 的组件类型不在 biome 覆盖内）。
       - name: Typecheck
