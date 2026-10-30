@@ -15,7 +15,7 @@ import (
 func newCustomizeServiceForTest() (CustomizeService, *memSnippetRepo, *memTokenRepo) {
 	snips := newMemSnippetRepo()
 	tokens := newMemTokenRepo()
-	svc := NewCustomizeService(snips, tokens, newMemNavRepo(), newMemModuleRepo(), newMemPageRepo(), nil)
+	svc := NewCustomizeService(snips, tokens, newMemNavRepo(), newMemModuleRepo(), newMemPageRepo(), nil, nil)
 	return svc, snips, tokens
 }
 

@@ -73,3 +73,7 @@ Pub/Sub 机制：NATS core pub/sub（subject 前缀 `nats.kv.`），跨实例。
 ## tracing/
 
 自研 W3C Trace Context（`00-{32hex trace}-{16hex span}-{2hex flags}`），不引入 OpenTelemetry/collector。`ParseTraceparent` 严格只收 `00` 版本与小写十六进制，畸形值返回 false 由调用方新生成；`FromTraceID` 用于沿用 nginx `$request_id`（同形同宽）。trace id 只进日志与响应头，MUST NOT 作为指标标签。EventBus 经 `PublishMsg` 消息头传播 trace，消费端在**新的 background ctx** 上重建（不继承发布方取消信号）。
+
+## 分页 offset（2026-10-30）
+
+`pkg.Offset(page, pageSize)` 是计算 SQL offset 的唯一入口：`(page-1)*pageSize` 在 page 取极大值时溢出为负数，PostgreSQL 会报 `OFFSET must not be negative`（500 而不是空列表）。实现里先判 `page > maxOffset/pageSize` 再相乘，任何输入都返回非负值。

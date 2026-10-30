@@ -66,3 +66,7 @@ func (r *Runtime) Shutdown()                                 // 冲刷浏览量 
 后台 worker 的生命周期同样不归 handler：`Handler.Shutdown()` 已删除，关停由 `server/iris.go` 调 `runtime.Shutdown()`。
 
 > 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
+
+## 装配变更（2026-10-30）
+
+`NewCustomizeService` 增加 `db.TransactionManager` 入参（`c.Tx`）：`SetThemeTokens` 的批量覆盖整批在一个事务里，中途失败全量回滚。

@@ -213,7 +213,7 @@ func New(d Deps) *Container {
 	c.BadgeSvc = service.NewBadgeService(c.BadgeRepo, c.UserRepo)
 	c.AuditLogSvc = service.NewAuditLogService(c.AuditLogRepo)
 	c.CustomizeSvc = service.NewCustomizeService(
-		c.SnippetRepo, c.ThemeTokenRepo, c.NavItemRepo, c.HomeModuleRepo, c.CustomPageRepo, c.AuditLogSvc)
+		c.SnippetRepo, c.ThemeTokenRepo, c.NavItemRepo, c.HomeModuleRepo, c.CustomPageRepo, c.AuditLogSvc, c.Tx)
 	c.MCPServerSvc = service.NewMCPServerService(c.MCPServerRepo, c.AuditLogSvc)
 	c.EmailSvc = service.NewEmailService(c.SettingSvc, d.KV)
 	c.MFASvc = service.NewMFAService(c.UserMFARepo, c.SettingSvc, d.KV)

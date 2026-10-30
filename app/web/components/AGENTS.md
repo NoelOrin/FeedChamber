@@ -98,3 +98,7 @@ lib/                      跨域基础设施（auth / query / api adapter / seo 
 | `home/home-modules.tsx` | 首页 html 模块 |
 
 `app/layout.tsx` 与 `customization/snippet-slot.tsx` 的 `noDangerouslySetInnerHtml` 在 `biome.json` 的 overrides 里按文件关闭（逐处 inline ignore 会被格式化拆行后失效）。新增注入点 = 在本表登记 + 在 biome overrides 加文件，否则 lint 会拦。
+
+## 首页自定义模块（2026-10-30）
+
+`home/home-modules.tsx` 的 `latest` / `hot` 模块**渲染真实帖子**（`postListInfiniteOptions` + `postsOf`，`config.limit` 真正生效），不再是「只有一条链接」的桩。三态齐全（骨架 / 读失败 / 空列表）。

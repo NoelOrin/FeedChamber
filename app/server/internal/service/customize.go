@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"feedchamber/internal/db"
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
 	"feedchamber/internal/repository"
@@ -21,6 +22,8 @@ type customizeService struct {
 	modules  repository.HomeModuleRepository
 	pages    repository.CustomPageRepository
 	audit    AuditLogService
+	// tx 让「批量覆盖」成为一个原子操作：中途失败不留半套 token。
+	tx db.TransactionManager
 }
 
 func NewCustomizeService(
@@ -30,6 +33,7 @@ func NewCustomizeService(
 	modules repository.HomeModuleRepository,
 	pages repository.CustomPageRepository,
 	audit AuditLogService,
+	tx db.TransactionManager,
 ) CustomizeService {
 	return &customizeService{
 		snippets: snippets,
@@ -38,6 +42,7 @@ func NewCustomizeService(
 		modules:  modules,
 		pages:    pages,
 		audit:    audit,
+		tx:       tx,
 	}
 }
 
@@ -339,8 +344,9 @@ func (s *customizeService) SetThemeTokens(ctx context.Context, items []ThemeToke
 	if len(items) == 0 {
 		return WriteResult{}, pkg.NewAppError(pkg.INVALID_PARAMS, "items 不能为空")
 	}
+	// 先整体校验，再整体写入：校验失败时一行都不落库。
 	for i := range items {
-		it := items[i]
+		it := &items[i]
 		if strings.TrimSpace(it.Token) == "" {
 			return WriteResult{}, pkg.NewAppError(pkg.INVALID_PARAMS, "token 不能为空")
 		}
@@ -353,8 +359,13 @@ func (s *customizeService) SetThemeTokens(ctx context.Context, items []ThemeToke
 		if !model.ValidThemeTokenMode(it.Mode) {
 			return WriteResult{}, pkg.NewAppError(pkg.INVALID_PARAMS, "mode 必须是 all / light / dark")
 		}
-		now := time.Now()
-		rec := &model.ThemeToken{
+	}
+
+	now := time.Now()
+	records := make([]*model.ThemeToken, 0, len(items))
+	for i := range items {
+		it := items[i]
+		records = append(records, &model.ThemeToken{
 			ID:        pkg.NewID(),
 			Token:     strings.TrimSpace(it.Token),
 			Value:     it.Value,
@@ -362,10 +373,24 @@ func (s *customizeService) SetThemeTokens(ctx context.Context, items []ThemeToke
 			UpdatedBy: actor.UserID,
 			CreatedAt: now,
 			UpdatedAt: now,
+		})
+	}
+
+	// 一个事务：中途失败全量回滚，避免「改了一半的主题」这种最难排查的状态。
+	apply := func(txCtx context.Context) error {
+		for _, rec := range records {
+			if err := s.tokens.Upsert(txCtx, rec); err != nil {
+				return err
+			}
 		}
-		if err := s.tokens.Upsert(ctx, rec); err != nil {
+		return nil
+	}
+	if s.tx != nil {
+		if err := s.tx.WithTx(ctx, apply); err != nil {
 			return WriteResult{}, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 		}
+	} else if err := apply(ctx); err != nil {
+		return WriteResult{}, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
 	names := make([]string, 0, len(items))
 	for _, it := range items {
@@ -698,7 +723,7 @@ func validateCustomPageInput(in *CustomPageInput) error {
 
 func (s *customizeService) ListCustomPages(ctx context.Context, page, pageSize int) ([]model.CustomPage, int64, error) {
 	page, pageSize = pkg.NormalizePagination(page, pageSize)
-	offset := (page - 1) * pageSize
+	offset := pkg.Offset(page, pageSize)
 	items, err := s.pages.List(ctx, offset, pageSize)
 	if err != nil {
 		return nil, 0, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
@@ -718,8 +743,9 @@ func (s *customizeService) CreateCustomPage(ctx context.Context, in CustomPageIn
 		return nil, WriteResult{}, err
 	}
 	// 已存在的 slug 直接拒绝，而不是静默覆盖别人的页面。
+	// 先查一次给出明确文案；并发下仍可能撞唯一索引，靠下面 Create 的错误映射兜住。
 	if _, err := s.pages.GetBySlug(ctx, in.Slug); err == nil {
-		return nil, WriteResult{}, pkg.NewAppError(pkg.INVALID_PARAMS, "slug 已被占用")
+		return nil, WriteResult{}, pkg.NewAppError(pkg.ALREADY_EXISTS, "slug 已被占用")
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return nil, WriteResult{}, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
@@ -744,6 +770,10 @@ func (s *customizeService) CreateCustomPage(ctx context.Context, in CustomPageIn
 		UpdatedAt: now,
 	}
 	if err := s.pages.Create(ctx, p); err != nil {
+		if errors.Is(err, repository.ErrDuplicate) {
+			// 并发建同 slug：唯一索引是最终裁决，报「已存在」而不是 500。
+			return nil, WriteResult{}, pkg.NewAppError(pkg.ALREADY_EXISTS, "slug 已被占用")
+		}
 		return nil, WriteResult{}, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
 	s.auditWrite(ctx, actor, "customize.page.create", p.ID, fmt.Sprintf("slug=%s status=%s", p.Slug, p.Status))
@@ -852,6 +882,9 @@ func (s *customizeService) GetPublishedPage(ctx context.Context, slug string) (*
 func mapRepoErr(err error, notFoundMsg string) error {
 	if errors.Is(err, repository.ErrNotFound) {
 		return pkg.NewAppError(pkg.NOT_FOUND, notFoundMsg)
+	}
+	if errors.Is(err, repository.ErrDuplicate) {
+		return pkg.NewAppError(pkg.ALREADY_EXISTS)
 	}
 	return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 }

@@ -9,9 +9,11 @@ import (
 
 // ThemeTokenRepository 负责主题 token 覆盖的持久化。
 type ThemeTokenRepository interface {
-	// Upsert 按 token 名写入覆盖：同名 token 只保留一条（更新值），
-	// 而不是每次保存都堆一行——否则「当前覆盖了哪些 token」会无限膨胀。
+	// Upsert 按 (token, mode) 写入覆盖：同一 token 的明暗两套覆盖各自一行，
+	// 同名同模式只更新值，不堆行。
 	Upsert(ctx context.Context, t *model.ThemeToken) error
+	// DeleteByTokenMode 只删某一模式的覆盖；Mode 为空表示删该 token 的全部模式。
+	DeleteByTokenMode(ctx context.Context, token, mode string) error
 	GetByToken(ctx context.Context, token string) (*model.ThemeToken, error)
 	List(ctx context.Context) ([]model.ThemeToken, error)
 	DeleteByToken(ctx context.Context, token string) error

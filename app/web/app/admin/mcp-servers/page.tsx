@@ -37,10 +37,14 @@ export default function MCPServersPage() {
 	const [confirm, confirmDialog] = useConfirm();
 	const queryClient = useQueryClient();
 
-	const { data = [], isPending } = useQuery({
+	const query = useQuery({
 		queryKey: ['admin', 'mcp-servers'],
 		queryFn: async () => (await mcpServerService.list()) ?? [],
 	});
+	const data = query.data ?? [];
+	const isPending = query.isPending;
+	const isError = query.isError;
+	const errorMessage = query.error instanceof Error ? query.error.message : '未知错误';
 
 	const invalidate = useCallback(
 		() => queryClient.invalidateQueries({ queryKey: ['admin', 'mcp-servers'] }),
@@ -150,7 +154,11 @@ export default function MCPServersPage() {
 				</AlertDescription>
 			</Alert>
 
-			{isPending ? (
+			{isError ? (
+				<Alert variant="destructive">
+					<AlertDescription>读取失败：{errorMessage}。请刷新重试或检查权限。</AlertDescription>
+				</Alert>
+			) : isPending ? (
 				<p className="text-sm text-muted-foreground">加载中…</p>
 			) : data.length === 0 ? (
 				<p className="text-sm text-muted-foreground">还没有登记外部 MCP 服务。</p>

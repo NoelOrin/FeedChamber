@@ -39,10 +39,14 @@ export default function HomeModulesPage() {
 	const [confirm, confirmDialog] = useConfirm();
 	const queryClient = useQueryClient();
 
-	const { data = [], isPending } = useQuery({
+	const query = useQuery({
 		queryKey: ['admin', 'customize', 'modules'],
 		queryFn: async () => (await customizeService.listHomeModules()) ?? [],
 	});
+	const data = query.data ?? [];
+	const isPending = query.isPending;
+	const isError = query.isError;
+	const errorMessage = query.error instanceof Error ? query.error.message : '未知错误';
 
 	const invalidate = useCallback(async () => {
 		await queryClient.invalidateQueries({ queryKey: ['admin', 'customize', 'modules'] });
@@ -148,7 +152,11 @@ export default function HomeModulesPage() {
 				</AlertDescription>
 			</Alert>
 
-			{isPending ? (
+			{isError ? (
+				<Alert variant="destructive">
+					<AlertDescription>读取失败：{errorMessage}。请刷新重试或检查权限。</AlertDescription>
+				</Alert>
+			) : isPending ? (
 				<p className="text-sm text-muted-foreground">加载中…</p>
 			) : sorted.length === 0 ? (
 				<p className="text-sm text-muted-foreground">还没有自定义首页模块，前台使用默认布局。</p>

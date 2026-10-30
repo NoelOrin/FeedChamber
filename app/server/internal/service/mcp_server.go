@@ -6,9 +6,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
+	"regexp"
 	"sort"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"feedchamber/internal/model"
@@ -22,19 +27,35 @@ import (
 //
 // 3s 与既有外部审核的 HTTP 契约保持同一量级：审核链路在发帖主链路上，
 // 拖长超时等于拖慢发帖。规范要求「超时不会挂起发布」。
-const mcpClientTimeout = 3 * time.Second
+const (
+	mcpClientTimeout    = 3 * time.Second
+	maxMCPResponseBytes = 1 << 20
+)
 
 type mcpServerService struct {
 	repo  repository.MCPServerRepository
 	audit AuditLogService
 	http  *http.Client
+
+	// mu 保护 sessions：按服务 ID 缓存 Mcp-Session-Id。
+	// 合规实现（有状态 session）在第二个请求上会校验它，缺了就拒。
+	mu       sync.Mutex
+	sessions map[string]string
 }
 
 func NewMCPServerService(repo repository.MCPServerRepository, audit AuditLogService) MCPServerService {
 	return &mcpServerService{
 		repo:  repo,
 		audit: audit,
-		http:  &http.Client{Timeout: mcpClientTimeout},
+		http: &http.Client{
+			Timeout: mcpClientTimeout,
+			// 不跟随重定向：自定义鉴权头（Headers JSON 里的 X-API-Key 等）
+			// 在 Go 里只会跨域剥离 Authorization/Cookie，其余头原样带到重定向目标。
+			CheckRedirect: func(*http.Request, []*http.Request) error {
+				return http.ErrUseLastResponse
+			},
+		},
+		sessions: map[string]string{},
 	}
 }
 
@@ -52,6 +73,65 @@ func (s *mcpServerService) List(ctx context.Context) ([]MCPServerView, error) {
 	return out, nil
 }
 
+var endpointSchemeRe = regexp.MustCompile(`^https?://`)
+
+// validateEndpoint 校验外部 MCP 地址：只允许 http(s)，且拒私网/回环/链路本地。
+//
+// 这个服务是「管理员填 URL，服务端去请求」的典型 SSRF 面：不拦私网就等于
+// 把内网探测与元数据端点（169.254.169.254）交给任何持 setting:manage 的人。
+// 只校验 scheme 是不够的——那只能挡住 file:// 之类。
+func validateEndpoint(raw string) error {
+	trimmed := strings.TrimSpace(raw)
+	if !endpointSchemeRe.MatchString(trimmed) {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "endpoint 必须是 http(s) 地址")
+	}
+	u, err := url.Parse(trimmed)
+	if err != nil || u.Host == "" {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "endpoint 不合法")
+	}
+	host := u.Hostname()
+	if host == "" {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "endpoint 缺少主机名")
+	}
+	// 直接拒掉常见的内网字面量：不需要 DNS 就能判定的那批。
+	switch strings.ToLower(host) {
+	case "localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]":
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "endpoint 不得指向回环地址")
+	}
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsUnspecified() {
+			return pkg.NewAppError(pkg.INVALID_PARAMS, "endpoint 不得指向私网 / 回环 / 链路本地地址")
+		}
+	}
+	return nil
+}
+
+// parseHeadersWithValidation 解析鉴权头，并要求它必须是字符串到字符串的对象。
+//
+// 旧实现只做 json.Valid：`[1,2]`、`"str"`、`{"X-Key":123}` 都能入库，随后
+// 反序列化失败被静默吞掉 → 鉴权头全部丢失、外部服务返 401，排查时毫无线索。
+func parseHeadersWithValidation(raw string) (map[string]string, error) {
+	out := map[string]string{}
+	if strings.TrimSpace(raw) == "" {
+		return out, nil
+	}
+	if err := json.Unmarshal([]byte(raw), &out); err != nil {
+		return nil, fmt.Errorf("headers 必须是字符串到字符串的 JSON 对象: %w", err)
+	}
+	return out, nil
+}
+
+// validateHeaderFormat 在写入侧做同样的校验，让错误在保存时出现而不是调用时。
+func validateHeaderFormat(raw string) error {
+	if strings.TrimSpace(raw) == "" {
+		return nil
+	}
+	if _, err := parseHeadersWithValidation(raw); err != nil {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "headers 必须是字符串到字符串的 JSON 对象")
+	}
+	return nil
+}
+
 func validateMCPServerInput(in *MCPServerInput) error {
 	if strings.TrimSpace(in.Name) == "" {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "name 不能为空")
@@ -59,8 +139,8 @@ func validateMCPServerInput(in *MCPServerInput) error {
 	if strings.TrimSpace(in.Endpoint) == "" {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "endpoint 不能为空")
 	}
-	if !strings.HasPrefix(in.Endpoint, "http://") && !strings.HasPrefix(in.Endpoint, "https://") {
-		return pkg.NewAppError(pkg.INVALID_PARAMS, "endpoint 必须是 http(s) 地址")
+	if err := validateEndpoint(in.Endpoint); err != nil {
+		return err
 	}
 	if in.Transport == "" {
 		in.Transport = model.MCPTransportStreamableHTTP
@@ -74,8 +154,8 @@ func validateMCPServerInput(in *MCPServerInput) error {
 	if !model.ValidMCPServerPurpose(in.Purpose) {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "purpose 必须是 general / moderation")
 	}
-	if in.Headers != "" && !json.Valid([]byte(in.Headers)) {
-		return pkg.NewAppError(pkg.INVALID_PARAMS, "headers 必须是合法 JSON 对象")
+	if err := validateHeaderFormat(in.Headers); err != nil {
+		return err
 	}
 	return nil
 }
@@ -127,6 +207,8 @@ func (s *mcpServerService) Update(ctx context.Context, id string, in MCPServerIn
 	if err := s.repo.Update(ctx, existing); err != nil {
 		return nil, mapRepoErr(err, "外部 MCP 服务不存在")
 	}
+	// 地址或凭据变了，旧 session 对新端点没有意义，下一次调用重新握手。
+	s.forgetSession(id)
 	s.record(ctx, "mcp_server.update", id, fmt.Sprintf("name=%s enabled=%v", existing.Name, existing.Enabled))
 	view := toMCPServerView(*existing)
 	return &view, nil
@@ -139,6 +221,7 @@ func (s *mcpServerService) Delete(ctx context.Context, id string) error {
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return mapRepoErr(err, "外部 MCP 服务不存在")
 	}
+	s.forgetSession(id)
 	s.record(ctx, "mcp_server.delete", id, "")
 	return nil
 }
@@ -183,10 +266,12 @@ type jsonrpcRequest struct {
 }
 
 type jsonrpcResponse struct {
-	JSONRPC string          `json:"jsonrpc"`
-	ID      int             `json:"id"`
-	Result  json.RawMessage `json:"result"`
-	Error   *jsonrpcError   `json:"error,omitempty"`
+	JSONRPC string `json:"jsonrpc"`
+	// ID 用 RawMessage：JSON-RPC 2.0 允许字符串 id，声明成 int 会让整条
+	// 响应 Unmarshal 失败（对方用 "1" 时就必然踩到）。
+	ID     json.RawMessage `json:"id"`
+	Result json.RawMessage `json:"result"`
+	Error  *jsonrpcError   `json:"error,omitempty"`
 }
 
 type jsonrpcError struct {
@@ -211,9 +296,10 @@ func (s *mcpServerService) call(ctx context.Context, srv *model.MCPServer, metho
 		return nil, err
 	}
 
-	// 用 background + 自己的超时，而不是继承请求 ctx：外部服务响应慢
-	// 不应该因为上游 HTTP 请求被客户端取消而变成「配置测试失败」。
-	reqCtx, cancel := context.WithTimeout(context.Background(), mcpClientTimeout)
+	// 用入参 ctx 派生超时：发帖主链路可能被客户端取消或整体超时，
+	// 外部服务响应慢不该让上游请求「跑完但没人要」。
+	// 同时限制单次调用总预算：initialize + tools/call 各 3s，最坏 6s。
+	reqCtx, cancel := context.WithTimeout(ctx, mcpClientTimeout)
 	defer cancel()
 
 	req, err := http.NewRequestWithContext(reqCtx, http.MethodPost, srv.Endpoint, bytes.NewReader(body))
@@ -222,8 +308,16 @@ func (s *mcpServerService) call(ctx context.Context, srv *model.MCPServer, metho
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json, text/event-stream")
+	// 有状态实现的 session 必须回传，否则第二个请求会被拒。
+	if sid := s.sessionOf(srv.ID); sid != "" {
+		req.Header.Set("Mcp-Session-Id", sid)
+	}
 	// 外部服务的鉴权头存在 Headers JSON 里。
-	for k, v := range parseHeaders(srv.Headers) {
+	headers, err := parseHeadersWithValidation(srv.Headers)
+	if err != nil {
+		return nil, fmt.Errorf("解析鉴权头失败: %w", err)
+	}
+	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
 
@@ -233,9 +327,16 @@ func (s *mcpServerService) call(ctx context.Context, srv *model.MCPServer, metho
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	raw, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	raw, err := io.ReadAll(io.LimitReader(resp.Body, maxMCPResponseBytes+1))
 	if err != nil {
 		return nil, fmt.Errorf("读取响应失败: %w", err)
+	}
+	if len(raw) > maxMCPResponseBytes {
+		// 静默截断会把「响应过大」报成「响应不是合法 JSON-RPC」，掩盖真因。
+		return nil, fmt.Errorf("响应过大（超过 %d 字节）", maxMCPResponseBytes)
+	}
+	if sid := resp.Header.Get("Mcp-Session-Id"); sid != "" {
+		s.rememberSession(srv.ID, sid)
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, truncate(string(raw), 200))
@@ -253,6 +354,12 @@ func (s *mcpServerService) call(ctx context.Context, srv *model.MCPServer, metho
 	}
 	if out.Error != nil {
 		return nil, out.Error
+	}
+	// 响应 id 必须与请求 id 一致（请求恒为 1）：SSE 里可能混进通知帧
+	// （通知没有 id 字段），只取最后一条 data 行会把通知当成结果。
+	// JSON-RPC 2.0 允许字符串 id，所以两种形式都接受，只要值相同。
+	if !idMatches(out.ID, 1) {
+		return nil, fmt.Errorf("响应 id 与请求不匹配: %s", string(out.ID))
 	}
 	return out.Result, nil
 }
@@ -273,6 +380,46 @@ func extractSSEData(raw []byte) []byte {
 		return raw
 	}
 	return last
+}
+
+// idMatches 比较响应 id 与请求 id，兼容数字与字符串两种形式。
+func idMatches(raw json.RawMessage, want int) bool {
+	if len(raw) == 0 {
+		return false
+	}
+	var num int
+	if err := json.Unmarshal(raw, &num); err == nil {
+		return num == want
+	}
+	var str string
+	if err := json.Unmarshal(raw, &str); err == nil {
+		return str == strconv.Itoa(want)
+	}
+	return false
+}
+
+// sessionOf / rememberSession 维护按服务的 Mcp-Session-Id 缓存。
+func (s *mcpServerService) sessionOf(serverID string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessions[serverID]
+}
+
+func (s *mcpServerService) rememberSession(serverID, sid string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.sessions == nil {
+		s.sessions = map[string]string{}
+	}
+	s.sessions[serverID] = sid
+}
+
+// forgetSession 在配置更新/删除后清掉旧 session（地址或凭据变了，
+// 旧 session 对新端点没有意义）。
+func (s *mcpServerService) forgetSession(serverID string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.sessions, serverID)
 }
 
 func parseHeaders(raw string) map[string]string {

@@ -1,9 +1,11 @@
 'use client';
 
 import type { HomeModule } from '@feedchamber/api-client';
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 
+import { feedParamsOf, postListInfiniteOptions, postsOf } from '~/components/post/queries';
+import { Skeleton } from '~/components/ui/skeleton';
 import { publicCustomizationOptions } from '~/lib/customization/client';
 import { ArrowUpRight, Folder, Layers, Trophy } from '~/lib/icons';
 
@@ -81,11 +83,24 @@ function ModuleCard({ module: m }: { module: HomeModule }) {
 		);
 	}
 
-	// latest / hot：交给调用方决定数据来源。这里只渲染容器与标题，
-	// 具体列表由 timeline 自己的信息流承担——重复请求同一份列表没有意义。
+	// latest / hot：渲染真实帖子列表。
+	//
+	// 此前这里只放一条「查看最新帖子（最多 N 条）」的链接，limit 除了拼进文案
+	// 毫无作用——站长配了模块却看不到内容。数据源与信息流共用同一套
+	// query factory，命中缓存时不会额外发请求。
+	return <FeedModule module={m} />;
+}
+
+/** 首页模块里的「最新 / 热门」列表。 */
+function FeedModule({ module: m }: { module: HomeModule }) {
 	const label = m.kind === 'latest' ? '最新' : '热门';
 	const href = m.kind === 'latest' ? '/timeline' : '/timeline?sort_by=hot';
 	const Icon = m.kind === 'latest' ? Layers : Trophy;
+	const limit = limitOf(m.config);
+	const params = feedParamsOf({ sortBy: m.kind === 'hot' ? 'hot' : null });
+	const query = useInfiniteQuery(postListInfiniteOptions(params, limit));
+	const posts = postsOf(query.data).slice(0, limit);
+
 	return (
 		<section className="rounded-md border border-border p-4">
 			<div className="mb-2 flex items-center justify-between">
@@ -97,9 +112,41 @@ function ModuleCard({ module: m }: { module: HomeModule }) {
 					更多 <ArrowUpRight size={12} aria-hidden="true" />
 				</Link>
 			</div>
-			<Link href={href} className="inline-flex items-center gap-1.5 text-[13px] text-foreground hover:underline">
-				<Icon size={14} aria-hidden="true" className="text-muted-foreground" />
-				查看{label}帖子（最多 {limitOf(m.config)} 条）
+			{query.isPending ? (
+				<div className="flex flex-col gap-2">
+					<Skeleton className="h-4 w-full" />
+					<Skeleton className="h-4 w-3/4" />
+				</div>
+			) : query.isError ? (
+				<p className="text-[13px] text-muted-foreground">
+					列表暂时读不到，
+					<Link href={href} className="underline">
+						去{label}页
+					</Link>
+					看。
+				</p>
+			) : posts.length === 0 ? (
+				<p className="text-[13px] text-muted-foreground">还没有{label}帖子。</p>
+			) : (
+				<ul className="flex flex-col gap-1.5">
+					{posts.map((post) => (
+						<li key={post.id}>
+							<Link
+								href={`/timeline/post?id=${encodeURIComponent(post.id)}`}
+								className="line-clamp-1 text-[13px] text-foreground hover:underline"
+							>
+								{post.title}
+							</Link>
+						</li>
+					))}
+				</ul>
+			)}
+			<Link
+				href={href}
+				className="mt-2 inline-flex items-center gap-1.5 text-[13px] text-muted-foreground hover:text-foreground"
+			>
+				<Icon size={14} aria-hidden="true" />
+				查看全部{label}
 			</Link>
 		</section>
 	);

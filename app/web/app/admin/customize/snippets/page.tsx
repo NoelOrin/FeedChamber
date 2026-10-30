@@ -5,7 +5,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';
 
-import { AppliedBadge } from '~/components/admin/customize/applied-badge';
 import { Alert, AlertDescription } from '~/components/ui/alert';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
@@ -61,10 +60,14 @@ export default function SnippetsPage() {
 	const [confirm, confirmDialog] = useConfirm();
 	const queryClient = useQueryClient();
 
-	const { data = [], isPending } = useQuery({
+	const query = useQuery({
 		queryKey: ['admin', 'customize', 'snippets'],
 		queryFn: async () => (await customizeService.listSnippets()) ?? [],
 	});
+	const data = query.data ?? [];
+	const isPending = query.isPending;
+	const isError = query.isError;
+	const errorMessage = query.error instanceof Error ? query.error.message : '未知错误';
 
 	const invalidate = useCallback(async () => {
 		await queryClient.invalidateQueries({ queryKey: ['admin', 'customize', 'snippets'] });
@@ -177,9 +180,11 @@ export default function SnippetsPage() {
 				accessorKey: 'enabled',
 				header: '状态',
 				cell: ({ row }) => (
+					// 这里只表达「启停」：列表接口没有 applied 字段，把 enabled 当 applied
+					// 会把「启用」说成「已生效」，还丢掉服务端返回的草稿原因。
+					// applied/reason 属于写入结果，由保存回调的 toast 呈现。
 					<div className="flex items-center gap-2">
 						<Switch checked={row.original.enabled} onCheckedChange={(v) => toggle(row.original, v)} />
-						<AppliedBadge applied={row.original.enabled} />
 					</div>
 				),
 			},
@@ -220,7 +225,13 @@ export default function SnippetsPage() {
 				</Alert>
 			) : null}
 
-			<DataTable columns={columns} data={data} loading={isPending} emptyText="还没有自定义片段" />
+			{isError ? (
+				<Alert variant="destructive">
+					<AlertDescription>读取失败：{errorMessage}。请刷新重试或检查权限。</AlertDescription>
+				</Alert>
+			) : (
+				<DataTable columns={columns} data={data} loading={isPending} emptyText="还没有自定义片段" />
+			)}
 
 			<Dialog open={open} onOpenChange={setOpen}>
 				<DialogContent className="max-w-2xl">

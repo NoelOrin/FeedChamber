@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"feedchamber/internal/pkg"
+	"feedchamber/internal/service"
 
 	"github.com/sirupsen/logrus"
 )
@@ -151,6 +152,10 @@ func (s *Server) handleToolCall(ctx context.Context, req Request, ident *Identit
 		return errorResponse(req.ID, authErr)
 	}
 
+	// 把调用者身份注入 ctx：service 层的可见性与所有权判定（PostViewer /
+	// canViewPost / CheckViewablePost）都从这里读 viewer。不注入就一律按游客
+	// TL0 算——作者读不到自己的待审帖，login/level 版面帖也读不到。
+	ctx = service.WithViewerRole(service.WithViewerID(ctx, ident.UserID), ident.Role)
 	result, err := tool.Handler(ctx, ToolInput{
 		UserID:     ident.UserID,
 		Role:       ident.Role,

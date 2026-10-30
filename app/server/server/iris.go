@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"syscall"
 
@@ -201,7 +202,7 @@ func Start(env Env) {
 		logrus.Fatalf("初始化 EventBus 失败: %v", err)
 	}
 
-	permSvc, settingSvc, bannedSvc := seedPermissions(store, kvStore, alreadySeeded)
+	permSvc, settingSvc, bannedSvc := seedPermissions(store, kvStore, metaRepo, alreadySeeded)
 
 	// 从 settings 表加载运行时配置（OAuth token TTL、分页参数等）
 	initCtx := context.Background()
@@ -598,6 +599,22 @@ func ensureRolePermission(ctx context.Context, permRepo repository.PermissionRep
 	}
 }
 
+// allDefaultCodes 汇总默认角色映射里出现的全部权限码。
+func allDefaultCodes() []string {
+	seen := map[string]struct{}{}
+	for _, codes := range model.DefaultRolePermissions {
+		for _, code := range codes {
+			seen[code] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for code := range seen {
+		out = append(out, code)
+	}
+	sort.Strings(out)
+	return out
+}
+
 func roleMappingsEmpty(ctx context.Context, permRepo repository.PermissionRepository) bool {
 	all, err := permRepo.GetAllRolePermissions(ctx)
 	if err != nil {
@@ -607,7 +624,7 @@ func roleMappingsEmpty(ctx context.Context, permRepo repository.PermissionReposi
 	return len(all) == 0
 }
 
-func seedPermissions(store db.Store, kv kvstore.Store, alreadySeeded bool) (service.PermissionService, service.SettingService, service.BannedService) {
+func seedPermissions(store db.Store, kv kvstore.Store, metaRepo repository.MetaRepository, alreadySeeded bool) (service.PermissionService, service.SettingService, service.BannedService) {
 	permRepo := repository.NewPermissionRepository(store)
 	ctx := context.Background()
 
@@ -627,11 +644,23 @@ func seedPermissions(store db.Store, kv kvstore.Store, alreadySeeded bool) (serv
 	if alreadySeeded && !roleMappingsEmpty(ctx, permRepo) {
 		logrus.Info("default role-permission mappings already seeded, skipping")
 		// 增量补齐：版本升级新增的权限码必须能到已有部署的内置角色上。
-		// 上面的整体跳过是为了保护管理员自定义（R-04），但它同时意味着
-		// 「新权限永远拿不到」——例如 customize:* 上线后 admin 角色没有它们，
-		// MCP 工具因此不出现在 tools/list，且无任何报错。
-		// EnsureRolePermissions 只追加、不删除，两者语义可以并存。
-		for roleName, codes := range model.DefaultRolePermissions {
+		//
+		// 但不能「每次启动把默认映射里缺的都补回」——那样管理员从内置角色上
+		// 撤销的任何默认权限都会在下次重启静默复活，R-04 的保护形同虚设。
+		// 因此记录「已经应用过的权限码」到 meta：只补**首次出现**的新码，
+		// 管理员之后撤销的码属于「已应用过」，不会再加回来。
+		appliedRaw, found, err := metaRepo.Get(ctx, model.MetaSeededRolePermissionCodes)
+		if err != nil {
+			logrus.Warnf("read applied role-permission codes: %v", err)
+		}
+		applied := service.ParseAppliedCodes(appliedRaw)
+		if !found {
+			// 老部署没有这个标记：把当前默认映射视为已应用，只补本次真正新增的码。
+			applied = service.ParseAppliedCodes(strings.Join(allDefaultCodes(), ","))
+		}
+
+		perRole, newlyApplied := service.RolePermissionTopUp(model.DefaultRolePermissions, applied)
+		for roleName, codes := range perRole {
 			added, err := permRepo.EnsureRolePermissions(ctx, roleName, codes)
 			if err != nil {
 				logrus.Warnf("ensure role permissions for %s: %v", roleName, err)
@@ -641,6 +670,13 @@ func seedPermissions(store db.Store, kv kvstore.Store, alreadySeeded bool) (serv
 				logrus.Infof("ensured %d new permission(s) for role %s", added, roleName)
 			}
 		}
+		if len(newlyApplied) > 0 {
+			if err := metaRepo.Set(ctx, model.MetaSeededRolePermissionCodes,
+				service.MergeAppliedCodes(applied, newlyApplied)); err != nil {
+				logrus.Warnf("persist applied role-permission codes: %v", err)
+			}
+		}
+
 		// 增量补齐 pending_user（审批注册）角色权限：仅当该角色尚无任何映射时写入，不覆盖自定义。
 		if codes, ok := model.DefaultRolePermissions["pending_user"]; ok {
 			all, err := permRepo.GetAllRolePermissions(ctx)
@@ -661,12 +697,15 @@ func seedPermissions(store db.Store, kv kvstore.Store, alreadySeeded bool) (serv
 			}
 		}
 		logrus.Info("seeded default role-permission mappings")
-	}
-
-	// 新增权限码在升级库上不会自动进入 admin 映射（上面的同步只跑首启）。
-	// 逐个补齐：只追加缺失项，不重置管理员已有的自定义映射。
-	for _, code := range []string{model.PermLevelManage, model.PermGateManage} {
-		ensureRolePermission(ctx, permRepo, "admin", code)
+		// 首启把这些默认码全部标记为「已应用」：之后管理员撤销的不再补回。
+		codes := make([]string, 0, len(model.DefaultPermissions))
+		for _, perm := range model.DefaultPermissions {
+			codes = append(codes, perm.Code)
+		}
+		if err := metaRepo.Set(ctx, model.MetaSeededRolePermissionCodes,
+			strings.Join(service.AllPermissionCodes(codes), ",")); err != nil {
+			logrus.Warnf("persist applied role-permission codes: %v", err)
+		}
 	}
 
 	// Build permission service and load cache

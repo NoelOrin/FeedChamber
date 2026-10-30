@@ -8,7 +8,6 @@ import (
 	"feedchamber/internal/pkg"
 	"feedchamber/internal/repository"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -80,7 +79,8 @@ func (s *checkInService) CheckIn(ctx context.Context, userID string) (*model.Che
 		}
 		if err := s.repo.Create(txCtx, ci); err != nil {
 			// 并发检查：如果违反唯一约束，说明已签到
-			if errors.Is(err, repository.ErrDuplicate) || strings.Contains(err.Error(), "UNIQUE") || strings.Contains(err.Error(), "duplicate") {
+			// 唯一冲突已由 repository.WrapDBErr 统一翻译成 ErrDuplicate。
+			if errors.Is(err, repository.ErrDuplicate) {
 				return pkg.NewAppError(pkg.ALREADY_EXISTS, "今日已签到")
 			}
 			return err

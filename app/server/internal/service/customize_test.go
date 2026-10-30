@@ -66,19 +66,23 @@ func (r *memSnippetRepo) SetEnabled(_ context.Context, id string, enabled bool, 
 	return nil
 }
 
+// memTokenRepo 按 (token, mode) 建键，与真实仓储的复合身份一致。
 type memTokenRepo struct{ items map[string]*model.ThemeToken }
+
+func tokenKey(token, mode string) string { return token + "|" + mode }
 
 func newMemTokenRepo() *memTokenRepo { return &memTokenRepo{items: map[string]*model.ThemeToken{}} }
 func (r *memTokenRepo) Upsert(_ context.Context, t *model.ThemeToken) error {
-	r.items[t.Token] = t
+	r.items[tokenKey(t.Token, t.Mode)] = t
 	return nil
 }
 func (r *memTokenRepo) GetByToken(_ context.Context, token string) (*model.ThemeToken, error) {
-	t, ok := r.items[token]
-	if !ok {
-		return nil, repository.ErrNotFound
+	for _, t := range r.items {
+		if t.Token == token {
+			return t, nil
+		}
 	}
-	return t, nil
+	return nil, repository.ErrNotFound
 }
 func (r *memTokenRepo) List(_ context.Context) ([]model.ThemeToken, error) {
 	out := make([]model.ThemeToken, 0, len(r.items))
@@ -88,7 +92,24 @@ func (r *memTokenRepo) List(_ context.Context) ([]model.ThemeToken, error) {
 	return out, nil
 }
 func (r *memTokenRepo) DeleteByToken(_ context.Context, token string) error {
-	delete(r.items, token)
+	return r.DeleteByTokenMode(context.Background(), token, "")
+}
+
+func (r *memTokenRepo) DeleteByTokenMode(_ context.Context, token, mode string) error {
+	removed := 0
+	for k, t := range r.items {
+		if t.Token != token {
+			continue
+		}
+		if mode != "" && t.Mode != mode {
+			continue
+		}
+		delete(r.items, k)
+		removed++
+	}
+	if removed == 0 {
+		return repository.ErrNotFound
+	}
 	return nil
 }
 func (r *memTokenRepo) DeleteAll(_ context.Context) error {
@@ -233,7 +254,7 @@ func newTestCustomizeService() (CustomizeService, *memSnippetRepo, *memNavRepo, 
 	snips := newMemSnippetRepo()
 	nav := newMemNavRepo()
 	pages := newMemPageRepo()
-	svc := NewCustomizeService(snips, newMemTokenRepo(), nav, newMemModuleRepo(), pages, nil)
+	svc := NewCustomizeService(snips, newMemTokenRepo(), nav, newMemModuleRepo(), pages, nil, nil)
 	return svc, snips, nav, pages
 }
 

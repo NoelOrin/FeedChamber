@@ -30,6 +30,13 @@ export interface TreeSelectProps {
 	placeholder?: string;
 	className?: string;
 	disabled?: boolean;
+	// a11y：FormControl（Slot）只对 DOM 子元素生效，而 TreeSelect 是组件，
+	// 注入的 id / aria-describedby / aria-invalid 会被 Popover 吞掉。
+	// 因此显式接收并挂到触发按钮上，label↔控件关联与错误朗读才成立。
+	id?: string;
+	'aria-describedby'?: string;
+	'aria-invalid'?: boolean | 'true' | 'false';
+	'aria-label'?: string;
 }
 
 export function TreeSelect({
@@ -39,6 +46,10 @@ export function TreeSelect({
 	placeholder = '请选择',
 	className,
 	disabled,
+	id,
+	'aria-describedby': ariaDescribedBy,
+	'aria-invalid': ariaInvalid,
+	'aria-label': ariaLabel,
 }: TreeSelectProps) {
 	const [open, setOpen] = useState(false);
 
@@ -56,11 +67,54 @@ export function TreeSelect({
 		return find(treeData);
 	}, [treeData, value]);
 
+	const [activeIndex, setActiveIndex] = useState(0);
+
+	/** 扁平化可选节点：方向键导航与 aria-activedescendant 需要线性索引。 */
+	const flatNodes = useMemo(() => {
+		const out: { node: TreeNode; depth: number }[] = [];
+		const walk = (nodes: TreeNode[], depth: number) => {
+			for (const n of nodes) {
+				out.push({ node: n, depth });
+				if (n.children?.length) walk(n.children, depth + 1);
+			}
+		};
+		walk(treeData, 0);
+		return out;
+	}, [treeData]);
+
+	const optionId = (v: string) => `${id ?? 'tree-select'}-opt-${v}`;
+	const activeDescendant = flatNodes[activeIndex] ? optionId(flatNodes[activeIndex].node.value) : undefined;
+
+	function handleKeyDown(e: React.KeyboardEvent) {
+		if (flatNodes.length === 0) return;
+		if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+			e.preventDefault();
+			setOpen(true);
+			setActiveIndex((prev) => {
+				const next = e.key === 'ArrowDown' ? prev + 1 : prev - 1;
+				return Math.min(Math.max(next, 0), flatNodes.length - 1);
+			});
+			return;
+		}
+		if (e.key === 'Enter' || e.key === ' ') {
+			const target = flatNodes[activeIndex];
+			if (target) {
+				e.preventDefault();
+				onChange?.(target.node.value);
+				setOpen(false);
+			}
+		}
+	}
+
 	function renderNodes(nodes: TreeNode[], depth = 0): React.ReactNode {
 		return nodes.map((n) => (
-			<div key={n.value}>
+			<div key={n.value} role="none">
 				<button
 					type="button"
+					id={optionId(n.value)}
+					role="treeitem"
+					aria-selected={n.value === value}
+					tabIndex={-1}
 					onClick={() => {
 						onChange?.(n.value);
 						setOpen(false);
@@ -86,6 +140,12 @@ export function TreeSelect({
 					variant="outline"
 					size="md"
 					disabled={disabled}
+					id={id}
+					aria-describedby={ariaDescribedBy}
+					aria-invalid={ariaInvalid}
+					aria-label={ariaLabel}
+					aria-haspopup="tree"
+					aria-expanded={open}
 					className={cn('w-full justify-between font-normal', className)}
 				>
 					<span className={cn('truncate', !selectedLabel && 'text-muted-foreground')}>
@@ -98,8 +158,12 @@ export function TreeSelect({
 				align="start"
 				sideOffset={4}
 				className="max-h-72 w-[var(--radix-popover-trigger-width)] overflow-y-auto p-1"
+				onKeyDown={handleKeyDown}
+				aria-label={ariaLabel ?? '选择节点'}
 			>
-				{renderNodes(treeData)}
+				<div role="tree" tabIndex={-1} aria-label={ariaLabel ?? '选择节点'} aria-activedescendant={activeDescendant}>
+					{renderNodes(treeData)}
+				</div>
 			</PopoverContent>
 		</Popover>
 	);

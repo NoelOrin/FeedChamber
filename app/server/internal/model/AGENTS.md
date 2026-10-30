@@ -45,3 +45,8 @@
 > 上表为早期模块，未覆盖全部（现共 49 个模型文件 / 68 个 struct）。另含：`space.go`(SpaceRolePermission)、`group.go`(Group/Member/Permission)、`session.go`、`apikey.go`、`mfa.go`、`oauth_client.go`/`oauth_authorize.go`/`oauth_token.go`、`conversation.go`/`message.go`、`webhook.go`、`plugin.go`、`backup.go`、`draft.go`、`revision.go`、`badge.go`、`theme.go`/`user_preference.go`、`invite.go`、`watch.go`、`user_block.go`、`security_event.go`/`login_history.go`、`upload.go`、`import_map.go` 等。
 
 > 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
+
+## 主题 token 与 meta 标记（2026-10-30）
+
+- `ThemeToken` 的身份是 `(token, mode)`（`idx_theme_token_mode` 复合唯一索引）：同一 token 可分别覆盖明亮与暗色，规范要求「同时作用于两种模式或明确指定其一」。
+- `MetaSeededRolePermissionCodes`（`seeded_role_permission_codes`）记录「已应用过的默认权限码」：升级补齐只补新码，管理员撤销的默认权限不会在重启时复活（R-04）。

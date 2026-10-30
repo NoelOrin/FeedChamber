@@ -83,3 +83,9 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 - **片段页**（`customize/snippets`）：高风险提示条按列表数据判定（`data.some(...)`），不是弹窗表单状态；kind=html 时注入位置固定展示 body_end 且禁用选择。
 - **首页模块页**（`customize/home`）：html 模块的 config 形如 `{"html":"<div>…</div>"}`，占位符必须给 JSON，否则照提示填会稳定 400。
 - **设置页**：`settingsConfig.ts` 是声明式白名单，新增设置 key（如 `mcp_enabled` / `mcp_disabled_tools` / `mcp_max_result_bytes`）必须同时登记到这里，否则后台根本改不到。
+
+## 列表页的错误态（2026-10-30）
+
+`customize/{nav,home,snippets}`、`mcp-servers`、`mcp` 等列表页统一：`const query = useQuery(...)` + `data = query.data ?? []` + `isError` 分支（`Alert variant="destructive"` 显示 `query.error.message`）。不要用 `const { data = [] } = useQuery()`：解构默认值在 pending/error 期每次渲染都是新数组，若再喂给 `useEffect` 依赖就是无限渲染（`customize/theme` 曾如此）。
+
+列表里的 `enabled` 只表达「启停」，不要套 `AppliedBadge`——列表接口没有 `applied` 字段，那是**写入结果**的语义，由保存回调的 toast 呈现（`applied=false` 时必须说明「已保存为草稿」及 `reason`）。

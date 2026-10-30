@@ -64,3 +64,7 @@ node scripts/axe-audit.mjs   # 可访问性审计（需先起 web，登录态见
 - `data-table.tsx` / `confirm-dialog.tsx` / `prose.tsx` 的对外契约变化
 - 浮层层级契约（`--z-*` 梯度、`select.tsx` / `tree-select.tsx` 的实现方式）变化
 - 视觉基准从 `globals.css` 迁移到别处（例如恢复 tokens 包消费）
+
+## TreeSelect 的 a11y（2026-10-30）
+
+`FormControl`（Slot）只对 DOM 子元素注入 `id` / `aria-describedby` / `aria-invalid`，而 TreeSelect 是组件，会被 `Popover` 吞掉。因此 `TreeSelectProps` 显式接收这几个属性并挂到触发按钮；面板是 `role="tree"` + `aria-activedescendant` + `tabIndex={-1}`，节点是 `role="treeitem"` + `aria-selected`，方向键上下移动、Enter/Space 选中。

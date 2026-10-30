@@ -12,10 +12,13 @@ const (
 // ThemeToken 是一条主题 token 覆盖，语义等价于覆盖 packages/tokens 产出的
 // CSS 变量。以「token 名 → 值」的结构化形式存储，站长不需要写选择器或 CSS。
 type ThemeToken struct {
-	ID        string    `gorm:"primaryKey;size:36" json:"id"`
-	Token     string    `gorm:"size:128;not null;index" json:"token"`
+	ID string `gorm:"primaryKey;size:36" json:"id"`
+	// Token + Mode 是身份：同一个 token 可以分别覆盖明亮与暗色
+	// （规范要求「同时作用于两种模式，或明确指定其一」）。只按 token 建索引
+	// 会让先写 light 再写 dark 互相覆盖，两套覆盖永远共存不了。
+	Token     string    `gorm:"size:128;not null;index:idx_theme_token_mode,unique,priority:1" json:"token"`
 	Value     string    `gorm:"size:512;not null" json:"value"`
-	Mode      string    `gorm:"size:16;not null;default:'all'" json:"mode"`
+	Mode      string    `gorm:"size:16;not null;default:'all';index:idx_theme_token_mode,unique,priority:2" json:"mode"`
 	UpdatedBy string    `gorm:"size:36" json:"updated_by"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

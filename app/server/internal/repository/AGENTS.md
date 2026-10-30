@@ -57,3 +57,9 @@
 ## 片段读取（2026-10-30）
 
 `SnippetRepository.ListEnabled(ctx)` **不再按 `position` 列过滤**：权威位置是 `model.Snippet.EffectivePosition()`（html 恒为 `body_end`），存量数据可能仍写着 head。位置匹配在 service 层做，SQL 只管 `enabled = true`——两套判定并存时会让「存了 head 的 html 片段」永远发不出去且不报错。
+
+## 错误翻译与主题 token 身份（2026-10-30）
+
+- `WrapDBErr` 除了 `ErrNotFound`，现在也把唯一约束冲突翻成 `ErrDuplicate`（`checker_sql.go` 注册 `gorm.ErrDuplicatedKey` + 三家后端文案匹配）。service 只判断 `errors.Is(err, ErrDuplicate)`，不要再字符串匹配。
+- `theme_tokens` 的身份是 `(token, mode)`（复合唯一索引 `idx_theme_token_mode`）：同一 token 的明暗两套覆盖各占一行。`Upsert` 按 `token AND mode` 匹配，`DeleteByToken` 删全部模式、`DeleteByTokenMode` 删单个模式。
+- `snippet` 的 `ListEnabled` 不按 `position` 列过滤（权威位置是 `EffectivePosition()`，见 service 层）。

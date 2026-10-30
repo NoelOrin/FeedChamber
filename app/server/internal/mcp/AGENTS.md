@@ -103,3 +103,12 @@
 - 新增权限域时，`customize:*` 的处理方式（不进粗粒度 scope 注册表、`publish` 不走角色继承）是模板，不是特例。
 - 改 `Enforcer` 的检查顺序会影响错误码语义（`CodeForbidden` / `CodeRateLimited` / `CodeToolDisabled`），客户端依赖这些码做提示。
 - 结果体积上限由设置 `mcp_max_result_bytes` 控制（默认 8192），超限截断正文并标注。
+
+## 工具调用必须注入 viewer 身份（2026-10-30）
+
+`server.go` 的 `handleToolCall` 在调 `tool.Handler` 之前执行
+`ctx = service.WithViewerRole(service.WithViewerID(ctx, ident.UserID), ident.Role)`。
+
+不注入的话，service 层的可见性与所有权判定（`PostViewer` / `canViewPost` /
+`CheckViewablePost`）一律按游客 TL0 算：作者用自己的 Key 读不到自己的待审帖、
+`login` / `level` 版面帖读不到、持 `report:manage` 的审核者也被当游客。
