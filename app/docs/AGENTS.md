@@ -73,6 +73,38 @@ pnpm --filter @feedchamber/docs check   # tsc --noEmit + biome check
 `check` 用 `tsc --noEmit` 而不是 `astro check`：后者在当前 pnpm 布局下解析
 `@astrojs/check` 的传递依赖会失败（`@emnapi/runtime` 缺失）。tsc 已能覆盖类型错误。
 
+## GitHub Pages 部署（`.github/workflows/docs-pages.yml`）
+
+推 `main` / `develop` 且改动命中 `app/docs/**`、`openapi.json`、该 workflow 自身时自动发布；
+也可手动触发。
+
+**为什么单独一个 workflow**：Astro 7 的 `engines` 要求 Node >= 22.23.4，而 `quality.yml`
+用的是 Node 20（给 web/biome 用）。两套 Node 版本各自独立，不要为了省一个文件去抬
+`quality.yml` 的版本——那会牵动整个前端依赖树。
+
+**`site` / `base` 由环境变量注入**（`DOCS_SITE` / `DOCS_BASE`）。项目页挂在
+`https://<owner>.github.io/<repo>/`，缺 `base` 前缀会让站内跳转与 `_astro` 静态资源
+全部 404。换自定义域名时只改 workflow 里那两行，并把 `base` 设回 `/`。
+
+### 两道产物护栏（都在 workflow 里，别删）
+
+| 脚本 | 抓什么 | 为什么必须 |
+|------|--------|-----------|
+| `scripts/check-base-links.mjs` | ① 站内绝对链接是否带 base 前缀 ② 带前缀的链接是否指向真实产物 | GitHub Pages 上这类错误**构建期不报、CI 不报，只在线上 404** |
+| workflow 内联断言 | `dist/openapi.json` 是否存在 | prebuild 的 sync 脚本漏跑会让「下载」页变成 404 |
+
+`check-base-links.mjs` 需要 `DOCS_BASE` 环境变量；`DOCS_BASE=/` 时直接跳过。
+
+### 正文链接为什么要走 rehype 插件
+
+Starlight 会给侧栏与分页加 base，但**正文里手写的 `[x](/foo/)` 原样保留**。
+所以 `scripts/rehype-base-links.mjs` 在渲染管线里统一补前缀——修在管线而不是逐篇改，
+新页面自动覆盖。
+
+例外：**MDX 里手写的 JSX 属性不走 Markdown 管线**。首页那两个入口按钮因此用
+`import.meta.env.BASE_URL` 插值；同理，`hero.actions` 的 `link` 是 frontmatter、
+拿不到 base，所以首页刻意不用 hero actions。
+
 ## 多版本（预留，未启用）
 
 现在是单版本（当前分支即唯一版本）。需要并行版本时：

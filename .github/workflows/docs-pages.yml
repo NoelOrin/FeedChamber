@@ -1,0 +1,108 @@
+name: Docs (GitHub Pages)
+
+# 只负责「构建文档站并发布到 GitHub Pages」。
+#
+# 为什么单独一个 workflow：Astro 7 要求 Node >= 22.23.4，而 quality.yml 的
+# NODE_VERSION 是 20（那是给 web/biome 用的，不能随便抬——抬了会牵动整个前端
+# 依赖树的解析）。两个 workflow 各自用自己的 Node 版本，互不影响。
+#
+# 触发：develop / main 的文档相关改动 + 手动。文档站是纯静态产物，
+# 不参与镜像构建，也不需要后端在跑。
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'app/docs/**'
+      - 'openapi.json'
+      - '.github/workflows/docs-pages.yml'
+  workflow_dispatch:
+
+# Pages 发布需要这三项；id-token 给 OIDC 部署用。
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一分支只保留最后一次发布：文档站是幂等的，不需要排队。
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Astro 7 的 engines 是 node >=22.23.4
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10'
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 文档站要的类型校验与 lint 门。与 quality.yml 的 biome 是两套：
+      # 那边扫全仓，这里额外跑 app/docs 的 tsc（Astro 的组件类型不在 biome 覆盖内）。
+      - name: Typecheck
+        working-directory: app/docs
+        run: pnpm exec tsc --noEmit
+
+      - name: Biome check
+        working-directory: app/docs
+        run: pnpm exec biome check ./src ./astro.config.mjs ./scripts
+
+      # site/base 由环境变量注入。项目页挂在 https://<owner>.github.io/<repo>/，
+      # 少了 base 前缀，站内跳转与 _astro 静态资源会全部 404。
+      # 换成自定义域名时只改这两行（并把 base 改成 '/'）。
+      - name: Build
+        working-directory: app/docs
+        env:
+          DOCS_SITE: https://${{ github.repository_owner }}.github.io
+          DOCS_BASE: /${{ github.event.repository.name }}/
+        run: pnpm build
+
+      # openapi.json 由 prebuild 的 sync 脚本从仓库根复制进 public/，
+      # 这里断言它确实进了产物——漏了会让「下载」页变成 404。
+      - name: Assert openapi.json shipped
+        working-directory: app/docs
+        run: |
+          if [ ! -f dist/openapi.json ]; then
+            echo "✗ dist/openapi.json 缺失：prebuild 的 sync 脚本没有把仓库根的规格复制进来"
+            exit 1
+          fi
+          echo "✓ openapi.json $(wc -c < dist/openapi.json) 字节"
+
+      # 站内链接自检：绝对路径必须以 base 开头。
+      # GitHub Pages 上这类死链不会有任何构建期报错，只会在线上 404。
+      - name: Assert links carry base prefix
+        working-directory: app/docs
+        env:
+          DOCS_BASE: /${{ github.event.repository.name }}/
+        run: node scripts/check-base-links.mjs
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: app/docs/dist
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

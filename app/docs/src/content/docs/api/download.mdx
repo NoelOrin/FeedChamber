@@ -7,15 +7,13 @@ sidebar:
 
 完整规格由 handler 上的 swag 注解经 `make swag` 生成，运行时也可在 `/swagger/` 浏览。
 
-<div class="download-card">
-
-### openapi.json
-
-313 个 path / 314 个操作，Swagger 2.0 格式。
-
-[下载 openapi.json](/openapi.json)
-
-</div>
+{/* 下载链接必须带 BASE_URL 前缀：GitHub Pages 项目页挂在 /<repo>/ 下，
+    写死绝对路径 /openapi.json 会指到站点根而不是本仓库的产物目录。 */}
+<a class="download-card" href={`${import.meta.env.BASE_URL}openapi.json`} download>
+	<strong>openapi.json</strong>
+	<span>313 个 path / 314 个操作，Swagger 2.0 格式</span>
+	<span>点击下载 →</span>
+</a>
 
 也可以直接拉运行中实例的：
 

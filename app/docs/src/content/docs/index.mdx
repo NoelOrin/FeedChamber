@@ -4,17 +4,26 @@ description: Go + React 社区论坛的架构、API、MCP、部署与二开指�
 template: splash
 hero:
   tagline: 一个可自托管的社区论坛：Iris 后端 + React 19 前端，内建成长体系、可见性门控、内容审核与 MCP 双向能力。
-  actions:
-    - text: 快速开始
-      link: /getting-started/
-      icon: right-arrow
-      variant: primary
-    - text: 了解架构
-      link: /architecture/overview/
-      icon: open-book
+  # 刻意不在这里放 actions：hero 的 link 走 frontmatter，不会被 rehype 插件补 base，
+  # 在 GitHub Pages 项目页（挂在 /<repo>/ 下）会 404。入口按钮放在正文里，
+  # 正文链接由 scripts/rehype-base-links.mjs 统一补前缀。
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
+
+{/*
+ * 这两个链接用 import.meta.env.BASE_URL 插值，而不是写死 /getting-started/：
+ * MDX 里手写的 JSX 属性不走 Markdown 的 rehype 管线，护栏脚本也扫不到，
+ * 在 GitHub Pages 项目页（挂在 /<repo>/ 下）会静默 404。
+ */}
+<p class="hero-actions">
+	<a class="hero-cta hero-cta-primary" href={`${import.meta.env.BASE_URL}getting-started/`}>
+		快速开始 →
+	</a>
+	<a class="hero-cta" href={`${import.meta.env.BASE_URL}architecture/overview/`}>
+		了解架构
+	</a>
+</p>
 
 ## 从这里开始
 

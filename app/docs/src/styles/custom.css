@@ -1,0 +1,69 @@
+/* 文档站的自定义样式：只补 Starlight 没覆盖的两处，不覆盖主题变量。 */
+
+/* 下载卡片：openapi.json 那一块。Starlight 的 prose 不认 <a> 上的 block 布局，
+   所以显式声明，避免被正文链接样式压成行内。 */
+.download-card {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+	margin: 1rem 0;
+	padding: 1rem 1.25rem;
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.5rem;
+	background: var(--sl-color-gray-7);
+	text-decoration: none;
+	color: inherit;
+	transition: border-color 150ms ease;
+}
+
+.download-card:hover {
+	border-color: var(--sl-color-accent);
+}
+
+.download-card strong {
+	font-size: 1.05rem;
+}
+
+.download-card span {
+	color: var(--sl-color-gray-3);
+	font-size: 0.9rem;
+}
+
+/* 首页主入口按钮。hero 的 actions 不用（frontmatter 链接拿不到 base 前缀），
+   改为正文里的这两个链接，由 rehype 插件统一补前缀。 */
+.hero-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.75rem;
+	margin: 1.5rem 0 0.5rem;
+}
+
+.hero-cta {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.6rem 1.2rem;
+	border: 1px solid var(--sl-color-gray-5);
+	border-radius: 0.5rem;
+	text-decoration: none;
+	font-weight: 500;
+	color: var(--sl-color-white);
+	transition:
+		border-color 150ms ease,
+		background 150ms ease;
+}
+
+.hero-cta:hover {
+	border-color: var(--sl-color-accent);
+	background: var(--sl-color-gray-6);
+}
+
+.hero-cta-primary {
+	border-color: var(--sl-color-accent);
+	background: var(--sl-color-accent);
+	color: var(--sl-color-black);
+}
+
+.hero-cta-primary:hover {
+	background: var(--sl-color-accent-high);
+	border-color: var(--sl-color-accent-high);
+}

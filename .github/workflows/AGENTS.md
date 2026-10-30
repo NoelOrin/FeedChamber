@@ -1,6 +1,6 @@
 # CI 工作流（`.github/workflows/`）
 
-GitHub Actions。四个 workflow，分工明确：**质量门（几分钟）与镜像构建（约 40 分钟）并行**，互不阻塞。
+GitHub Actions。五个 workflow，分工明确：**质量门（几分钟）与镜像构建（约 40 分钟）并行**，互不阻塞；文档站发布是纯静态、独立一套 Node 版本。
 
 > 上级：[根 AGENTS.md](../../AGENTS.md) · 脚本：[scripts/AGENTS.md](../../scripts/AGENTS.md) · 分支模型：[docs/branching.md](../../docs/branching.md)
 
@@ -11,6 +11,7 @@ GitHub Actions。四个 workflow，分工明确：**质量门（几分钟）与�
 | `quality.yml` | push/PR 到 `main`、`develop`；手动 | **静态门禁**：backend（gofmt 漂移 / `go vet` / `go test` / swagger 是否过期）、frontend（biome）、typecheck（共享包 build + `tsc`）、docs（AGENTS.md 索引与同步） |
 | `docker-build.yml` | `v*` tag、`develop` push、手动 | 构建两个镜像推到 GHCR（供 Dokploy `image:` 拉取）。**构建前先跑 `scripts/check-metrics-exposure.sh`** |
 | `mobile-build.yml` | 手动（`workflow_dispatch`，可选平台/构建类型） | Android APK/AAB + iOS IPA。**本期挂起**（vinext 静态导出与 SSR 互斥，见 `app/web/AGENTS.md`） |
+| `docs-pages.yml` | `develop` / `main` 的文档相关改动（`app/docs/**`、`openapi.json`、自身）；手动 | 构建文档站并发布到 GitHub Pages。**单独用 Node 22**（Astro 7 要求 >= 22.23.4，quality.yml 是 Node 20） |
 | `MOBILE_CI_README.md` | — | 移动端 CI 说明（非 workflow） |
 
 ## quality.yml 的四个 job
@@ -26,6 +27,15 @@ GitHub Actions。四个 workflow，分工明确：**质量门（几分钟）与�
 
 仓库此前**没有任何 lint / 格式化 / 测试门禁**，于是 54 个 gofmt 漂移文件与 207 个 biome 错误一路提交进主干（2026-10-28 一次性清理）。`quality.yml` 就是那道门——不要因为「这次改动很小」就跳过它。
 
+## docs-pages.yml 的两道护栏
+
+| 检查 | 抓什么 | 为什么不能删 |
+|------|--------|-------------|
+| `scripts/check-base-links.mjs`（在 `app/docs` 里） | 站内绝对链接是否带 base 前缀；带前缀的链接是否指向真实产物 | 项目页挂在 `/<repo>/` 下，漏前缀或死链**构建期不报、CI 不报，只在线上 404** |
+| 内联断言 `dist/openapi.json` | prebuild 的 sync 脚本是否真的把规格复制进产物 | 漏了会让「下载 openapi.json」页变成 404 |
+
+`DOCS_SITE` / `DOCS_BASE` 由 workflow 注入。换自定义域名时改那两行，并把 `base` 设回 `/`。
+
 ## 改这里要注意
 
 - **`quality.yml` 的 `on` 分支列表**与 `docs/branching.md` 的模型一致（`main` + `develop`）；改分支模型时两边同步。
@@ -37,6 +47,6 @@ GitHub Actions。四个 workflow，分工明确：**质量门（几分钟）与�
 
 ## 本文件何时更新
 
-- 新增/删除 workflow 或 job
+- 新增/删除 workflow 或 job（当前 5 个：quality / docker-build / mobile-build / docs-pages + 说明文件）
 - 触发条件（分支、tag、手动）变化
 - 门禁命令变化（gofmt / biome / tsc / swag-check / docs 检查）

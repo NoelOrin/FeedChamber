@@ -1,5 +1,6 @@
 import starlight from '@astrojs/starlight';
 import { defineConfig } from 'astro/config';
+import rehypeBaseLinks from './scripts/rehype-base-links.mjs';
 
 /**
  * Feed Chamber 对外文档站。
@@ -11,8 +12,21 @@ import { defineConfig } from 'astro/config';
  * 版本目录并接 `starlight-versions`，本配置的侧栏结构不用改。
  */
 export default defineConfig({
-	// 部署时改这里；相对链接都基于它生成。
-	site: 'https://docs.feedchamber.example.com',
+	/*
+	 * GitHub Pages 项目页挂在 https://<owner>.github.io/<repo>/，所有绝对链接
+	 * 都必须带上 /<repo>/ 前缀，否则站内跳转与静态资源全部 404。
+	 * 因此 site/base 由环境变量注入：本地开发留空（挂在根），CI 里传真实值。
+	 * 换到自定义域名时只改 CI 的环境变量，不用动本文件。
+	 */
+	site: process.env.DOCS_SITE ?? 'https://noelorin.github.io',
+	base: process.env.DOCS_BASE ?? '/',
+	/*
+	 * 正文里手写的站内绝对链接要补 base 前缀，否则 GitHub Pages 项目页上会 404。
+	 * 侧栏与分页由 Starlight 自己处理，这个插件只兜正文。
+	 */
+	markdown: {
+		rehypePlugins: [[rehypeBaseLinks, { base: process.env.DOCS_BASE ?? '/' }]],
+	},
 	integrations: [
 		starlight({
 			title: 'Feed Chamber',
@@ -22,6 +36,8 @@ export default defineConfig({
 				root: { label: '简体中文', lang: 'zh-CN' },
 			},
 			credits: false,
+			favicon: '/favicon.svg',
+			customCss: ['./src/styles/custom.css'],
 			lastUpdated: false,
 			sidebar: [
 				{
