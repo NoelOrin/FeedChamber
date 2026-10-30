@@ -75,11 +75,12 @@ export default defineConfig({
 					],
 				},
 				{
-					label: '其他',
-					items: [
-						{ label: '常见问题', link: '/faq/' },
-						{ label: '路线图与状态', link: '/roadmap/' },
-					],
+					label: '常见问题',
+					items: [{ label: 'FAQ', link: '/faq/' }],
+				},
+				{
+					label: '路线图',
+					items: [{ label: '状态与计划', link: '/roadmap/' }],
 				},
 			],
 		}),

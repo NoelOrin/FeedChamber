@@ -64,8 +64,14 @@ app/docs/
 ```bash
 pnpm dev:docs      # 开发，默认 http://localhost:4321
 pnpm build:docs    # 构建，产物在 app/docs/dist
-pnpm --filter @feedchamber/docs check   # astro check + biome check
+pnpm --filter @feedchamber/docs check   # tsc --noEmit + biome check
 ```
+
+> **搜索只在构建产物里有**：Pagefind 的索引是构建期生成的，`dist/pagefind/` 下有
+> `pagefind.js` 与索引分片。dev 模式下 `/pagefind/*` 返回 404 是正常的，不是配置错误。
+
+`check` 用 `tsc --noEmit` 而不是 `astro check`：后者在当前 pnpm 布局下解析
+`@astrojs/check` 的传递依赖会失败（`@emnapi/runtime` 缺失）。tsc 已能覆盖类型错误。
 
 ## 多版本（预留，未启用）
 
