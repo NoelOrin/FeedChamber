@@ -12,7 +12,9 @@
 		"build:docker": "docker compose -f deploy/docker-compose.yml build",
 		"lint": "turbo run lint",
 		"format": "turbo run format",
-		"check": "turbo run check"
+		"check": "turbo run check",
+		"dev:docs": "turbo run dev --filter=@feedchamber/docs",
+		"build:docs": "turbo run build --filter=@feedchamber/docs"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.5.0",

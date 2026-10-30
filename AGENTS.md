@@ -515,11 +515,12 @@ open http://localhost:8080/swagger/
 
 <!-- 由 `node scripts/check-agents-docs.mjs --write-index` 生成，请勿手改。 -->
 
-共 41 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
+共 42 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
 
 | 模块目录 | 文档 | 标题 |
 |----------|------|------|
 | `.github/workflows/` | [AGENTS.md](.github/workflows/AGENTS.md) | CI 工作流（`.github/workflows/`） |
+| `app/docs/` | [AGENTS.md](app/docs/AGENTS.md) | 文档站（`app/docs/`） |
 | `app/server/` | [AGENTS.md](app/server/AGENTS.md) | Server 应用启动 |
 | `app/server/cmd/` | [AGENTS.md](app/server/cmd/AGENTS.md) | Cmd CLI 入口 |
 | `app/server/internal/authz/` | [AGENTS.md](app/server/internal/authz/AGENTS.md) | Authz 权限判定（`internal/authz/`） |

@@ -1,0 +1,25 @@
+{
+	"name": "@feedchamber/docs",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"predev": "node scripts/sync-openapi.mjs",
+		"dev": "astro dev",
+		"prebuild": "node scripts/sync-openapi.mjs",
+		"build": "astro build",
+		"preview": "astro preview",
+		"sync": "node scripts/sync-openapi.mjs",
+		"lint": "biome lint ./src ./astro.config.mjs ./scripts",
+		"format": "biome format ./src ./astro.config.mjs ./scripts",
+		"check": "tsc --noEmit && biome check ./src ./astro.config.mjs ./scripts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@astrojs/starlight": "^0.42.7",
+		"astro": "^7.4.4"
+	},
+	"devDependencies": {
+		"typescript": "~5.9.3"
+	}
+}

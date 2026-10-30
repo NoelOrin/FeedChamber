@@ -1,0 +1,60 @@
+---
+title: Feed Chamber 文档
+description: Go + React 社区论坛的架构、API、MCP、部署与二开指南
+template: splash
+hero:
+  tagline: 一个可自托管的社区论坛：Iris 后端 + React 19 前端，内建成长体系、可见性门控、内容审核与 MCP 双向能力。
+  actions:
+    - text: 快速开始
+      link: /getting-started/
+      icon: right-arrow
+      variant: primary
+    - text: 了解架构
+      link: /architecture/overview/
+      icon: open-book
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## 从这里开始
+
+<CardGrid stagger>
+	<Card title="5 分钟跑起来" icon="rocket">
+		用 Docker Compose 起一整套（Postgres + NATS + 后端 + 前端 + nginx），
+		拿到管理员账号并发第一篇帖子。[快速开始 →](/getting-started/)
+	</Card>
+	<Card title="它能做什么" icon="list-format">
+		版面、帖子、评论、关注、私信、通知、搜索、签到与等级、审核、门禁可见性、
+		站点自定义层、MCP 双向能力。[功能总览 →](/capabilities/)
+	</Card>
+	<Card title="接它的 API" icon="puzzle">
+		RPC 风格、写操作一律 `POST`、统一 `{code,msg,data}` 信封、
+		单一错误码命名空间。[API 约定 →](/api/conventions/)
+	</Card>
+	<Card title="给 AI 用" icon="setting">
+		本站既能作为 MCP Server 对外提供工具，也能作为客户端调用外部 MCP 服务。
+		[MCP 概览 →](/mcp/overview/)
+	</Card>
+	<Card title="自己加功能" icon="approve-check">
+		分层链路 `handler → service → repository`，新增模块有固定 checklist；
+		事件总线、门控规则、插件与主题都是既有扩展点。[二开指南 →](/extend/add-module/)
+	</Card>
+	<Card title="部署与运维" icon="laptop">
+		Compose 一键、本地开发、环境变量表与常见故障排查。[部署 →](/deploy/compose/)
+	</Card>
+</CardGrid>
+
+## 技术栈
+
+| 层 | 选型 |
+|----|------|
+| 后端 | Go + [Iris v12](https://www.iris-go.com/)，分层为 handler / service / repository，SQL 走 GORM |
+| 前端 | React 19 + [vinext](https://github.com/vinext/vinext)（App Router）、TanStack Query、shadcn 风格原语、Tailwind v4 |
+| 存储 | 默认 SQLite（本地）/ PostgreSQL（Compose）；文件可走本地磁盘或 S3 |
+| 基础设施 | 外部 NATS（JetStream）承担 KV、限流、会话缓存与事件总线 |
+| 观测 | Prometheus 指标（独立 9091 listener）+ 结构化 JSON 日志 + W3C traceparent |
+
+:::note[本站在讲什么]
+这里是**面向使用者的文档**：怎么跑、怎么调、怎么接、怎么改。
+内部工程材料（计划、评审、ADR）留在仓库的 `docs/` 目录，不进这套导航。
+:::
