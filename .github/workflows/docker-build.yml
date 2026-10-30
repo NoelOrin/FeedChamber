@@ -186,6 +186,7 @@ jobs:
             404) echo "  404 = Dokploy 不认这个 refresh token（响应是 Compose Not Found）：应用重建过就回 General 重新复制 hook URL，更新 Secret DOKPLOY_DEPLOY_HOOK。" ;;
             400) echo "  400 = 请求被拒，原因看上面打印的 message：\"Automatic deployments are disabled for this compose\" 就是该 compose 的 Auto Deploy 开关没开；也有可能是上一次部署还没结束。" ;;
             000) echo "  000 = 连不上 Dokploy（域名/网络/服务不可达），跟 token 无关。" ;;
+            301|302|30?) echo "  ${code} = Dokploy 的分支不匹配（响应是 Branch Not Match）：镜像已经推上去了，只是 Dokploy 拒绝这个分支的部署。去该应用 General 把 Branch 改成当前触发分支（当前是 ${GITHUB_REF_NAME:-unknown}）。" ;;
             *) echo "  5xx = Dokploy 自己出错，去看它的服务端日志。" ;;
           esac
           exit 1
