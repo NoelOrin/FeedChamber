@@ -28,11 +28,16 @@ export default function CustomPagesPage() {
 	const [confirm, confirmDialog] = useConfirm();
 	const queryClient = useQueryClient();
 
-	const { data, isPending } = useQuery({
-		queryKey: ['admin', 'customize', 'pages'],
-		queryFn: () => customizeService.listCustomPages({ page: 1, pageSize: 100 }),
+	// 服务端分页：固定 pageSize 会静默截断第 101 条之后的页面，
+	// 而且 page_max_size 被调低时请求会被压成默认条数而页面不报错。
+	const [page, setPage] = useState(1);
+	const [pageSize] = useState(20);
+	const { data, isPending, isError, error } = useQuery({
+		queryKey: ['admin', 'customize', 'pages', page, pageSize],
+		queryFn: () => customizeService.listCustomPages({ page, pageSize }),
 	});
 	const pages = data?.data ?? [];
+	const total = data?.total ?? 0;
 
 	const invalidate = useCallback(
 		() => queryClient.invalidateQueries({ queryKey: ['admin', 'customize', 'pages'] }),
@@ -167,11 +172,7 @@ export default function CustomPagesPage() {
 
 	return (
 		<div className="flex flex-col gap-4">
-			<PageHeader
-				title="自定义页面"
-				meta={`${pages.length} 个`}
-				actions={<Button onClick={openCreate}>新建页面</Button>}
-			/>
+			<PageHeader title="自定义页面" meta={`共 ${total} 个`} actions={<Button onClick={openCreate}>新建页面</Button>} />
 
 			<Alert>
 				<AlertDescription>
@@ -180,7 +181,19 @@ export default function CustomPagesPage() {
 				</AlertDescription>
 			</Alert>
 
-			<DataTable columns={columns} data={pages} loading={isPending} emptyText="还没有自定义页面" />
+			{isError ? (
+				<Alert variant="destructive">
+					<AlertDescription>读取自定义页面失败：{error instanceof Error ? error.message : '未知错误'}</AlertDescription>
+				</Alert>
+			) : (
+				<DataTable
+					columns={columns}
+					data={pages}
+					loading={isPending}
+					emptyText="还没有自定义页面"
+					pagination={{ page, pageSize, total, onChange: setPage }}
+				/>
+			)}
 
 			<Dialog open={open} onOpenChange={setOpen}>
 				<DialogContent className="max-w-2xl">

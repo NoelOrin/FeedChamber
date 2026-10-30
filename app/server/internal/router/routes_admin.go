@@ -122,7 +122,11 @@ func (r *reg) adminRoutes() {
 			ac.Post("/snippets/create", h.Customize.CreateSnippet)
 			ac.Post("/snippets/{id}/update", h.Customize.UpdateSnippet)
 			ac.Post("/snippets/{id}/delete", h.Customize.DeleteSnippet)
-			ac.Post("/snippets/{id}/toggle", h.Customize.ToggleSnippet)
+			// 启用 JS/HTML 片段 = 让任意脚本对全站访客生效，风险级别等同于发布：
+			// 单独要求 customize:publish，不能与「改配置」共用 customize:write。
+			ac.Post("/snippets/{id}/toggle",
+				middleware.RequirePermission(deps, model.PermCustomizePublish),
+				h.Customize.ToggleSnippet)
 			// 主题 token
 			ac.Post("/tokens/list", h.Customize.ListThemeTokens)
 			ac.Post("/tokens/set", h.Customize.SetThemeTokens)
@@ -143,7 +147,10 @@ func (r *reg) adminRoutes() {
 			ac.Post("/pages/create", h.Customize.CreateCustomPage)
 			ac.Post("/pages/{id}/update", h.Customize.UpdateCustomPage)
 			ac.Post("/pages/{id}/delete", h.Customize.DeleteCustomPage)
-			ac.Post("/pages/{id}/publish", h.Customize.PublishCustomPage)
+			// 发布自定义页同样可能把草稿里的 HTML 直接推到前台，按 publish 门控。
+			ac.Post("/pages/{id}/publish",
+				middleware.RequirePermission(deps, model.PermCustomizePublish),
+				h.Customize.PublishCustomPage)
 		})
 
 		// ── 本站 MCP Server 工具管理（P2） ─────────────────────

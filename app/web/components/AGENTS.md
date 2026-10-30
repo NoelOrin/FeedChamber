@@ -87,3 +87,14 @@ lib/                      跨域基础设施（auth / query / api adapter / seo 
 ## 等级文案（2026-10-29）
 
 `components/user/profile-header.tsx` 与 `components/user/visitor-profile-page.tsx` 都通过 `~/lib/trust` 的 `trustLabel()` 渲染等级，不再各自维护 `TRUST_LABELS`。后端 `trust_level` 已是数值（0-4 可扩展），旧的字符串键保留在映射里做兼容；P2.9 改为读取后端配置后删除该映射。
+
+## 受控注入点（2026-10-30）
+
+| 位置 | 内容 |
+|------|------|
+| `app/layout.tsx` 的 `THEME_SCRIPT` | 首绘前主题脚本 |
+| `seo/json-ld.tsx` | JSON-LD（结构化对象 + 强制转义 `<`） |
+| `customization/snippet-slot.tsx` | 站点自定义片段：按 kind 落 `<style>` / `<script>` / 容器 `<div>`（容器由 `lib/customization/emit.ts` 决定） |
+| `home/home-modules.tsx` | 首页 html 模块 |
+
+`app/layout.tsx` 与 `customization/snippet-slot.tsx` 的 `noDangerouslySetInnerHtml` 在 `biome.json` 的 overrides 里按文件关闭（逐处 inline ignore 会被格式化拆行后失效）。新增注入点 = 在本表登记 + 在 biome overrides 加文件，否则 lint 会拦。

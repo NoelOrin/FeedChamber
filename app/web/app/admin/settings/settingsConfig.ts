@@ -35,6 +35,28 @@ export const settingsGroups: SettingsGroup[] = [
 		],
 	},
 	{
+		name: 'MCP Server',
+		tab: 'site',
+		items: [
+			{
+				key: 'mcp_enabled',
+				value: 'false',
+				description: '对外暴露 /mcp（AI 客户端以 API Key 调用本站）',
+				type: 'boolean',
+			},
+			{
+				key: 'mcp_disabled_tools',
+				value: '',
+				description: '工具启停覆盖，后台「MCP 工具」页维护；负号表示显式启用写工具',
+			},
+			{
+				key: 'mcp_max_result_bytes',
+				value: '8192',
+				description: '工具结果正文上限（字节），超限截断',
+			},
+		],
+	},
+	{
 		name: 'SEO 设置',
 		tab: 'site',
 		items: [

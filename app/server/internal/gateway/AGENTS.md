@@ -60,7 +60,7 @@ protected.Use(gw.Enforce())
 | `session_store.go` | `SessionStore` | 会话权威：`Create` / `Lookup`（DB 行 + KV `sess:<sid>` read-through）/ `Revoke` / `RevokeAllForUser` / `Touch` / `Extend` |
 | `session_issue.go` | `SessionStore` | `Issue`（登录签发）/ `Rotate`（`/auth/refresh` 单用轮换）/ `shouldRenew` |
 | `session.go` | `SessionManager` | 会话列表 / 单点吊销 / logout-all / `POST /auth/logout`（**handler 层没有登出文件**）+ `TrackingMiddleware` |
-| `apikey.go` | `APIKeyManager` | `X-API-Key` 或 `Bearer ak_` 认证、scope → 权限码注册表（`read` / `write` / `admin`）、每 key 限流、Create/List/Revoke |
+| `apikey.go` | `APIKeyManager` | `X-API-Key` 或 `Bearer ak_` 认证、每 key 限流、Create/List/Revoke。scope → 权限码的注册表已移到 `internal/authz`（网关、middleware、MCP 共用一份） |
 | `security.go` | `SecurityManager` | 暴力破解计数、IP/用户黑名单、异常位置、安全事件与登录历史、可疑上报 |
 | `oauth.go` + `oauth_{google,github,discord}.go` | `OAuthManager` | **消费方** OAuth2 登录/绑定（Google / GitHub / Discord） |
 | `oauth_provider.go` + `token.go` | `OAuthProvider` | **自建** OAuth 2.0 Provider：客户端注册 / authorize / token（authorization_code + client_credentials）/ revoke；access token 为 opaque |
@@ -73,7 +73,7 @@ protected.Use(gw.Enforce())
 | 用户会话 | 64 位 hex sid，HttpOnly `master_session` cookie 或 `Authorization: Bearer <sid>` | `user_sessions` 行存在即有效；KV `sess:<sid>` 只做 read-through 缓存 |
 | OAuth2 / OIDC access token | `of_at_` + 32B base64url，库中只存 SHA-256 hex | `oauth_tokens` 行（`revoked` 列控制撤销） |
 | OIDC `id_token` | RS256 JWT | 签名私钥 PEM 持久化在 settings `sso_oidc_signing_key`，`kid` 由公钥推导 |
-| API Key | `ak_` 前缀 | `api_keys` 行 + scope 注册表 |
+| API Key | `ak_` 前缀 | `api_keys` 行 + scope 注册表（`internal/authz`） |
 
 **没有 token 黑名单**：「凭证是否有效」等价于「行是否存在」。登出 / 改密 / 改角色 / 封号都是删行。`pkg/jwt` 整包已删除；除 `id_token` 外不要再引入任何 JWT 签发或解析。
 
@@ -110,6 +110,8 @@ protected.Use(gw.Enforce())
 - 新增/删除子组件（`Gateway` 的字段、文件表一行）
 - 流水线阶段增减或顺序变化（尤其 `banCheck` / `permission` / `SecurityCheck` 的相对次序）
 - 凭证模型变化（会话 sid、opaque OAuth token、API Key scope 表）
+
+> 2026-10-30：授权判据统一到 `internal/authz.Allowed`——会话只看角色表，API Key 要 scope **且** 角色，OAuth 客户端只认 scope。此前这段逻辑在本包 `permission.go`、`middleware.RequirePermission`、`internal/mcp` 各写一份且互不一致（MCP 那条是「或」，比网关宽一格）。
 - 本包新增或移除自持 HTTP 端点
 - `Deps` 增删字段
 

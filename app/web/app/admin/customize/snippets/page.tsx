@@ -99,7 +99,10 @@ export default function SnippetsPage() {
 		}
 		setSaving(true);
 		try {
-			const body = { kind, position, content, sort, enabled };
+			// html 一律 body_end：与后端 EffectivePosition 保持一致，
+			// 前端不要提交一个后端会悄悄纠正的值。
+			const effectivePosition = kind === 'html' ? 'body_end' : position;
+			const body = { kind, position: effectivePosition, content, sort, enabled };
 			const res = editing
 				? await customizeService.updateSnippet(editing.id, body)
 				: await customizeService.createSnippet(body);
@@ -208,7 +211,7 @@ export default function SnippetsPage() {
 
 			<ActiveSummary snippets={data} />
 
-			{enabled && (kind === 'js' || kind === 'html') ? (
+			{data.some((s) => s.enabled && s.kind !== 'css') ? (
 				<Alert>
 					<AlertDescription>
 						JS 与 HTML 片段等价于对全站访客执行任意脚本。通过 MCP / API Key 写入时会被强制保存为草稿，
@@ -241,7 +244,16 @@ export default function SnippetsPage() {
 							</div>
 							<div className="flex flex-col gap-1.5">
 								<Label>注入位置</Label>
-								<Select value={position} onValueChange={(v) => setPosition(v as SnippetPosition)}>
+								{/*
+								 * html 片段固定落 body_end（head 里的裸标记会在 <body> 之前
+								 * 被解析，行为不可预期）。这里不提供选择，避免造出
+								 * 「存了 head、永远不渲染」的状态。
+								 */}
+								<Select
+									value={kind === 'html' ? 'body_end' : position}
+									disabled={kind === 'html'}
+									onValueChange={(v) => setPosition(v as SnippetPosition)}
+								>
 									<SelectTrigger>
 										<SelectValue />
 									</SelectTrigger>

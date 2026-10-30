@@ -43,10 +43,10 @@ func (r *sqlSnippetRepo) List(ctx context.Context) ([]model.Snippet, error) {
 	return items, WrapDBErr(err)
 }
 
-func (r *sqlSnippetRepo) ListEnabled(ctx context.Context, position string) ([]model.Snippet, error) {
+func (r *sqlSnippetRepo) ListEnabled(ctx context.Context) ([]model.Snippet, error) {
 	var items []model.Snippet
 	err := r.db.DB().WithContext(ctx).
-		Where("enabled = ? AND position = ?", true, position).
+		Where("enabled = ?", true).
 		Order("sort ASC, created_at ASC").
 		Find(&items).Error
 	return items, WrapDBErr(err)

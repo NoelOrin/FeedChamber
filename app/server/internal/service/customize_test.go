@@ -43,10 +43,10 @@ func (r *memSnippetRepo) List(_ context.Context) ([]model.Snippet, error) {
 	}
 	return out, nil
 }
-func (r *memSnippetRepo) ListEnabled(_ context.Context, position string) ([]model.Snippet, error) {
+func (r *memSnippetRepo) ListEnabled(_ context.Context) ([]model.Snippet, error) {
 	out := make([]model.Snippet, 0)
 	for _, s := range r.items {
-		if s.Enabled && s.Position == position {
+		if s.Enabled {
 			out = append(out, *s)
 		}
 	}

@@ -85,3 +85,13 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 3. 在 `handler.go` 的 `Deps` 加服务字段、`Handler` 加 handler 字段，并在 `New()` 中接线
 4. 到 `server/wiring.go` 把 container 里的对应服务填进 `handler.Deps`（漏了会编译报错）
 5. 在 `internal/router/router.go` 挂路由，然后 `make swag` 刷新 `openapi.json`
+
+## 站点自定义的 writeActor（2026-10-30）
+
+`customize.go` 的 `writeActor(ctx)` **不再假定调用方是人工**：网关的 Enforce 对 API Key / OAuth 客户端与用户会话一视同仁，两者都会进后台路由。来源由 `pkg.CtxAuthMethod` 决定——会话 → `WriteSourceUI`，机器凭证 → `WriteSourceMachine`，机器凭证的 `CanPublish` 只取凭证自身 scope（`authz.ScopeHas`），不继承角色。
+
+漏掉这一步的表现是：持 `customize:write` 的 Key 调 `POST /admin/customization/snippets/{id}/toggle` 就能让 JS 上线，`customize:publish` 与草稿闸门同时失效。
+
+## 前台聚合的等级过滤
+
+`GetPublicCustomization` 用 `TrustService.LevelOf` 取访问者真实等级（游客 0）。此前固定传 0，`visibility=level` 的导航与首页模块对任何人都不显示。五个分区独立降级为空并落 warn 日志（`logCustomizeIssue`），DB 抖动不拖垮整站外观。

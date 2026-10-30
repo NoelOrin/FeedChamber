@@ -4,10 +4,11 @@ import './globals.css';
 
 import { dehydrate } from '@tanstack/react-query';
 import { headers } from 'next/headers';
-
+import { SnippetSlot } from '~/components/customization/snippet-slot';
 import { Providers } from '~/components/providers';
 import { JsonLd } from '~/components/seo/json-ld';
-import { buildThemeOverrideCss, joinSnippets, loadPublicCustomization } from '~/lib/customization/server';
+import { emitSnippets } from '~/lib/customization/emit';
+import { buildThemeOverrideCss, loadPublicCustomization } from '~/lib/customization/server';
 import { loadPublicSettings, loadShellData } from '~/lib/queries/server';
 import { getQueryClient } from '~/lib/query/client';
 import { qk } from '~/lib/query/keys';
@@ -131,13 +132,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 		? { theme_tokens: [], head_snippets: [], body_snippets: [] }
 		: await loadPublicCustomization();
 	const themeCss = buildThemeOverrideCss(customization.theme_tokens);
-	const headCss = joinSnippets(customization.head_snippets.filter((s) => s.kind === 'css'));
-	const headJs = joinSnippets(customization.head_snippets.filter((s) => s.kind === 'js'));
-	const bodyScripts = joinSnippets(customization.body_snippets);
+	// 片段按 kind 选容器，且 html 只落 body_end：三类内容进不同的解析状态
+	// （css→<style>、js→<script>、html→容器 div），混装会既失效又可能截断容器。
+	const headSnippets = emitSnippets(customization.head_snippets, 'head');
+	const bodySnippets = emitSnippets(customization.body_snippets, 'body_end');
 
 	queryClient.setQueryData(qk.settings, settings);
 	queryClient.setQueryData(qk.spaces.tree, spaces);
 	queryClient.setQueryData(qk.tags.list({ page: 1, page_size: 50 }), tags);
+	// 自定义配置也要 seed：否则首屏 HomeModules/CustomNav 读到 pending 直接
+	// 返回 null（区块先消失再出现），并且各自再发一次与 RSC 相同的请求。
+	queryClient.setQueryData(qk.customization, customization);
 	if (user) queryClient.setQueryData(qk.profile, user);
 
 	return (
@@ -146,16 +151,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 				{/* 基线 __root.tsx 有 <link rel=manifest>；public/manifest.webmanifest 一直在
 				    被构建复制却没被引用，等于图标资源白占体积。补回引用，PWA 安装能力归 D7。 */}
 				<link href="/manifest.webmanifest" rel="manifest" />
-				{/* biome-ignore lint/security/noDangerouslySetInnerHtml: 主题须在首绘前落地，内联脚本是唯一无闪烁方案 */}
+				{/* 主题须在首绘前落地，内联脚本是唯一无闪烁方案；
+				    本文件的 innerHTML 规则在 biome.json 的 overrides 里按文件关闭（受控注入点）。 */}
 				<script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
 				{/*
 				 * 主题 token 覆盖：必须排在 globals.css 之后才能盖住默认值。
 				 * 只输出 CSS 变量声明，选择器由 buildThemeOverrideCss 固定。
 				 */}
-				{themeCss && (
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: token 覆盖由后台配置，名称与值已做字符集校验
-					<style id="fc-theme-overrides" dangerouslySetInnerHTML={{ __html: themeCss }} />
-				)}
+				{themeCss && <style id="fc-theme-overrides" dangerouslySetInnerHTML={{ __html: themeCss }} />}
 				{/*
 				 * 站长自定义 CSS：这是**有意允许**的任意样式注入（P1 需求）。
 				 * 与 snippets 里的 JS 一样，风险由「仅 admin 可写 + 审计 + 机器写入走草稿」控制，
@@ -163,18 +166,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
 复杂选择器。
 				 */}
-				{headCss && (
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: 自定义 CSS 是产品决定的允许项
-					<style id="fc-custom-css" dangerouslySetInnerHTML={{ __html: headCss }} />
-				)}
 				{/*
-				 * 站长自定义 JS（head 段）：**有意允许**的任意脚本注入。
-				 * 机器凭证（MCP）写入时服务端强制存草稿，需人工启用后才到这里。
+				 * 站长自定义片段（head 段）：**有意允许**的任意内容。
+				 * 容器按 kind 决定，见 lib/customization/emit.ts；机器凭证写入的
+				 * JS/HTML 在服务端被强制存草稿，需人工启用后才到这里。
 				 */}
-				{headJs && (
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: 自定义 JS 是产品决定的允许项
-					<script id="fc-custom-js" dangerouslySetInnerHTML={{ __html: headJs }} />
-				)}
+				{headSnippets.map((snippet) => (
+					<SnippetSlot key={snippet.id} snippet={snippet} />
+				))}
 			</head>
 			<body className="relative min-h-screen">
 				{/* WebSite + SearchAction：全站一份，只放首页语义，子页不重复注入。 */}
@@ -182,11 +181,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 				<Providers dehydratedState={dehydrate(queryClient)} initialUser={user}>
 					{children}
 				</Providers>
-				{/* body_end 段：放在最后，不阻塞首屏渲染。 */}
-				{bodyScripts && (
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: 自定义片段是产品决定的允许项
-					<script id="fc-custom-body" dangerouslySetInnerHTML={{ __html: bodyScripts }} />
-				)}
+				{/*
+				 * body_end 段：放在最后，不阻塞首屏渲染。
+				 * html 片段进容器 div（塞进 <script> 只会变成语法错误），
+				 * js 片段进 <script>，css 片段进 <style>。
+				 */}
+				{bodySnippets.map((snippet) => (
+					<SnippetSlot key={snippet.id} snippet={snippet} />
+				))}
 			</body>
 		</html>
 	);

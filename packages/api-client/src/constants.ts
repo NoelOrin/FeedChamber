@@ -76,6 +76,9 @@ export const SettingKey = {
 	SITE_MAINTENANCE: 'site_maintenance',
 	EMAIL_VERIFICATION_REQUIRED: 'email_verification_required',
 	API_KEY_ENABLED: 'api_key_enabled',
+	MCP_ENABLED: 'mcp_enabled',
+	MCP_DISABLED_TOOLS: 'mcp_disabled_tools',
+	MCP_MAX_RESULT_BYTES: 'mcp_max_result_bytes',
 	MFA_TOTP_ENABLED: 'mfa_totp_enabled',
 	// 文章审核模式：off / async / external / manual（默认 async）
 	MODERATION_MODE: 'moderation_mode',

@@ -176,3 +176,7 @@
 - Admin search 支持各实体独立分页参数：`users_page/users_page_size`, `posts_page/posts_page_size`, `comments_page/comments_page_size`
 
 > 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
+
+## 站点自定义的发布门（2026-10-30）
+
+网关的 path→permission 映射把 `/api/v1/admin/customization/` 整体挂在 `customize:write`（前缀优先于 pattern），因此 `publish` 与 `toggle` **额外**挂 route 级 `middleware.RequirePermission(deps, model.PermCustomizePublish)`。这两条动作等于「让任意脚本对全站访客生效」，不能与「改配置」共用同一个门。

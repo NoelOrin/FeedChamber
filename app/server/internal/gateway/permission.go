@@ -4,6 +4,7 @@ import (
 	"strings"
 	"sync"
 
+	"feedchamber/internal/authz"
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
 
@@ -98,26 +99,17 @@ func (p *PermissionCheckerMiddleware) checkPermissionInSpace(ctx iris.Context, s
 		pkg.Fail(ctx, pkg.TOKEN_NOT_EXIST)
 		return false
 	}
-	if ctx.Values().GetString(pkg.CtxAuthMethod) == "api_key" {
-		if !apiKeyHasPermission(ctx.Values().GetString(pkg.CtxAPIKeyScopes), permCode) {
-			pkg.Fail(ctx, pkg.FORBIDDEN, "API Key 权限范围不足")
-			return false
-		}
+	// 凭证来源决定判据：会话看角色表，API Key 要 scope 且角色，OAuth 客户端只认
+	// scope。三种语义集中在 authz.Allowed——它们此前在这里与 middleware、
+	// internal/mcp 各写一份，并且互不一致（MCP 那条比网关宽一格）。
+	cred := authz.CredentialFrom(ctx.Values())
+	if !authz.Allowed(cred, p.deps.Perms, permCode) {
+		pkg.Fail(ctx, pkg.FORBIDDEN)
+		return false
 	}
-	if ctx.Values().GetString(pkg.CtxAuthMethod) == "oauth_client" {
-		if !apiKeyHasPermission(ctx.Values().GetString(pkg.CtxClientScopes), permCode) {
-			pkg.Fail(ctx, pkg.FORBIDDEN, "OAuth 客户端权限范围不足")
-			return false
-		}
-		return true
-	}
-	var hasPermission bool
-	if spaceID != "" {
-		hasPermission = p.deps.Perms.HasPermissionInSpace(role, spaceID, permCode)
-	} else {
-		hasPermission = p.deps.Perms.HasPermission(role, permCode)
-	}
-	if !hasPermission {
+	if spaceID != "" && !p.deps.Perms.HasPermissionInSpace(role, spaceID, permCode) {
+		// 版面级判定在全局判定之后再走继承规则：机器凭证的 scope 是上限，
+		// 不能因为版面覆盖就把上限抬回去。
 		pkg.Fail(ctx, pkg.FORBIDDEN)
 		return false
 	}

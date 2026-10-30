@@ -56,7 +56,11 @@ func (l stubLookup) LookupUser(_ context.Context, userID string) (*model.User, e
 // verify 固定返回 true：bcrypt 校验本身有独立测试，这里要验的是
 // 「谁在什么状态下能干什么」。
 func testEnforcer(opts enforcerOpts) *Enforcer {
-	settings := stubSettings{model.SettingMCPEnabled: "true"}
+	// MCP 与 API Key 认证是两道独立开关：/mcp 用 ak_ 凭证，两者都必须是 true。
+	settings := stubSettings{
+		model.SettingMCPEnabled:    "true",
+		model.SettingAPIKeyEnabled: "true",
+	}
 	if opts.maintenance {
 		settings["site_maintenance"] = "true"
 	}
@@ -127,7 +131,8 @@ func TestScopeRegistry_DoesNotContainCustomize(t *testing.T) {
 // 一个被禁言/封禁的用户的 API Key 仍然能通过 MCP 写入数据。
 func TestEnforcer_BannedUserKeyCannotWrite(t *testing.T) {
 	enf := testEnforcer(enforcerOpts{
-		role: "user",
+		role:   "user",
+		scopes: "read,write", // scope 是上限：不给 scope 的 Key 连读工具都调不了
 		granted: map[string]bool{
 			"user|post:create": true,
 			"user|post:read":   true,
@@ -159,6 +164,7 @@ func TestEnforcer_BannedRoleRejected(t *testing.T) {
 func TestEnforcer_MaintenanceBlocksNonAdminWrites(t *testing.T) {
 	enf := testEnforcer(enforcerOpts{
 		role:        "user",
+		scopes:      "write",
 		maintenance: true,
 		granted:     map[string]bool{"user|post:create": true},
 	})
@@ -171,6 +177,7 @@ func TestEnforcer_MaintenanceBlocksNonAdminWrites(t *testing.T) {
 	// 管理员在维护模式下仍可写（与 MaintenanceGate 语义一致）。
 	adminEnf := testEnforcer(enforcerOpts{
 		role:        "admin",
+		scopes:      "write",
 		maintenance: true,
 		granted:     map[string]bool{"admin|post:create": true},
 	})

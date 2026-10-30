@@ -93,3 +93,7 @@ export default async function Page() {
 - 新增/删除/改名一个路由（URL 是硬契约，改名等于破坏站外链接）
 - 登录墙分层或设置项映射变化
 - 根布局的取数旁路、Providers 组成、元数据策略变化
+
+## 站点自定义注入（2026-10-30）
+
+`app/layout.tsx` 不再自己按 kind 分组片段：容器选择收敛到 `lib/customization/emit.ts`（css→`<style>`、js→`<script>`、html→容器 `<div>`，html 恒落 body_end），布局只渲染 `emitSnippets(...)` 的结果。html 片段塞进 `<script>` 会变成语法错误——这是此前的真实缺陷之一。根布局同时 `setQueryData(qk.customization, …)`，避免首屏客户端组件先返回 null 再补发请求。

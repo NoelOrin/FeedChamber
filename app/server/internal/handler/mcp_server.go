@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+
 	"feedchamber/internal/mcp"
 	"feedchamber/internal/pkg"
 	"feedchamber/internal/service"
@@ -20,6 +22,12 @@ type MCPServerHandler interface {
 	// 本站 MCP 工具管理
 	ListTools(ctx iris.Context)
 	SetToolEnabled(ctx iris.Context)
+}
+
+// SetToolEnabledRequest 是本站 MCP 工具启停的请求体（swag schema 需要具名类型）。
+type SetToolEnabledRequest struct {
+	Name    string `json:"name"`
+	Enabled bool   `json:"enabled"`
 }
 
 type mcpServerHandler struct {
@@ -42,6 +50,7 @@ func (h *mcpServerHandler) SetHost(host *mcp.Handler) { h.host = host }
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body object false "可传空对象"
 // @Router       /admin/mcp-servers/list [post]
 func (h *mcpServerHandler) List(ctx iris.Context) {
 	items, err := h.svc.List(ctx.Request().Context())
@@ -59,6 +68,8 @@ func (h *mcpServerHandler) List(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body object false "无需参数，可为空对象"
+// @Param        payload body service.MCPServerInput true "外部 MCP 服务"
 // @Router       /admin/mcp-servers/create [post]
 func (h *mcpServerHandler) Create(ctx iris.Context) {
 	var in service.MCPServerInput
@@ -83,6 +94,8 @@ func (h *mcpServerHandler) Create(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "服务 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.MCPServerInput true "外部 MCP 服务"
+// @Param        payload body service.MCPServerInput true "外部 MCP 服务"
 // @Router       /admin/mcp-servers/{id}/update [post]
 func (h *mcpServerHandler) Update(ctx iris.Context) {
 	var in service.MCPServerInput
@@ -105,6 +118,8 @@ func (h *mcpServerHandler) Update(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "服务 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.MCPServerInput true "外部 MCP 服务"
+// @Param        payload body object false "可传空对象"
 // @Router       /admin/mcp-servers/{id}/delete [post]
 func (h *mcpServerHandler) Delete(ctx iris.Context) {
 	if err := h.svc.Delete(ctx.Request().Context(), ctx.Params().Get("id")); err != nil {
@@ -122,6 +137,8 @@ func (h *mcpServerHandler) Delete(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "服务 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body object false "无需参数，可为空对象"
+// @Param        payload body object false "可传空对象"
 // @Router       /admin/mcp-servers/{id}/test [post]
 func (h *mcpServerHandler) Test(ctx iris.Context) {
 	result, err := h.svc.TestConnection(ctx.Request().Context(), ctx.Params().Get("id"))
@@ -139,10 +156,13 @@ func (h *mcpServerHandler) Test(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body object false "无需参数，可为空对象"
+// @Param        payload body object false "可传空对象"
 // @Router       /admin/mcp/tools [post]
 func (h *mcpServerHandler) ListTools(ctx iris.Context) {
 	if h.host == nil {
-		pkg.Success(ctx, map[string]any{"tools": []any{}, "enabled": false})
+		// 装配缺失不是「没有工具」：伪装成空清单会让后台以为一切正常。
+		pkg.Fail(ctx, pkg.INTERNAL_ERROR, "MCP 服务未装配")
 		return
 	}
 	pkg.Success(ctx, map[string]any{"tools": h.host.ToolStates()})
@@ -156,16 +176,15 @@ func (h *mcpServerHandler) ListTools(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body object false "无需参数，可为空对象"
+// @Param        payload body SetToolEnabledRequest true "工具名与启停状态"
 // @Router       /admin/mcp/tools/status [post]
 func (h *mcpServerHandler) SetToolEnabled(ctx iris.Context) {
 	if h.host == nil {
 		pkg.Fail(ctx, pkg.INTERNAL_ERROR, "MCP 服务未装配")
 		return
 	}
-	var in struct {
-		Name    string `json:"name"`
-		Enabled bool   `json:"enabled"`
-	}
+	var in SetToolEnabledRequest
 	if err := ctx.ReadJSON(&in); err != nil {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
@@ -174,8 +193,14 @@ func (h *mcpServerHandler) SetToolEnabled(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, "name 不能为空")
 		return
 	}
-	if !h.host.SetToolEnabled(in.Name, in.Enabled) {
-		pkg.Fail(ctx, pkg.NOT_FOUND, "工具不存在")
+	// 启停要落库（设置 mcp_disabled_tools）：只改内存的话重启/多实例各自漂移，
+	// 而后台的「已停用」会成为假象——这是安全方向的逆行。
+	if err := h.host.SetToolEnabled(ctx.Request().Context(), in.Name, in.Enabled); err != nil {
+		if errors.Is(err, mcp.ErrToolNotFound) {
+			pkg.Fail(ctx, pkg.NOT_FOUND, "工具不存在")
+			return
+		}
+		pkg.Fail(ctx, pkg.INTERNAL_ERROR, "工具启停保存失败: "+err.Error())
 		return
 	}
 	pkg.Success(ctx, map[string]any{"name": in.Name, "enabled": in.Enabled})

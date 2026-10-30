@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"feedchamber/internal/authz"
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
 	"feedchamber/internal/pkg/ratelimit"
@@ -83,15 +84,23 @@ func NewEnforcer(d EnforcerDeps) *Enforcer {
 }
 
 // Enabled 表示 MCP Server 总开关是否打开。关闭时一律拒绝。
+//
+// 同时要求 API Key 认证开着：站长的「关掉 API Key」是凭证层面的止血开关，
+// 若 /mcp 不看它，泄露的 Key 就仍能在这条通道上使用——这条通道没有会话
+// 鉴权兜底，只能靠这里。
 func (e *Enforcer) Enabled(ctx context.Context) bool {
 	if e.settings == nil {
 		return false
 	}
-	v, err := e.settings.Get(ctx, model.SettingMCPEnabled)
+	mcpOn, err := e.settings.Get(ctx, model.SettingMCPEnabled)
+	if err != nil || mcpOn != "true" {
+		return false
+	}
+	apiKeyOn, err := e.settings.Get(ctx, model.SettingAPIKeyEnabled)
 	if err != nil {
 		return false
 	}
-	return v == "true"
+	return apiKeyOn == "true"
 }
 
 // Authenticate 解析并校验 API Key，返回调用者身份。
@@ -207,25 +216,19 @@ func (e *Enforcer) hasPerm(ident *Identity, code string) bool {
 	// 规范里「凭证额外持有 publish 权限」的「额外」必须落在凭证本身，
 	// 否则这条分级策略就只是纸面上的。
 	if code == model.PermCustomizePublish {
-		for _, s := range splitScopes(ident.Scopes) {
-			if s == code {
-				return true
-			}
-		}
-		return false
+		return authz.ScopeHas(ident.Scopes, code)
 	}
 
-	// scope 里显式写了精确码
-	for _, s := range splitScopes(ident.Scopes) {
-		if s == code {
-			return true
-		}
-	}
-	// 角色权限表
-	if e.perms != nil && e.perms.HasPermission(ident.Role, code) {
-		return true
-	}
-	return false
+	// 其余权限码与网关同一判据：scope 与角色同时覆盖（scope 是凭证上限）。
+	//
+	// 这里曾经是「scope 或角色」，比网关宽一格：admin 的 read-only Key 只要
+	// 角色表里有 customize:write 就能调 upsert_snippet。判据现在只在
+	// internal/authz.Allowed 里实现一次。
+	return authz.Allowed(authz.Credential{
+		Method: pkg.AuthMethodAPIKey,
+		Scopes: ident.Scopes,
+		Role:   ident.Role,
+	}, e.perms, code)
 }
 
 // CanPublishCustomize 判定该凭证是否能让高风险自定义内容直接生效。

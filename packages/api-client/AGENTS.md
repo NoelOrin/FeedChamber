@@ -39,3 +39,7 @@ Web 和 Dashboard 共同依赖，封装所有后端 API 调用。
 - `postPaginated<T>(url, body?)` 返回 `{ data: T; total: number }`（`data` 即 items 数组）
 
 > 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
+
+## 常量（2026-10-30）
+
+`SettingKey` 新增 `MCP_ENABLED` / `MCP_DISABLED_TOOLS` / `MCP_MAX_RESULT_BYTES`——它们与后台 `app/admin/settings/settingsConfig.ts` 的白名单必须成对维护：漏登记就没有任何 UI 能改到该设置。

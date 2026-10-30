@@ -146,3 +146,11 @@
 的参数列表，否则不同过滤会命中同一条缓存。
 
 > 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
+
+## 站点自定义的写入校验（2026-10-30）
+
+`customize.go` 的校验是**策略边界**（渲染侧只负责按 kind 选容器）：
+
+- `validateSnippetInput`：`position` 一律用 `model.Snippet{…}.EffectivePosition()` 归一化后落库（html 恒为 `body_end`）；`validateSnippetContent` 拒绝 css 含 `</style`、js 含 `</script`——这两类内容会被原样内联进 SSR 的 `<style>` / `<script>`，结束标签能闭合容器并把剩余内容当正常标记执行。
+- `ActiveSnippets(ctx, position)` 按 `EffectivePosition()` 分组（不是按 `position` 列），存量数据里写成 head 的 html 片段因此仍能发出去。
+- `validateThemeToken`：token 必须是 `^--[a-zA-Z0-9-_]+$`，值禁 `; { } < >` 与换行、限长 512。token 覆盖只负责改色改圆角，不承担任意 CSS（那是 css 片段）。

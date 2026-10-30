@@ -75,3 +75,11 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 - 准入链（`DASHBOARD_ROLES` / `DASHBOARD_PERMISSION_CODES` / `ROUTE_PERMISSIONS`）语义变化
 - 菜单结构或分组调整
 - 后台壳层或挂载门机制变化
+
+## 站点自定义后台（2026-10-30）
+
+- **主题覆盖页**（`customize/theme`）：草稿只在该 query `isSuccess` 时同步（依赖 `dataUpdatedAt`）；`data = []` 默认值 + `[data]` 依赖会导致 pending/error 期无限渲染。行内删除必须调用 `deleteThemeToken`——`tokens/set` 只按 token 名 upsert，「从草稿里删掉」不等于服务端删除。清空全部走 `useConfirm`。
+- **自定义页**（`customize/pages`）：服务端分页（`pagination` + `total`），不再固定 `pageSize:100` 丢弃 total。
+- **片段页**（`customize/snippets`）：高风险提示条按列表数据判定（`data.some(...)`），不是弹窗表单状态；kind=html 时注入位置固定展示 body_end 且禁用选择。
+- **首页模块页**（`customize/home`）：html 模块的 config 形如 `{"html":"<div>…</div>"}`，占位符必须给 JSON，否则照提示填会稳定 400。
+- **设置页**：`settingsConfig.ts` 是声明式白名单，新增设置 key（如 `mcp_enabled` / `mcp_disabled_tools` / `mcp_max_result_bytes`）必须同时登记到这里，否则后台根本改不到。

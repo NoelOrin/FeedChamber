@@ -1,18 +1,21 @@
 package handler
 
 import (
+	"feedchamber/internal/authz"
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/logger"
 	"feedchamber/internal/service"
 
 	"github.com/kataras/iris/v12"
 )
 
-// CustomizeHandler 是站点自定义层的 HTTP 入口（后台）。
+// CustomizeHandler 是站点自定义层的 HTTP 入口。
 //
-// 注意：这里的每个写方法都构造 WriteSourceUI 的 actor——后台是人工操作，
-// 高风险内容按请求的启用状态写入。MCP 走的是同一组 service 方法，但传
-// WriteSourceMachine，由 service 层的 decideHighRisk 决定是否强制草稿。
+// 写方法一律用 writeActor 构造 actor，**不再假定调用方是人工**：
+// API Key 与 OAuth 客户端也能通过网关进入后台路由，它们必须被识别为机器
+// 凭证（高风险内容强制草稿、publish 只认 scope），否则「后台」就成了绕过
+// 分级生效的后门。
 type CustomizeHandler interface {
 	// 片段
 	ListSnippets(ctx iris.Context)
@@ -46,20 +49,71 @@ type CustomizeHandler interface {
 	GetPublicCustomization(ctx iris.Context)
 }
 
-type customizeHandler struct{ svc service.CustomizeService }
+// 以下具名请求体只为 swagger schema 而存在：处理函数仍按需读取字段，
+// 但 openapi.json 里必须有 body 形状，否则客户端与 AI 只能猜参数。
 
-func newCustomizeHandler(svc service.CustomizeService) CustomizeHandler {
-	return &customizeHandler{svc: svc}
+// ToggleSnippetRequest 是片段启停的请求体。
+type ToggleSnippetRequest struct {
+	Enabled bool `json:"enabled"`
 }
 
-// uiActor 构造后台人工操作的写入上下文。
-func uiActor(ctx iris.Context) service.WriteActor {
-	return service.WriteActor{
-		UserID: currentUserID(ctx),
-		Source: service.WriteSourceUI,
-		// 后台人工操作不受「机器凭证」限制，CanPublish 不再参与判定。
-		CanPublish: true,
+// SetThemeTokensRequest 是批量覆盖主题 token 的请求体。
+type SetThemeTokensRequest struct {
+	Items []service.ThemeTokenInput `json:"items"`
+}
+
+// ListCustomPagesRequest 是自定义页分页查询的请求体。
+type ListCustomPagesRequest struct {
+	Page     int `json:"page"`
+	PageSize int `json:"pageSize"`
+}
+
+// PublishCustomPageRequest 是自定义页发布/取消发布的请求体。
+type PublishCustomPageRequest struct {
+	Publish bool `json:"publish"`
+}
+
+type customizeHandler struct {
+	svc service.CustomizeService
+	// trust 只用于给前台聚合接口提供访问者的真实等级（可见性过滤需要它）。
+	trust service.TrustService
+}
+
+func newCustomizeHandler(svc service.CustomizeService, trust service.TrustService) CustomizeHandler {
+	return &customizeHandler{svc: svc, trust: trust}
+}
+
+// writeActor 构造写入上下文，凭证来源由网关写入的 auth_method 决定。
+//
+// 关键点：api_key / oauth_client 与人工操作走的是**同一批后台路由**
+// （网关的 Enforce 对两者一视同仁），所以来源不能由路由推断，只能读凭证。
+//   - 会话 → WriteSourceUI：站长本人在后台点按钮，按其请求的启用状态写入；
+//   - 机器 → WriteSourceMachine：高风险内容强制草稿；
+//   - CanPublish 只看凭证自身的 scope（与 MCP 的判据一致），不看角色继承。
+func writeActor(ctx iris.Context) service.WriteActor {
+	return actorFor(
+		ctx.Values().GetString(pkg.CtxAuthMethod),
+		ctx.Values().GetString(pkg.CtxAPIKeyScopes),
+		ctx.Values().GetString(pkg.CtxClientScopes),
+		currentUserID(ctx),
+	)
+}
+
+// actorFor 是 writeActor 的纯函数内核，便于测试。
+func actorFor(method, apiKeyScopes, clientScopes, userID string) service.WriteActor {
+	// 会话 = 站长本人在后台操作。发布能力由 route 级 customize:publish 门控，
+	// WriteActor.CanPublish 只对机器凭证有意义（service 层只在 Source==machine
+	// 时读它），这里填 true 表示「不会因为机器凭证的草稿规则被降级」。
+	actor := service.WriteActor{UserID: userID, Source: service.WriteSourceUI, CanPublish: true}
+	switch method {
+	case pkg.AuthMethodAPIKey:
+		actor.Source = service.WriteSourceMachine
+		actor.CanPublish = authz.ScopeHas(apiKeyScopes, model.PermCustomizePublish)
+	case pkg.AuthMethodOAuthClient:
+		actor.Source = service.WriteSourceMachine
+		actor.CanPublish = authz.ScopeHas(clientScopes, model.PermCustomizePublish)
 	}
+	return actor
 }
 
 // ── 片段 ──────────────────────────────────────────────────────
@@ -89,6 +143,7 @@ func (h *customizeHandler) ListSnippets(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.SnippetInput true "片段内容"
 // @Router       /admin/customization/snippets/create [post]
 func (h *customizeHandler) CreateSnippet(ctx iris.Context) {
 	var in service.SnippetInput
@@ -96,7 +151,7 @@ func (h *customizeHandler) CreateSnippet(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	snippet, res, err := h.svc.CreateSnippet(ctx.Request().Context(), in, uiActor(ctx))
+	snippet, res, err := h.svc.CreateSnippet(ctx.Request().Context(), in, writeActor(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -112,6 +167,8 @@ func (h *customizeHandler) CreateSnippet(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "片段 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.SnippetInput true "片段内容"
+// @Param        payload body service.SnippetInput true "片段内容"
 // @Router       /admin/customization/snippets/{id}/update [post]
 func (h *customizeHandler) UpdateSnippet(ctx iris.Context) {
 	id := ctx.Params().Get("id")
@@ -120,7 +177,7 @@ func (h *customizeHandler) UpdateSnippet(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	snippet, res, err := h.svc.UpdateSnippet(ctx.Request().Context(), id, in, uiActor(ctx))
+	snippet, res, err := h.svc.UpdateSnippet(ctx.Request().Context(), id, in, writeActor(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -135,9 +192,10 @@ func (h *customizeHandler) UpdateSnippet(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "片段 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.SnippetInput true "片段内容"
 // @Router       /admin/customization/snippets/{id}/delete [post]
 func (h *customizeHandler) DeleteSnippet(ctx iris.Context) {
-	if err := h.svc.DeleteSnippet(ctx.Request().Context(), ctx.Params().Get("id"), uiActor(ctx)); err != nil {
+	if err := h.svc.DeleteSnippet(ctx.Request().Context(), ctx.Params().Get("id"), writeActor(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
@@ -152,16 +210,15 @@ func (h *customizeHandler) DeleteSnippet(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "片段 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body ToggleSnippetRequest true "启停状态"
 // @Router       /admin/customization/snippets/{id}/toggle [post]
 func (h *customizeHandler) ToggleSnippet(ctx iris.Context) {
-	var in struct {
-		Enabled bool `json:"enabled"`
-	}
+	var in ToggleSnippetRequest
 	if err := ctx.ReadJSON(&in); err != nil {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	if err := h.svc.SetSnippetEnabled(ctx.Request().Context(), ctx.Params().Get("id"), in.Enabled, uiActor(ctx)); err != nil {
+	if err := h.svc.SetSnippetEnabled(ctx.Request().Context(), ctx.Params().Get("id"), in.Enabled, writeActor(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
@@ -176,6 +233,7 @@ func (h *customizeHandler) ToggleSnippet(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body ToggleSnippetRequest true "启停状态"
 // @Router       /admin/customization/tokens/list [post]
 func (h *customizeHandler) ListThemeTokens(ctx iris.Context) {
 	items, err := h.svc.ListThemeTokens(ctx.Request().Context())
@@ -194,16 +252,15 @@ func (h *customizeHandler) ListThemeTokens(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body SetThemeTokensRequest true "token 覆盖列表"
 // @Router       /admin/customization/tokens/set [post]
 func (h *customizeHandler) SetThemeTokens(ctx iris.Context) {
-	var in struct {
-		Items []service.ThemeTokenInput `json:"items"`
-	}
+	var in SetThemeTokensRequest
 	if err := ctx.ReadJSON(&in); err != nil {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	res, err := h.svc.SetThemeTokens(ctx.Request().Context(), in.Items, uiActor(ctx))
+	res, err := h.svc.SetThemeTokens(ctx.Request().Context(), in.Items, writeActor(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -217,9 +274,10 @@ func (h *customizeHandler) SetThemeTokens(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body SetThemeTokensRequest true "token 覆盖列表"
 // @Router       /admin/customization/tokens/{token}/delete [post]
 func (h *customizeHandler) DeleteThemeToken(ctx iris.Context) {
-	if err := h.svc.DeleteThemeToken(ctx.Request().Context(), ctx.Params().Get("token"), uiActor(ctx)); err != nil {
+	if err := h.svc.DeleteThemeToken(ctx.Request().Context(), ctx.Params().Get("token"), writeActor(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
@@ -234,7 +292,7 @@ func (h *customizeHandler) DeleteThemeToken(ctx iris.Context) {
 // @Success      200  {object}  pkg.Response
 // @Router       /admin/customization/tokens/clear [post]
 func (h *customizeHandler) ClearThemeTokens(ctx iris.Context) {
-	if err := h.svc.ClearThemeTokens(ctx.Request().Context(), uiActor(ctx)); err != nil {
+	if err := h.svc.ClearThemeTokens(ctx.Request().Context(), writeActor(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
@@ -266,6 +324,7 @@ func (h *customizeHandler) ListNavItems(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.NavItemInput true "导航项"
 // @Router       /admin/customization/nav/create [post]
 func (h *customizeHandler) CreateNavItem(ctx iris.Context) {
 	var in service.NavItemInput
@@ -273,7 +332,7 @@ func (h *customizeHandler) CreateNavItem(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	item, res, err := h.svc.CreateNavItem(ctx.Request().Context(), in, uiActor(ctx))
+	item, res, err := h.svc.CreateNavItem(ctx.Request().Context(), in, writeActor(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -289,6 +348,8 @@ func (h *customizeHandler) CreateNavItem(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "导航项 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.NavItemInput true "导航项"
+// @Param        payload body service.NavItemInput true "导航项"
 // @Router       /admin/customization/nav/{id}/update [post]
 func (h *customizeHandler) UpdateNavItem(ctx iris.Context) {
 	var in service.NavItemInput
@@ -296,7 +357,7 @@ func (h *customizeHandler) UpdateNavItem(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	item, res, err := h.svc.UpdateNavItem(ctx.Request().Context(), ctx.Params().Get("id"), in, uiActor(ctx))
+	item, res, err := h.svc.UpdateNavItem(ctx.Request().Context(), ctx.Params().Get("id"), in, writeActor(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -311,9 +372,10 @@ func (h *customizeHandler) UpdateNavItem(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "导航项 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.NavItemInput true "导航项"
 // @Router       /admin/customization/nav/{id}/delete [post]
 func (h *customizeHandler) DeleteNavItem(ctx iris.Context) {
-	if err := h.svc.DeleteNavItem(ctx.Request().Context(), ctx.Params().Get("id"), uiActor(ctx)); err != nil {
+	if err := h.svc.DeleteNavItem(ctx.Request().Context(), ctx.Params().Get("id"), writeActor(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
@@ -345,6 +407,7 @@ func (h *customizeHandler) ListHomeModules(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.HomeModuleInput true "首页模块"
 // @Router       /admin/customization/modules/create [post]
 func (h *customizeHandler) CreateHomeModule(ctx iris.Context) {
 	var in service.HomeModuleInput
@@ -352,7 +415,7 @@ func (h *customizeHandler) CreateHomeModule(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	m, res, err := h.svc.CreateHomeModule(ctx.Request().Context(), in, uiActor(ctx))
+	m, res, err := h.svc.CreateHomeModule(ctx.Request().Context(), in, writeActor(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -368,6 +431,8 @@ func (h *customizeHandler) CreateHomeModule(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "模块 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.HomeModuleInput true "首页模块"
+// @Param        payload body service.HomeModuleInput true "首页模块"
 // @Router       /admin/customization/modules/{id}/update [post]
 func (h *customizeHandler) UpdateHomeModule(ctx iris.Context) {
 	var in service.HomeModuleInput
@@ -375,7 +440,7 @@ func (h *customizeHandler) UpdateHomeModule(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	m, res, err := h.svc.UpdateHomeModule(ctx.Request().Context(), ctx.Params().Get("id"), in, uiActor(ctx))
+	m, res, err := h.svc.UpdateHomeModule(ctx.Request().Context(), ctx.Params().Get("id"), in, writeActor(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -390,9 +455,10 @@ func (h *customizeHandler) UpdateHomeModule(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "模块 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.HomeModuleInput true "首页模块"
 // @Router       /admin/customization/modules/{id}/delete [post]
 func (h *customizeHandler) DeleteHomeModule(ctx iris.Context) {
-	if err := h.svc.DeleteHomeModule(ctx.Request().Context(), ctx.Params().Get("id"), uiActor(ctx)); err != nil {
+	if err := h.svc.DeleteHomeModule(ctx.Request().Context(), ctx.Params().Get("id"), writeActor(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
@@ -408,12 +474,10 @@ func (h *customizeHandler) DeleteHomeModule(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body ListCustomPagesRequest false "分页参数；可传空对象"
 // @Router       /admin/customization/pages/list [post]
 func (h *customizeHandler) ListCustomPages(ctx iris.Context) {
-	var in struct {
-		Page     int `json:"page"`
-		PageSize int `json:"pageSize"`
-	}
+	var in ListCustomPagesRequest
 	_ = ctx.ReadJSON(&in)
 	items, total, err := h.svc.ListCustomPages(ctx.Request().Context(), in.Page, in.PageSize)
 	if err != nil {
@@ -430,6 +494,8 @@ func (h *customizeHandler) ListCustomPages(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Success      200  {object}  pkg.Response
+// @Param        payload body ListCustomPagesRequest false "分页参数"
+// @Param        payload body service.CustomPageInput true "自定义页"
 // @Router       /admin/customization/pages/create [post]
 func (h *customizeHandler) CreateCustomPage(ctx iris.Context) {
 	var in service.CustomPageInput
@@ -437,7 +503,7 @@ func (h *customizeHandler) CreateCustomPage(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	p, res, err := h.svc.CreateCustomPage(ctx.Request().Context(), in, uiActor(ctx))
+	p, res, err := h.svc.CreateCustomPage(ctx.Request().Context(), in, writeActor(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -453,6 +519,8 @@ func (h *customizeHandler) CreateCustomPage(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "页面 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.CustomPageInput true "自定义页"
+// @Param        payload body service.CustomPageInput true "自定义页"
 // @Router       /admin/customization/pages/{id}/update [post]
 func (h *customizeHandler) UpdateCustomPage(ctx iris.Context) {
 	var in service.CustomPageInput
@@ -460,7 +528,7 @@ func (h *customizeHandler) UpdateCustomPage(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	p, res, err := h.svc.UpdateCustomPage(ctx.Request().Context(), ctx.Params().Get("id"), in, uiActor(ctx))
+	p, res, err := h.svc.UpdateCustomPage(ctx.Request().Context(), ctx.Params().Get("id"), in, writeActor(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -475,9 +543,10 @@ func (h *customizeHandler) UpdateCustomPage(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "页面 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body service.CustomPageInput true "自定义页"
 // @Router       /admin/customization/pages/{id}/delete [post]
 func (h *customizeHandler) DeleteCustomPage(ctx iris.Context) {
-	if err := h.svc.DeleteCustomPage(ctx.Request().Context(), ctx.Params().Get("id"), uiActor(ctx)); err != nil {
+	if err := h.svc.DeleteCustomPage(ctx.Request().Context(), ctx.Params().Get("id"), writeActor(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
@@ -492,16 +561,15 @@ func (h *customizeHandler) DeleteCustomPage(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id path string true "页面 ID"
 // @Success      200  {object}  pkg.Response
+// @Param        payload body PublishCustomPageRequest true "发布开关"
 // @Router       /admin/customization/pages/{id}/publish [post]
 func (h *customizeHandler) PublishCustomPage(ctx iris.Context) {
-	var in struct {
-		Publish bool `json:"publish"`
-	}
+	var in PublishCustomPageRequest
 	if err := ctx.ReadJSON(&in); err != nil {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	p, res, err := h.svc.PublishCustomPage(ctx.Request().Context(), ctx.Params().Get("id"), in.Publish, uiActor(ctx))
+	p, res, err := h.svc.PublishCustomPage(ctx.Request().Context(), ctx.Params().Get("id"), in.Publish, writeActor(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -519,6 +587,7 @@ func (h *customizeHandler) PublishCustomPage(ctx iris.Context) {
 // @Param        slug path string true "页面 slug"
 // @Success      200  {object}  pkg.Response
 // @Failure      404  {object}  pkg.Response
+// @Param        payload body PublishCustomPageRequest true "发布开关"
 // @Router       /pages/{slug} [get]
 func (h *customizeHandler) GetPublicPage(ctx iris.Context) {
 	p, err := h.svc.GetPublishedPage(ctx.Request().Context(), ctx.Params().Get("slug"))
@@ -534,6 +603,21 @@ func (h *customizeHandler) GetPublicPage(ctx iris.Context) {
 	})
 }
 
+// logCustomizeIssue 记录前台聚合的分区级失败。
+//
+// 前台自定义是装饰层，读失败要降级而不是 500；但降级不等于无声——
+// 只有日志里能区分「站长没配」与「最近一次读挂了」。
+func logCustomizeIssue(ctx iris.Context, part string, err error) {
+	if err == nil {
+		return
+	}
+	logger.FromContext(ctx.Request().Context()).
+		WithComponent("customize").
+		Warn("customization unavailable",
+			logger.F("part", part),
+			logger.F("error", err.Error()))
+}
+
 // 前台自定义聚合
 // @Summary      前台自定义聚合
 // @Description  返回导航、首页模块与生效片段，供首屏注入使用。已按可见性过滤。
@@ -543,17 +627,28 @@ func (h *customizeHandler) GetPublicPage(ctx iris.Context) {
 // @Router       /customization/public [post]
 func (h *customizeHandler) GetPublicCustomization(ctx iris.Context) {
 	reqCtx := ctx.Request().Context()
-	isLogin := currentUserID(ctx) != ""
-	// 游客按 TL0；登录用户的等级在网关阶段未加载，这里用 0 兜底，
-	// 前台导航的等级过滤因此对登录用户按最低等级处理——宁可少显示一项，
-	// 也不要因为等级判定失败而多显示。
+	viewerID := currentUserID(ctx)
+	isLogin := viewerID != ""
+	// 真实等级：`visibility=level` 的导航与首页模块按它过滤。
+	// 固定传 0 会让该可见性选项对所有人都不生效（包括站长本人），
+	// 而 `TrustService.LevelOf` 本身就是廉价读（游客返回 0）。
 	level := 0
+	if isLogin && h.trust != nil {
+		level = h.trust.LevelOf(reqCtx, viewerID)
+	}
 
-	nav, _ := h.svc.PublicNav(reqCtx, isLogin, level)
-	modules, _ := h.svc.PublicHomeModules(reqCtx, isLogin, level)
-	headSnippets, _ := h.svc.ActiveSnippets(reqCtx, model.SnippetPositionHead)
-	bodySnippets, _ := h.svc.ActiveSnippets(reqCtx, model.SnippetPositionBodyEnd)
-	tokens, _ := h.svc.ThemeOverrides(reqCtx)
+	// 五个分区相互独立，任一分区失败都不该拖垮整站外观——降级为空，
+	// 但要留日志：静默空数组会让「配置没生效」变成无法排查的现象。
+	nav, err := h.svc.PublicNav(reqCtx, isLogin, level)
+	logCustomizeIssue(ctx, "public.nav", err)
+	modules, err := h.svc.PublicHomeModules(reqCtx, isLogin, level)
+	logCustomizeIssue(ctx, "public.modules", err)
+	headSnippets, err := h.svc.ActiveSnippets(reqCtx, model.SnippetPositionHead)
+	logCustomizeIssue(ctx, "public.snippets.head", err)
+	bodySnippets, err := h.svc.ActiveSnippets(reqCtx, model.SnippetPositionBodyEnd)
+	logCustomizeIssue(ctx, "public.snippets.body", err)
+	tokens, err := h.svc.ThemeOverrides(reqCtx)
+	logCustomizeIssue(ctx, "public.tokens", err)
 
 	pkg.Success(ctx, map[string]any{
 		"nav":           nav,

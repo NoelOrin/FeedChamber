@@ -55,3 +55,7 @@
 - **AuthGate 取代硬编码 public/protected 判断**：设置值经 `auth.go` 内 30s TTL 进程级缓存（key 为 `gateCache`），KV 故障时允许 2×TTL 的旧值降级，设置项缺失视为空值（fail-open），其它 KV 错误 fail-closed 返回 `INTERNAL_ERROR`。
 
 > 引用本包以外的位置时用符号名而非行号——行号在任何一次拆分或插入后都会腐化（本轮 router 拆分后即出现大批失效行号）。
+
+## RequirePermission 的凭证语义（2026-10-30）
+
+`RequirePermission(deps, code)` 不再只查角色权限表：它调用 `authz.Allowed(authz.CredentialFrom(ctx.Values()), …)`，与会话/网关同一判据——API Key 必须 scope 与角色同时覆盖，OAuth 客户端只认 scope。此前这里忽略 scope，等于让 route 级门控（`/admin/mcp`、`/admin/backups`、`/admin/webhooks`）对机器凭证失去上限。

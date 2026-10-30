@@ -233,7 +233,7 @@ export default function HomeModulesPage() {
 							<Textarea
 								rows={6}
 								className="font-mono text-xs"
-								placeholder={kind === 'html' ? '<div>自定义内容</div>' : '{"limit": 5}'}
+								placeholder={kind === 'html' ? '{"html":"<div>自定义内容</div>"}' : '{"limit": 5}'}
 								value={config}
 								onChange={(e) => setConfig(e.target.value)}
 							/>

@@ -17,6 +17,9 @@ func newTestServer(t *testing.T) (*Server, *Registry) {
 	t.Helper()
 	enf := testEnforcer(enforcerOpts{
 		role: "admin",
+		// 真实 Key 至少有一个 scope；这里给到与在用权限码对应的集合，
+		// 让 server 级测试聚焦协议形状而不是授权。
+		scopes: "read,write,customize:read,customize:write",
 		granted: map[string]bool{
 			"admin|" + model.PermPostRead:       true,
 			"admin|" + model.PermCustomizeRead:  true,

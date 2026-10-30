@@ -46,8 +46,11 @@ export function buildThemeOverrideCss(tokens: PublicCustomization['theme_tokens'
 
 	// 只允许合法 CSS 自定义属性名，防止把 `}` 之类的注入进声明块。
 	const safeName = (name: string) => /^--[a-zA-Z0-9-_]+$/.test(name);
-	// 值里禁掉能提前闭合声明块或选择器的字符。
-	const safeValue = (value: string) => !/[;{}]/.test(value);
+	// 值里禁掉能提前闭合声明块 / 元素或开启新规则的字符。
+	// `<` 单独列出来是因为这一段最终会被 SSR 进 HTML 文档：值里的 `</style>`
+	// 会闭合我们的 <style>，后面的标记由文档解析器当正常节点执行。
+	// 服务端写入时同样校验（service.validateThemeToken），这里只做兜底。
+	const safeValue = (value: string) => !/[;{}<>]/.test(value) && !/[\r\n]/.test(value);
 
 	const root: string[] = [];
 	const dark: string[] = [];
@@ -67,10 +70,4 @@ export function buildThemeOverrideCss(tokens: PublicCustomization['theme_tokens'
 	if (root.length) parts.push(`:root{${root.join('')}}`);
 	if (dark.length) parts.push(`.dark{${dark.join('')}}`);
 	return parts.join('\n');
-}
-
-/** 把一组已启用片段拼成可注入的文本。 */
-export function joinSnippets(snippets: { content: string }[] | undefined): string {
-	if (!snippets || snippets.length === 0) return '';
-	return snippets.map((s) => s.content).join('\n');
 }

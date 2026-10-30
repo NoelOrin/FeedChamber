@@ -9,8 +9,7 @@
 | 文件 | 说明 |
 |------|------|
 | `docker-compose.yml` | 默认档：postgres 16 + nats 2.10(`-js`) + nats-exporter + backend + frontend + nginx；named volumes `feedchamber_pg` / `feedchamber_nats` / `feedchamber_uploads` |
-| `docker-compose.dokploy.yml` | Dokploy 档：入口交给 Traefik，nginx 用 `expose` 而非 `ports`、接入 `dokploy-network`，且 backend/frontend 用 `image:` 而非 `build:`（镜像由 CI 推 GHCR）。**与默认档只差这三处，改基础档时必须同步这里** |
-| `nginx/nginx.conf` | 反向代理：`/api/v1/` → backend，`/` → web SSR（匿名页 60s 共享缓存），另有 6 条**精确匹配**的爬虫路由 + 1 条 SSE 专用 regex location |
+| `nginx/nginx.conf` | 反向代理：`/api/v1/` → backend，`/mcp` → backend（MCP 协议端点，应用根），`/` → web SSR（匿名页 60s 共享缓存），另有 6 条**精确匹配**的爬虫路由 + 1 条 SSE 专用 regex location |
 | `prometheus.yml` + `prometheus/rules/feedchamber.yml` | 抓取配置与告警规则 |
 | `grafana/` | 数据源与仪表盘 provisioning |
 | `blackbox/blackbox.yml` | 探针（外部可达性） |
@@ -68,10 +67,10 @@ bash scripts/check-metrics-exposure.sh                        # 本地跑护栏
 ## 改这里要注意
 
 - **Dokploy 档绝不能有 `build:`**：镜像由 `.github/workflows/docker-build.yml` 构建推 GHCR（`ghcr.io/<owner>/feedchamber-{server,web}`），线上 `docker compose up` 只做 pull。这台机器 2 vCPU / 3.9G 且 swap 常满，服务器上跑 `go build` + `vinext build` 会打穿内存（实测 load 131、全站不可用）。回滚靠改 `IMAGE_TAG=sha-<短哈希>` 而不是重构建。
-- **改 `docker-compose.yml` 的服务定义时同步 `docker-compose.dokploy.yml`**。两份是整份复制而非 `include`（Compose 的 include 会报 `services.nginx conflicts`，`!override` 会丢 `image`/`volumes`/`depends_on`，两者实测都不可行）。
+- **`docker-compose.dokploy.yml` 已随 2026-10-29 的部署收敛删除**（Dokploy 直接用默认档，入口交给平台的 Traefik）。`.env.example` / `README.md` 里若还有它的引用，说明文档在漂，改到哪就顺手删掉。
 - **顶层 `volumes:` 每个卷都要写成显式映射（含 `name:`）**。Dokploy 保存 compose 时会把值为空的条目（`feedchamber_pg:` 解析为 null）丢掉，部署时报 `service "postgres" refers to undefined volume feedchamber_pg`——写 `feedchamber_pg: {name: feedchamber_pg}` 才不会被吞。
 - **不要给 backend 加 `ports: 9091`**，也不要在 nginx 加指向 9091 的 `location`。
-- **nginx 改路径规则时同步检查 6 条爬虫 location 与 `/swagger/`、`/health`**。
+- **nginx 改路径规则时同步检查 6 条爬虫 location 与 `/swagger/`、`/health`、`/mcp`**。`/mcp` 由后端注册在应用根，少一条 `location = /mcp` 它会落到 `location /` 打到前端并在那里 404——而后台与文档都告诉客户端 POST `<站点>/mcp`。
 - **SSE 路径不能落回 `location /api/v1/`**：`^/api/v1/(notifications|realtime)/stream$` 的 regex location 必须先于前缀匹配生效，且必须带 `proxy_buffering off` 与长 `proxy_read_timeout`。继承默认值（60s）时实测空闲通知流每次 ~61s 被切断，客户端退避重连几次后彻底放弃。
 - 镜像构建上下文是**仓库根**（两个 Dockerfile 的 `COPY` 按仓库根书写），改 Dockerfile 时注意路径。
 - 告警阈值是经验值，用 `scripts/calibrate-alert-thresholds.sh` 在真实流量环境校准，不要凭感觉调。

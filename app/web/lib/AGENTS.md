@@ -67,3 +67,13 @@ lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / ut
 - `qk` 顶层结构变化
 - `query/client.ts` 的 staleTime / retry 策略变化
 - RSC 接缝（`queries/server.ts`）的降级语义变化
+
+## 自定义层（`lib/customization/`，2026-10-30）
+
+| 文件 | 职责 |
+|------|------|
+| `server.ts` | RSC 侧读 `customization/public`（`cache()` 包裹，失败降级空值）+ `buildThemeOverrideCss`（token 名/值白名单） |
+| `client.ts` | 客户端 queryOptions（`qk.customization`，与后台 invalidate 共用同一个 key） |
+| `emit.ts` | **片段 → DOM 容器的唯一映射**：按 kind 选 `<style>` / `<script>` / 容器 `<div>`，并中和 `</style` / `</script` |
+
+根布局把 `customization` 一并 `setQueryData(qk.customization, …)`，否则首屏 HomeModules/CustomNav 读到 pending 先返回 null 再补发请求。

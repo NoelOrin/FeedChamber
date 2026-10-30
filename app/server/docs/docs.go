@@ -1025,6 +1025,17 @@ const docTemplate = `{
                     "站点自定义"
                 ],
                 "summary": "创建首页模块",
+                "parameters": [
+                    {
+                        "description": "首页模块",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.HomeModuleInput"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1080,6 +1091,15 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "首页模块",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.HomeModuleInput"
+                        }
                     }
                 ],
                 "responses": {
@@ -1116,6 +1136,24 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "首页模块",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.HomeModuleInput"
+                        }
+                    },
+                    {
+                        "description": "首页模块",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.HomeModuleInput"
+                        }
                     }
                 ],
                 "responses": {
@@ -1145,6 +1183,17 @@ const docTemplate = `{
                     "站点自定义"
                 ],
                 "summary": "创建导航项",
+                "parameters": [
+                    {
+                        "description": "导航项",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.NavItemInput"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1200,6 +1249,15 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "导航项",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.NavItemInput"
+                        }
                     }
                 ],
                 "responses": {
@@ -1236,6 +1294,24 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "导航项",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.NavItemInput"
+                        }
+                    },
+                    {
+                        "description": "导航项",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.NavItemInput"
+                        }
                     }
                 ],
                 "responses": {
@@ -1265,6 +1341,25 @@ const docTemplate = `{
                     "站点自定义"
                 ],
                 "summary": "创建自定义页",
+                "parameters": [
+                    {
+                        "description": "分页参数",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ListCustomPagesRequest"
+                        }
+                    },
+                    {
+                        "description": "自定义页",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.CustomPageInput"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1292,6 +1387,16 @@ const docTemplate = `{
                     "站点自定义"
                 ],
                 "summary": "自定义页列表",
+                "parameters": [
+                    {
+                        "description": "分页参数；可传空对象",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ListCustomPagesRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1323,6 +1428,15 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "自定义页",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.CustomPageInput"
+                        }
                     }
                 ],
                 "responses": {
@@ -1359,6 +1473,15 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "发布开关",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.PublishCustomPageRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -1395,6 +1518,24 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "自定义页",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.CustomPageInput"
+                        }
+                    },
+                    {
+                        "description": "自定义页",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.CustomPageInput"
+                        }
                     }
                 ],
                 "responses": {
@@ -1425,6 +1566,17 @@ const docTemplate = `{
                     "站点自定义"
                 ],
                 "summary": "创建片段",
+                "parameters": [
+                    {
+                        "description": "片段内容",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.SnippetInput"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1481,6 +1633,15 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "片段内容",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.SnippetInput"
+                        }
                     }
                 ],
                 "responses": {
@@ -1517,6 +1678,15 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "启停状态",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.ToggleSnippetRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -1553,6 +1723,24 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "片段内容",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.SnippetInput"
+                        }
+                    },
+                    {
+                        "description": "片段内容",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.SnippetInput"
+                        }
                     }
                 ],
                 "responses": {
@@ -1603,6 +1791,17 @@ const docTemplate = `{
                     "站点自定义"
                 ],
                 "summary": "主题覆盖列表",
+                "parameters": [
+                    {
+                        "description": "启停状态",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.ToggleSnippetRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1631,6 +1830,17 @@ const docTemplate = `{
                     "站点自定义"
                 ],
                 "summary": "设置主题覆盖",
+                "parameters": [
+                    {
+                        "description": "token 覆盖列表",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SetThemeTokensRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1655,6 +1865,17 @@ const docTemplate = `{
                     "站点自定义"
                 ],
                 "summary": "删除主题覆盖",
+                "parameters": [
+                    {
+                        "description": "token 覆盖列表",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SetThemeTokensRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2194,6 +2415,25 @@ const docTemplate = `{
                     "外部 MCP"
                 ],
                 "summary": "登记外部 MCP 服务",
+                "parameters": [
+                    {
+                        "description": "无需参数，可为空对象",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    {
+                        "description": "外部 MCP 服务",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.MCPServerInput"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2219,6 +2459,16 @@ const docTemplate = `{
                     "外部 MCP"
                 ],
                 "summary": "外部 MCP 服务列表",
+                "parameters": [
+                    {
+                        "description": "可传空对象",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2250,6 +2500,23 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "外部 MCP 服务",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.MCPServerInput"
+                        }
+                    },
+                    {
+                        "description": "可传空对象",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -2284,6 +2551,22 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "无需参数，可为空对象",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    {
+                        "description": "可传空对象",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
                     }
                 ],
                 "responses": {
@@ -2321,6 +2604,24 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "外部 MCP 服务",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.MCPServerInput"
+                        }
+                    },
+                    {
+                        "description": "外部 MCP 服务",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.MCPServerInput"
+                        }
                     }
                 ],
                 "responses": {
@@ -2348,6 +2649,24 @@ const docTemplate = `{
                     "MCP"
                 ],
                 "summary": "MCP 工具清单",
+                "parameters": [
+                    {
+                        "description": "无需参数，可为空对象",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    {
+                        "description": "可传空对象",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2376,6 +2695,25 @@ const docTemplate = `{
                     "MCP"
                 ],
                 "summary": "启停 MCP 工具",
+                "parameters": [
+                    {
+                        "description": "无需参数，可为空对象",
+                        "name": "payload",
+                        "in": "body",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    {
+                        "description": "工具名与启停状态",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SetToolEnabledRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -8142,6 +8480,15 @@ const docTemplate = `{
                         "name": "slug",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "发布开关",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.PublishCustomPageRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -14721,6 +15068,17 @@ const docTemplate = `{
                 }
             }
         },
+        "handler.ListCustomPagesRequest": {
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer"
+                },
+                "pageSize": {
+                    "type": "integer"
+                }
+            }
+        },
         "handler.ListParams": {
             "type": "object",
             "properties": {
@@ -14735,6 +15093,44 @@ const docTemplate = `{
                 },
                 "start_time": {
                     "type": "string"
+                }
+            }
+        },
+        "handler.PublishCustomPageRequest": {
+            "type": "object",
+            "properties": {
+                "publish": {
+                    "type": "boolean"
+                }
+            }
+        },
+        "handler.SetThemeTokensRequest": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/service.ThemeTokenInput"
+                    }
+                }
+            }
+        },
+        "handler.SetToolEnabledRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.ToggleSnippetRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
                 }
             }
         },
@@ -16239,6 +16635,23 @@ const docTemplate = `{
                 }
             }
         },
+        "service.CustomPageInput": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "slug": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "service.DashboardData": {
             "type": "object",
             "properties": {
@@ -16349,6 +16762,32 @@ const docTemplate = `{
                 }
             }
         },
+        "service.HomeModuleInput": {
+            "type": "object",
+            "properties": {
+                "config": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "min_level": {
+                    "type": "integer"
+                },
+                "sort": {
+                    "type": "integer"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "visibility": {
+                    "type": "string"
+                }
+            }
+        },
         "service.LoginRequest": {
             "type": "object",
             "properties": {
@@ -16357,6 +16796,58 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.MCPServerInput": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "endpoint": {
+                    "type": "string"
+                },
+                "headers": {
+                    "type": "string"
+                },
+                "moderation_tool": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "purpose": {
+                    "type": "string"
+                },
+                "transport": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.NavItemInput": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "href": {
+                    "type": "string"
+                },
+                "icon": {
+                    "type": "string"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "min_level": {
+                    "type": "integer"
+                },
+                "sort": {
+                    "type": "integer"
+                },
+                "visibility": {
                     "type": "string"
                 }
             }
@@ -16389,6 +16880,40 @@ const docTemplate = `{
                 },
                 "users": {
                     "$ref": "#/definitions/service.EntitySearchResult-model_User"
+                }
+            }
+        },
+        "service.SnippetInput": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "enabled": {
+                    "type": "boolean"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "position": {
+                    "type": "string"
+                },
+                "sort": {
+                    "type": "integer"
+                }
+            }
+        },
+        "service.ThemeTokenInput": {
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "type": "string"
+                },
+                "token": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
                 }
             }
         },

@@ -53,3 +53,7 @@
 4. 在 `internal/container/container.go` 装配，并在对应 service 构造函数里接收接口
 
 > 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
+
+## 片段读取（2026-10-30）
+
+`SnippetRepository.ListEnabled(ctx)` **不再按 `position` 列过滤**：权威位置是 `model.Snippet.EffectivePosition()`（html 恒为 `body_end`），存量数据可能仍写着 head。位置匹配在 service 层做，SQL 只管 `enabled = true`——两套判定并存时会让「存了 head 的 html 片段」永远发不出去且不报错。

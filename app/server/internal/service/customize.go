@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -110,11 +111,13 @@ func validateSnippetInput(in *SnippetInput) error {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "kind 必须是 css / js / html")
 	}
 	if in.Position == "" {
-		// html 一律归一化到 body_end（见 EffectivePosition）。
-		if in.Kind == model.SnippetKindHTML {
-			in.Position = model.SnippetPositionBodyEnd
-		} else {
+		if in.Kind == model.SnippetKindJS {
 			in.Position = model.SnippetPositionHead
+		} else {
+			// html 与 css 的默认落点是 body_end：head 里的裸 HTML 会在 <body>
+			// 之前被解析（行为不可预期），而 css 通常只想微调，放在 body_end
+			// 也能覆盖样式。显式传 head 时仍按 EffectivePosition 纠正。
+			in.Position = model.SnippetPositionBodyEnd
 		}
 	}
 	switch in.Position {
@@ -122,8 +125,36 @@ func validateSnippetInput(in *SnippetInput) error {
 	default:
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "position 必须是 head / body_end")
 	}
+	// 归一化：模型里 EffectivePosition 是权威位置，写库也必须是它。
+	// 否则后台表单（默认 position=head）提交的 html 片段会落 head，
+	// 而读取侧按有效位置分组，内容永远发不出去。
+	in.Position = model.Snippet{Kind: in.Kind, Position: in.Position}.EffectivePosition()
+
 	if strings.TrimSpace(in.Content) == "" {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "content 不能为空")
+	}
+	return validateSnippetContent(in.Kind, in.Content)
+}
+
+// validateSnippetContent 保证片段内容能安全地放进它将被内联的容器。
+//
+// 片段最终会被原样写进 SSR 出来的 HTML 文档：css → <style>、js → <script>、
+// html → 容器 <div>。前两者的内容是「RAWTEXT」，出现对应的结束标签就会闭合
+// 元素，剩余内容按正常文档解析——`</style><script>…</script>` 会被真正执行。
+// 因此这两类必须拒绝包含结束标签的内容；html 片段本来就是任意标记，不设限。
+//
+// 这是策略边界：写侧拒绝（可读的错误信息）+ 渲染侧按 kind 选容器，两侧都不
+// 依赖对方「刚好也做了转义」。
+func validateSnippetContent(kind, content string) error {
+	switch kind {
+	case model.SnippetKindCSS:
+		if strings.Contains(strings.ToLower(content), "</style") {
+			return pkg.NewAppError(pkg.INVALID_PARAMS, "css 片段不能包含 </style（会截断样式块并注入任意标记）")
+		}
+	case model.SnippetKindJS:
+		if strings.Contains(strings.ToLower(content), "</script") {
+			return pkg.NewAppError(pkg.INVALID_PARAMS, "js 片段不能包含 </script（会截断脚本块并注入任意标记）")
+		}
 	}
 	return nil
 }
@@ -234,12 +265,44 @@ func isHighRiskKind(kind string) bool {
 }
 
 func (s *customizeService) ActiveSnippets(ctx context.Context, position string) ([]model.Snippet, error) {
-	items, err := s.snippets.ListEnabled(ctx, position)
+	items, err := s.snippets.ListEnabled(ctx)
 	if err != nil {
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	return items, nil
+	// 按有效位置分组，而不是列表里的 position 列：存量数据可能把 html 片段
+	// 存成 head，按列过滤会让它们永远发不出去（且不报错）。
+	out := make([]model.Snippet, 0, len(items))
+	for _, it := range items {
+		if it.EffectivePosition() == position {
+			out = append(out, it)
+		}
+	}
+	return out, nil
 }
+
+// validateThemeToken 校验一条 token 覆盖的形状。
+//
+// 主题覆盖只负责「改色改圆角」，不承担任意 CSS 的职责（那是 css 片段的活）。
+// 渲染侧会把它拼进 `<style>{:root{--x:v}}`，所以名字必须是 CSS 自定义属性、
+// 值不能闭合声明块或元素——否则这就不再是「最坏站点变丑」的低风险写入了。
+func validateThemeToken(token, value string) error {
+	if !themeTokenNameRe.MatchString(token) {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "token 必须是 CSS 自定义属性名，如 --primary")
+	}
+	trimmed := strings.TrimSpace(value)
+	if trimmed == "" {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "token 值不能为空")
+	}
+	if len(trimmed) > 512 {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "token 值过长（上限 512 字符）")
+	}
+	if strings.ContainsAny(trimmed, ";{}<>") || strings.ContainsAny(trimmed, "\n\r") {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "token 值不能包含 ; { } < > 或换行")
+	}
+	return nil
+}
+
+var themeTokenNameRe = regexp.MustCompile(`^--[a-zA-Z0-9-_]+$`)
 
 // ── 主题 token ────────────────────────────────────────────────
 
@@ -260,9 +323,13 @@ func (s *customizeService) SetThemeTokens(ctx context.Context, items []ThemeToke
 	if len(items) == 0 {
 		return WriteResult{}, pkg.NewAppError(pkg.INVALID_PARAMS, "items 不能为空")
 	}
-	for _, it := range items {
+	for i := range items {
+		it := items[i]
 		if strings.TrimSpace(it.Token) == "" {
 			return WriteResult{}, pkg.NewAppError(pkg.INVALID_PARAMS, "token 不能为空")
+		}
+		if err := validateThemeToken(it.Token, it.Value); err != nil {
+			return WriteResult{}, err
 		}
 		if it.Mode == "" {
 			it.Mode = model.ThemeTokenModeAll
@@ -273,7 +340,7 @@ func (s *customizeService) SetThemeTokens(ctx context.Context, items []ThemeToke
 		now := time.Now()
 		rec := &model.ThemeToken{
 			ID:        pkg.NewID(),
-			Token:     it.Token,
+			Token:     strings.TrimSpace(it.Token),
 			Value:     it.Value,
 			Mode:      it.Mode,
 			UpdatedBy: actor.UserID,

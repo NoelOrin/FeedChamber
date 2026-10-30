@@ -28,9 +28,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 	const { slug } = await params;
 	const [page, settings] = await Promise.all([loadPage(slug), loadPublicSettings()]);
 	if (!page) return { title: '页面不存在' };
-	const siteName = settings.site_name || 'Feed Chamber';
+	// 只返回页面标题：根布局的 title.template 会补 `%s — <默认标题>`，
+	// 这里再拼一次会得到「关于 — Feed Chamber — Feed Chamber」。
 	return {
-		title: `${page.title} — ${settings.seo_title || siteName}`,
+		title: page.title,
 		description: settings.seo_description || settings.site_description || undefined,
 	};
 }

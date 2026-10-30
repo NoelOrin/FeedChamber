@@ -57,6 +57,14 @@ func (r *Registry) Enabled(name string) bool {
 	return exists && !off
 }
 
+// Exists 报告工具名是否已注册。
+func (r *Registry) Exists(name string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	_, ok := r.tools[name]
+	return ok
+}
+
 // SetEnabled 启停一个工具。
 func (r *Registry) SetEnabled(name string, enabled bool) bool {
 	r.mu.Lock()

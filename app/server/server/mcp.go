@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"errors"
 
 	"feedchamber/internal/container"
 	"feedchamber/internal/mcp"
@@ -32,7 +33,7 @@ func (a mcpAuditAdapter) RecordToolCall(ctx context.Context, actorID, tool strin
 // 放在 composition root 而不是 container 里，是因为 Enforcer 需要的
 // SettingReader / PermissionChecker / BannedChecker / 限流引擎都是
 // 「网关与中间件共用同一份实例」的组件，它们在这里才齐全。
-func buildMCP(c *container.Container, settings pkg.SettingReader, perms pkg.PermissionChecker,
+func buildMCP(c *container.Container, settings service.SettingService, perms pkg.PermissionChecker,
 	banned pkg.BannedChecker, limiter *ratelimit.Limiter) container.MCPComponents {
 
 	var lookup mcp.APIKeyLookup
@@ -82,13 +83,31 @@ func buildMCP(c *container.Container, settings pkg.SettingReader, perms pkg.Perm
 	}
 
 	logrus.WithField("tools", len(registry.All())).Info("mcp: server assembled")
+	h := mcp.NewHandler(srv)
+	// 工具启停落库到设置 mcp_disabled_tools：与启动时的读取形成闭环，
+	// 否则后台开关只在当前进程有效（重启回默认、多实例各一份）。
+	h.SetToolStateStore(mcpToolStateStore{settings: settings})
 	return container.MCPComponents{
-		Handler:  mcp.NewHandler(srv),
+		Handler:  h,
 		Registry: registry,
 	}
 }
 
 // atoiSafe 解析整数设置，失败返回 0（调用方按「不覆盖默认」处理）。
+// mcpToolStateStore 把工具启停名单写进系统设置。
+//
+// 编码（负号 = 显式启用写工具）由 mcp.Registry 决定，这一层只负责搬运。
+type mcpToolStateStore struct {
+	settings service.SettingService
+}
+
+func (s mcpToolStateStore) SaveToolState(ctx context.Context, raw string) error {
+	if s.settings == nil {
+		return errors.New("setting service unavailable")
+	}
+	return s.settings.Set(ctx, model.SettingMCPDisabledTools, raw)
+}
+
 func atoiSafe(s string) int {
 	n := 0
 	for _, r := range s {

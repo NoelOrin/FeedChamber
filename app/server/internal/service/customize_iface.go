@@ -22,6 +22,10 @@ type WriteActor struct {
 	UserID string
 	Source WriteSource
 	// CanPublish 表示该操作者是否持 customize:publish，允许机器写入直接生效。
+	//
+	// 只在 Source==WriteSourceMachine 时被读取：人工操作按请求的启用状态写入。
+	// 机器凭证的取值必须来自**凭证自身的 scope**（authz.ScopeHas），
+	// 不能从角色权限表继承——admin 角色默认持有 publish。
 	CanPublish bool
 }
 

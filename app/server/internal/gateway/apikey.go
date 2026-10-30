@@ -4,98 +4,18 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"golang.org/x/crypto/bcrypt"
 
+	"feedchamber/internal/authz"
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
 
 	"github.com/kataras/iris/v12"
 )
-
-// apiKeyScopeRegistry maps coarse API key scopes to exact permission codes.
-// Precise permission codes can also be used as scopes, e.g. "post:read,report:manage".
-var apiKeyScopeRegistry = map[string][]string{
-	"read": {
-		model.PermPostRead, model.PermCommentRead, model.PermUserRead,
-		model.PermRoleRead, model.PermFollowRead, model.PermSecurityRead,
-	},
-	"write": {
-		model.PermPostCreate, model.PermPostUpdate, model.PermPostDelete,
-		model.PermCommentCreate, model.PermCommentUpdate, model.PermCommentDelete,
-		model.PermTagCreate, model.PermTagUpdate, model.PermTagDelete,
-		model.PermSpaceCreate, model.PermSpaceUpdate, model.PermSpaceDelete,
-		model.PermReportCreate, model.PermFavoriteSelf, model.PermContentLike,
-		model.PermFollowSelf, model.PermUploadSelf, model.PermNotificationSelf,
-		model.PermPMSelf, model.PermCheckinSelf,
-	},
-	"admin": {
-		model.PermRoleManage, model.PermSettingManage, model.PermReportManage,
-		model.PermAnnouncementManage, model.PermBatchEdit, model.PermBannedManage,
-		model.PermStatsRead, model.PermAdminSearch, model.PermAdminMetrics,
-		model.PermReconcileCounters, model.PermUserUpdate, model.PermUserDelete,
-		model.PermUserActivityRead,
-	},
-}
-
-func normalizeAPIScopes(scopes string) []string {
-	seen := map[string]struct{}{}
-	var out []string
-	for _, part := range strings.Split(scopes, ",") {
-		part = strings.TrimSpace(part)
-		if part == "" {
-			continue
-		}
-		if _, ok := seen[part]; ok {
-			continue
-		}
-		seen[part] = struct{}{}
-		out = append(out, part)
-	}
-	sort.Strings(out)
-	return out
-}
-
-func apiKeyScopesToPerms(scopes []string) map[string]struct{} {
-	perms := map[string]struct{}{}
-	for _, scope := range scopes {
-		if mapped, ok := apiKeyScopeRegistry[scope]; ok {
-			for _, code := range mapped {
-				perms[code] = struct{}{}
-			}
-			continue
-		}
-		perms[scope] = struct{}{}
-	}
-	return perms
-}
-
-func apiKeyHasPermission(scopes string, permCode string) bool {
-	if permCode == "" {
-		return true
-	}
-	_, ok := apiKeyScopesToPerms(normalizeAPIScopes(scopes))[permCode]
-	return ok
-}
-
-func validAPIScopes(scopes []string) bool {
-	if len(scopes) == 0 {
-		return false
-	}
-	for _, scope := range scopes {
-		if _, ok := apiKeyScopeRegistry[scope]; ok {
-			continue
-		}
-		if !strings.Contains(scope, ":") {
-			return false
-		}
-	}
-	return true
-}
 
 // APIKeyManager handles API key authentication and management.
 type APIKeyManager struct {
@@ -295,11 +215,11 @@ func (m *APIKeyManager) Create(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, "缺少 name")
 		return
 	}
-	scopes := normalizeAPIScopes(req.Scopes)
-	if !validAPIScopes(scopes) {
+	if !authz.ValidScopeString(req.Scopes) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, "scopes 为空或非法")
 		return
 	}
+	scopes := authz.NormalizeList(req.Scopes)
 	if m.deps.DB == nil {
 		pkg.Fail(ctx, pkg.INTERNAL_ERROR, "数据库不可用")
 		return
@@ -309,8 +229,7 @@ func (m *APIKeyManager) Create(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.FORBIDDEN, "API Key 的创建者不存在")
 		return
 	}
-	permSet := apiKeyScopesToPerms(scopes)
-	for permCode := range permSet {
+	for permCode := range authz.Expand(req.Scopes) {
 		if m.deps.Perms == nil || !m.deps.Perms.HasPermission(creator.Role, permCode) {
 			pkg.Fail(ctx, pkg.FORBIDDEN, "申请的权限范围超出创建者的权限")
 			return

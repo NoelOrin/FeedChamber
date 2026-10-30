@@ -86,3 +86,12 @@ export const postService = {
 - 新增/删除一个 service 模块
 - 请求层 API（`get` / `post` / `postPaginated`）变化
 - 方法选择约定变化（理论上只在 `openspec/specs/api-style` 变更后）
+
+## 站点自定义 / MCP 服务（2026-10-30）
+
+| 文件 | 覆盖端点 |
+|------|----------|
+| `customize.ts` | `/admin/customization/{snippets,tokens,nav,modules,pages}` 全套 + 公开读 `GET /pages/{slug}`、`POST /customization/public`；导出 `PublicCustomization` / `Snippet` / `ThemeToken` / `SnippetKind` 等类型 |
+| `mcp-server.ts` | `/admin/mcp-servers/*`（外部 MCP 登记、测试连通）+ `/admin/mcp/tools*`（本站工具启停） |
+
+两者都在 `src/index.ts` re-export；新增/改动端点后同步 `packages/api-client/AGENTS.md` 的服务清单与 `openapi.json`。

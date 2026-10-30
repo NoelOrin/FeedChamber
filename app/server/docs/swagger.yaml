@@ -27,6 +27,13 @@ definitions:
       username:
         type: string
     type: object
+  handler.ListCustomPagesRequest:
+    properties:
+      page:
+        type: integer
+      pageSize:
+        type: integer
+    type: object
   handler.ListParams:
     properties:
       end_time:
@@ -37,6 +44,30 @@ definitions:
         type: integer
       start_time:
         type: string
+    type: object
+  handler.PublishCustomPageRequest:
+    properties:
+      publish:
+        type: boolean
+    type: object
+  handler.SetThemeTokensRequest:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/service.ThemeTokenInput'
+        type: array
+    type: object
+  handler.SetToolEnabledRequest:
+    properties:
+      enabled:
+        type: boolean
+      name:
+        type: string
+    type: object
+  handler.ToggleSnippetRequest:
+    properties:
+      enabled:
+        type: boolean
     type: object
   handler.batchRequest:
     properties:
@@ -1092,6 +1123,17 @@ definitions:
       max_uses:
         type: integer
     type: object
+  service.CustomPageInput:
+    properties:
+      content:
+        type: string
+      slug:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
   service.DashboardData:
     properties:
       pending_reports:
@@ -1164,12 +1206,63 @@ definitions:
       rule_id:
         type: string
     type: object
+  service.HomeModuleInput:
+    properties:
+      config:
+        type: string
+      enabled:
+        type: boolean
+      kind:
+        type: string
+      min_level:
+        type: integer
+      sort:
+        type: integer
+      title:
+        type: string
+      visibility:
+        type: string
+    type: object
   service.LoginRequest:
     properties:
       login:
         description: email or username
         type: string
       password:
+        type: string
+    type: object
+  service.MCPServerInput:
+    properties:
+      enabled:
+        type: boolean
+      endpoint:
+        type: string
+      headers:
+        type: string
+      moderation_tool:
+        type: string
+      name:
+        type: string
+      purpose:
+        type: string
+      transport:
+        type: string
+    type: object
+  service.NavItemInput:
+    properties:
+      enabled:
+        type: boolean
+      href:
+        type: string
+      icon:
+        type: string
+      label:
+        type: string
+      min_level:
+        type: integer
+      sort:
+        type: integer
+      visibility:
         type: string
     type: object
   service.RegisterRequest:
@@ -1191,6 +1284,28 @@ definitions:
         $ref: '#/definitions/service.EntitySearchResult-model_Post'
       users:
         $ref: '#/definitions/service.EntitySearchResult-model_User'
+    type: object
+  service.SnippetInput:
+    properties:
+      content:
+        type: string
+      enabled:
+        type: boolean
+      kind:
+        type: string
+      position:
+        type: string
+      sort:
+        type: integer
+    type: object
+  service.ThemeTokenInput:
+    properties:
+      mode:
+        type: string
+      token:
+        type: string
+      value:
+        type: string
     type: object
   service.UserActivities:
     properties:
@@ -1902,6 +2017,12 @@ paths:
         name: id
         required: true
         type: string
+      - description: 首页模块
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.HomeModuleInput'
       produces:
       - application/json
       responses:
@@ -1924,6 +2045,18 @@ paths:
         name: id
         required: true
         type: string
+      - description: 首页模块
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.HomeModuleInput'
+      - description: 首页模块
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.HomeModuleInput'
       produces:
       - application/json
       responses:
@@ -1940,6 +2073,13 @@ paths:
     post:
       consumes:
       - application/json
+      parameters:
+      - description: 首页模块
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.HomeModuleInput'
       produces:
       - application/json
       responses:
@@ -1974,6 +2114,12 @@ paths:
         name: id
         required: true
         type: string
+      - description: 导航项
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.NavItemInput'
       produces:
       - application/json
       responses:
@@ -1996,6 +2142,18 @@ paths:
         name: id
         required: true
         type: string
+      - description: 导航项
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.NavItemInput'
+      - description: 导航项
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.NavItemInput'
       produces:
       - application/json
       responses:
@@ -2012,6 +2170,13 @@ paths:
     post:
       consumes:
       - application/json
+      parameters:
+      - description: 导航项
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.NavItemInput'
       produces:
       - application/json
       responses:
@@ -2046,6 +2211,12 @@ paths:
         name: id
         required: true
         type: string
+      - description: 自定义页
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.CustomPageInput'
       produces:
       - application/json
       responses:
@@ -2068,6 +2239,12 @@ paths:
         name: id
         required: true
         type: string
+      - description: 发布开关
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.PublishCustomPageRequest'
       produces:
       - application/json
       responses:
@@ -2090,6 +2267,18 @@ paths:
         name: id
         required: true
         type: string
+      - description: 自定义页
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.CustomPageInput'
+      - description: 自定义页
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.CustomPageInput'
       produces:
       - application/json
       responses:
@@ -2106,6 +2295,18 @@ paths:
     post:
       consumes:
       - application/json
+      parameters:
+      - description: 分页参数
+        in: body
+        name: payload
+        schema:
+          $ref: '#/definitions/handler.ListCustomPagesRequest'
+      - description: 自定义页
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.CustomPageInput'
       produces:
       - application/json
       responses:
@@ -2122,6 +2323,12 @@ paths:
     post:
       consumes:
       - application/json
+      parameters:
+      - description: 分页参数；可传空对象
+        in: body
+        name: payload
+        schema:
+          $ref: '#/definitions/handler.ListCustomPagesRequest'
       produces:
       - application/json
       responses:
@@ -2142,6 +2349,12 @@ paths:
         name: id
         required: true
         type: string
+      - description: 片段内容
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.SnippetInput'
       produces:
       - application/json
       responses:
@@ -2164,6 +2377,12 @@ paths:
         name: id
         required: true
         type: string
+      - description: 启停状态
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ToggleSnippetRequest'
       produces:
       - application/json
       responses:
@@ -2186,6 +2405,18 @@ paths:
         name: id
         required: true
         type: string
+      - description: 片段内容
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.SnippetInput'
+      - description: 片段内容
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.SnippetInput'
       produces:
       - application/json
       responses:
@@ -2203,6 +2434,13 @@ paths:
       consumes:
       - application/json
       description: 创建一段自定义 CSS / JS / HTML。
+      parameters:
+      - description: 片段内容
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.SnippetInput'
       produces:
       - application/json
       responses:
@@ -2232,6 +2470,13 @@ paths:
       - 站点自定义
   /admin/customization/tokens/{token}/delete:
     post:
+      parameters:
+      - description: token 覆盖列表
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SetThemeTokensRequest'
       produces:
       - application/json
       responses:
@@ -2260,6 +2505,13 @@ paths:
       - 站点自定义
   /admin/customization/tokens/list:
     post:
+      parameters:
+      - description: 启停状态
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.ToggleSnippetRequest'
       produces:
       - application/json
       responses:
@@ -2277,6 +2529,13 @@ paths:
       consumes:
       - application/json
       description: 按 token 名覆盖视觉变量。CSS 类改动风险低，直接生效。
+      parameters:
+      - description: token 覆盖列表
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SetThemeTokensRequest'
       produces:
       - application/json
       responses:
@@ -2589,6 +2848,17 @@ paths:
         name: id
         required: true
         type: string
+      - description: 外部 MCP 服务
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.MCPServerInput'
+      - description: 可传空对象
+        in: body
+        name: payload
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -2610,6 +2880,16 @@ paths:
         name: id
         required: true
         type: string
+      - description: 无需参数，可为空对象
+        in: body
+        name: payload
+        schema:
+          type: object
+      - description: 可传空对象
+        in: body
+        name: payload
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -2633,6 +2913,18 @@ paths:
         name: id
         required: true
         type: string
+      - description: 外部 MCP 服务
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.MCPServerInput'
+      - description: 外部 MCP 服务
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.MCPServerInput'
       produces:
       - application/json
       responses:
@@ -2649,6 +2941,18 @@ paths:
     post:
       consumes:
       - application/json
+      parameters:
+      - description: 无需参数，可为空对象
+        in: body
+        name: payload
+        schema:
+          type: object
+      - description: 外部 MCP 服务
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/service.MCPServerInput'
       produces:
       - application/json
       responses:
@@ -2664,6 +2968,12 @@ paths:
   /admin/mcp-servers/list:
     post:
       description: 列出已登记的外部 MCP Server。鉴权头只返回值键名，不返回凭据。
+      parameters:
+      - description: 可传空对象
+        in: body
+        name: payload
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -2679,6 +2989,17 @@ paths:
   /admin/mcp/tools:
     post:
       description: 列出本站 MCP Server 暴露的全部工具及其启停状态（含未启用的写工具）。
+      parameters:
+      - description: 无需参数，可为空对象
+        in: body
+        name: payload
+        schema:
+          type: object
+      - description: 可传空对象
+        in: body
+        name: payload
+        schema:
+          type: object
       produces:
       - application/json
       responses:
@@ -2696,6 +3017,18 @@ paths:
       consumes:
       - application/json
       description: 写类工具默认停用；启用后调用方即可通过 /mcp 调用。
+      parameters:
+      - description: 无需参数，可为空对象
+        in: body
+        name: payload
+        schema:
+          type: object
+      - description: 工具名与启停状态
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.SetToolEnabledRequest'
       produces:
       - application/json
       responses:
@@ -6235,6 +6568,12 @@ paths:
         name: slug
         required: true
         type: string
+      - description: 发布开关
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/handler.PublishCustomPageRequest'
       produces:
       - application/json
       responses:

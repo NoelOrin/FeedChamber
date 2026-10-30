@@ -3,10 +3,10 @@ package gateway
 import (
 	"context"
 	"net/http"
-	"strings"
 	"testing"
 
-	"feedchamber/internal/model"
+	"feedchamber/internal/authz"
+	"feedchamber/internal/pkg"
 
 	"golang.org/x/crypto/bcrypt"
 
@@ -16,26 +16,31 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNormalizeAPIScopes(t *testing.T) {
-	got := normalizeAPIScopes(" write,read,post:read,read, ")
-	require.Equal(t, []string{"post:read", "read", "write"}, got)
-}
+// authz.CredentialFrom 把 iris context 的凭证信息翻译成判定输入。
+// 两种机器凭证的 scope 来自不同的键，取错就会变成「空 scope 却放行」或「全拒」。
+func TestCredentialOfReadsScopesPerAuthMethod(t *testing.T) {
+	var got authz.Credential
+	app := iris.New()
+	app.Get("/probe", func(ctx iris.Context) {
+		ctx.Values().Set(pkg.CtxAuthMethod, pkg.AuthMethodAPIKey)
+		ctx.Values().Set(pkg.CtxRole, "admin")
+		ctx.Values().Set(pkg.CtxAPIKeyScopes, "read,post:read")
+		ctx.Values().Set(pkg.CtxClientScopes, "client-only")
+		got = authz.CredentialFrom(ctx.Values())
+	})
+	app.Get("/probe-client", func(ctx iris.Context) {
+		ctx.Values().Set(pkg.CtxAuthMethod, pkg.AuthMethodOAuthClient)
+		ctx.Values().Set(pkg.CtxAPIKeyScopes, "should-not-be-used")
+		ctx.Values().Set(pkg.CtxClientScopes, "read")
+		got = authz.CredentialFrom(ctx.Values())
+	})
 
-func TestValidAPIScopes(t *testing.T) {
-	require.True(t, validAPIScopes([]string{"read", "post:read"}))
-	require.False(t, validAPIScopes(nil))
-	require.False(t, validAPIScopes([]string{"*"}))
-	require.False(t, validAPIScopes([]string{"noscope"}))
-}
+	e := httptest.New(t, app)
+	e.GET("/probe").Expect().Status(http.StatusOK)
+	assert.Equal(t, authz.Credential{Method: pkg.AuthMethodAPIKey, Scopes: "read,post:read", Role: "admin"}, got)
 
-func TestAPIKeyHasPermission(t *testing.T) {
-	require.True(t, apiKeyHasPermission("read", model.PermPostRead))
-	require.False(t, apiKeyHasPermission("read", model.PermPostCreate))
-	require.True(t, apiKeyHasPermission("write", model.PermPostCreate))
-	require.True(t, apiKeyHasPermission("admin", model.PermRoleManage))
-	require.True(t, apiKeyHasPermission("post:read,report:manage", model.PermReportManage))
-	require.False(t, apiKeyHasPermission("", model.PermPostRead))
-	require.False(t, apiKeyHasPermission("read", strings.ToUpper(model.PermPostRead)))
+	e.GET("/probe-client").Expect().Status(http.StatusOK)
+	assert.Equal(t, authz.Credential{Method: pkg.AuthMethodOAuthClient, Scopes: "read"}, got)
 }
 
 // mockAPIKeySettingReader implements SettingReader for tests.

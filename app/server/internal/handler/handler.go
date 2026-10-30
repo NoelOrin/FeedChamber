@@ -172,7 +172,7 @@ func New(d *Deps) *Handler {
 		Trash:        newTrashHandler(d.Post, d.Content, d.AuditLog),
 		Theme:        newThemeHandler(d.Theme),
 		Plugin:       newPluginHandler(d.Plugin),
-		Customize:    newCustomizeHandler(d.Customize),
+		Customize:    newCustomizeHandler(d.Customize, d.Trust),
 		MCPServer:    newMCPServerHandler(d.MCPServer),
 		MCP:          d.MCP,
 		Trust:        newTrustHandler(d.Trust, d.AuditLog),

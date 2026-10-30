@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"feedchamber/internal/authz"
 	"feedchamber/internal/pkg"
 
 	"github.com/kataras/iris/v12"
@@ -113,7 +114,9 @@ func RequirePermission(deps Deps, permCode string) iris.Handler {
 			ctx.StopExecution()
 			return
 		}
-		if deps.Perms == nil || !deps.Perms.HasPermission(role, permCode) {
+		// 与网关同一判据：会话看角色表，API Key 要 scope 且角色，OAuth 客户端只认 scope。
+		// 此前这里只查角色表，等于让 route 级门控忽略了 API Key 的 scope 上限。
+		if !authz.Allowed(authz.CredentialFrom(ctx.Values()), deps.Perms, permCode) {
 			pkg.Fail(ctx, pkg.FORBIDDEN)
 			ctx.StopExecution()
 			return
