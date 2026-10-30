@@ -165,12 +165,25 @@ jobs:
             echo "DOKPLOY_DEPLOY_HOOK 未配置，跳过部署触发"
             exit 0
           fi
+          # 必须伪装成 GitHub push webhook，否则 Dokploy 会回 301 Branch Not Match。
+          #
+          # Dokploy 的 extractBranchName()（apps/dokploy/pages/api/deploy/[refreshToken].ts）
+          # 只在看到 x-github-event / x-gitea-event 等头时才从 body.ref 取分支名，
+          # 否则返回 null；而 compose 的 github 分支比对是
+          #   if (!branchName || branchName !== composeResult.branch) → 301
+          # 所以裸 POST（无头无 body）永远拿不到「分支匹配」，与 Dokploy 里配的
+          # 分支是什么无关。这里带上 x-github-event 与 push 形状的 body 即可；
+          # 该端点不做签名校验，不需要 X-Hub-Signature-256。
+          #
           # 失败原因必须打出来：Dokploy 的 4xx 响应体里写着到底是 Refresh Token
           # 失效（网页上刷新过 token 或重建过应用）还是该应用上一次部署还没结束。
           # 只用 `curl -f` 时，日志里只剩一行 `curl: (22) error: 400`，等于没说。
           for i in 1 2 3; do
             rm -f /tmp/dokploy.out
-            code=$(curl -sS -m 120 -o /tmp/dokploy.out -w '%{http_code}' -X POST "$HOOK") || code=000
+            code=$(curl -sS -m 120 -o /tmp/dokploy.out -w '%{http_code}' -X POST "$HOOK" \
+              -H 'Content-Type: application/json' \
+              -H 'x-github-event: push' \
+              -d "{\"ref\":\"refs/heads/${GITHUB_REF_NAME:-develop}\",\"after\":\"${GITHUB_SHA:-}\"}") || code=000
             case "$code" in
               2??)
                 echo "Dokploy 部署已触发 (HTTP ${code})"

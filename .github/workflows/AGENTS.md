@@ -58,7 +58,16 @@ GitHub Actions。五个 workflow，分工明确：**质量门（几分钟）与�
 - **新增护栏脚本要接进 workflow 并在 `scripts/AGENTS.md` 登记**，否则没人会跑。
 - **`docs` job 的 `--base` 用 `origin/${{ github.base_ref }}`**：需要 `fetch-depth: 0` 或至少取到 base 分支，否则 diff 拿不到基线。
 - `concurrency` 已按 `${{ github.ref }}` 分组并 `cancel-in-progress`，新增 workflow 沿用这个模式避免堆积。
-- **Dokploy 的分支不匹配（HTTP 301 / `Branch Not Match`）**：镜像已经推进 GHCR，只是 Dokploy 拒绝了这个分支的部署请求。去该应用 General 把 **Branch** 改成实际触发的分支（当前是 `develop`）。这条诊断已进脚本的 `case` 分支，日志里会直接给出处置建议。
+- **Dokploy 的 301 `Branch Not Match` 不是 Dokploy 配置问题，是请求形状问题**。
+Dokploy 的 `extractBranchName()`（`apps/dokploy/pages/api/deploy/[refreshToken].ts`）
+只在看到 `x-github-event` / `x-gitea-event` / `x-gitlab-event` 这类头时才从 `body.ref`
+取分支名，否则返回 `null`；而 compose 的 github 分支比对是
+`if (!branchName || branchName !== composeResult.branch) → 301`。
+所以**裸 POST（无头无 body）永远判 Branch Not Match**，跟 Dokploy 里配的是哪个分支无关。
+
+修法（已实现在 `docker-build.yml`）：curl 带上 `x-github-event: push` 与
+`{"ref":"refs/heads/<当前分支>"}` 的 body。该端点**不做签名校验**，不需要
+`X-Hub-Signature-256`。
 
 **Dokploy 触发那一步必须自己说明失败原因**：`curl -f` 只留下 `curl: (22) error: 400`，所以现在自己取 `%{http_code}`、把响应体落盘打印，再按状态码给处置建议。Dokploy 源码里这两条是硬判定：`400 + "Automatic deployments are disabled for this compose"` = 该 compose 的 **Auto Deploy 开关没开**（token 是有效的）；`404 Compose Not Found` = refresh token 不认（应用重建过要重新复制 hook URL）。别用 `continue-on-error` 把它盖掉——部署没发生还显示绿比红更糟。
 
