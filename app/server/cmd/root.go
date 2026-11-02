@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"orinforum/server"
+	"feedchamber/server"
 
 	"github.com/spf13/cobra"
 )
@@ -9,8 +9,8 @@ import (
 var env string
 
 var RootCmd = &cobra.Command{
-	Use:   "orinforum",
-	Short: "OrinForum API server",
+	Use:   "feedchamber",
+	Short: "Feed Chamber API server",
 	Run: func(cmd *cobra.Command, args []string) {
 		server.Start(server.Env(env))
 	},

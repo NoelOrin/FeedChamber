@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"orinforum/internal/pkg"
-	"orinforum/internal/service"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/service"
 
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/httptest"

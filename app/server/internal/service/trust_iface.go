@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // TrustService 是 XP / 等级体系的唯一写入方与配置读写入口。

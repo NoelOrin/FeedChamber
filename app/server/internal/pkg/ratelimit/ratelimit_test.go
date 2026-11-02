@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/pkg/kvstore"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/pkg/kvstore"
 )
 
 // memKV is the slice of kvstore.Store the engine actually uses; the remaining
@@ -124,8 +124,8 @@ func TestCheckCountsAgainstLimit(t *testing.T) {
 
 func TestCheckFailOpenAndMetrics(t *testing.T) {
 	policy := "probe-failopen"
-	rej := counterValue(t, "orinforum_ratelimit_rejections_total", "name", policy)
-	fo := counterValue(t, "orinforum_ratelimit_failopen_total", "name", policy)
+	rej := counterValue(t, "feedchamber_ratelimit_rejections_total", "name", policy)
+	fo := counterValue(t, "feedchamber_ratelimit_failopen_total", "name", policy)
 
 	kv := newMemKV()
 	kv.failOn = errors.New("kv down")
@@ -134,17 +134,17 @@ func TestCheckFailOpenAndMetrics(t *testing.T) {
 	if got != FailOpen {
 		t.Fatalf("got %v, want FailOpen", got)
 	}
-	if d := counterValue(t, "orinforum_ratelimit_failopen_total", "name", policy) - fo; d != 1 {
+	if d := counterValue(t, "feedchamber_ratelimit_failopen_total", "name", policy) - fo; d != 1 {
 		t.Errorf("failopen metric delta = %v, want 1", d)
 	}
-	if d := counterValue(t, "orinforum_ratelimit_rejections_total", "name", policy) - rej; d != 0 {
+	if d := counterValue(t, "feedchamber_ratelimit_rejections_total", "name", policy) - rej; d != 0 {
 		t.Errorf("a fail-open must not count as a rejection, delta = %v", d)
 	}
 }
 
 func TestCheckDeniedIncrementsRejections(t *testing.T) {
 	policy := "probe-denied"
-	before := counterValue(t, "orinforum_ratelimit_rejections_total", "name", policy)
+	before := counterValue(t, "feedchamber_ratelimit_rejections_total", "name", policy)
 	l := NewLimiter(newMemKV())
 	key := EndpointKey("2.2.2.2", policy)
 	ctx := context.Background()
@@ -152,7 +152,7 @@ func TestCheckDeniedIncrementsRejections(t *testing.T) {
 	if got := l.Check(ctx, policy, key, 1, time.Minute); got != Denied {
 		t.Fatalf("got %v, want Denied", got)
 	}
-	if d := counterValue(t, "orinforum_ratelimit_rejections_total", "name", policy) - before; d != 1 {
+	if d := counterValue(t, "feedchamber_ratelimit_rejections_total", "name", policy) - before; d != 1 {
 		t.Errorf("rejection metric delta = %v, want 1", d)
 	}
 }

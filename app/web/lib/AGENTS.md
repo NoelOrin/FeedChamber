@@ -12,7 +12,7 @@ Web 前端的跨域基础设施：会话状态、取数接缝、API 适配、主
 lib/auth/        会话状态机 + 服务端 guards + 跨标签同步
 lib/query/       QueryClient（RSC 每请求一份 / 浏览器单例）+ 全站唯一 key 来源
 lib/queries/     RSC 取数接缝（cache() 包裹）+ 外壳查询契约
-lib/api/         向 @orinforum/api-client 注入 SSR cookie / request id
+lib/api/         向 @feedchamber/api-client 注入 SSR cookie / request id
 lib/admin/       后台准入（access / route-access / return-to）与导航适配
 lib/hooks/       SSE 订阅、公告等跨域 hook
 lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / utils
@@ -35,17 +35,18 @@ lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / ut
 | `admin/auth/return-to.ts` | `captureReturnTarget` / `resolveReturnTarget` / `rememberSiteUrl` |
 | `admin/navigation.ts` | `useNavigate` / `useLocation` / 查询参数 hook（页面不要自己拼 `window.location`） |
 | `admin/permissions.ts` | 权限码前缀 → 分组标签（`permissionGroup` / `groupPermissions`） |
-| `hooks/use-notification-sse.ts` | 通知未读数 SSE：走 `@orinforum/sse-client`，**浏览器侧必须是相对路径** `/api/v1/notifications/stream` |
+| `hooks/use-notification-sse.ts` | 通知未读数 SSE：走 `@feedchamber/sse-client`，**浏览器侧必须是相对路径** `/api/v1/notifications/stream` |
+| `notification-target.ts` | `notificationHref(notification)` —— 通知深链的**唯一出口**（type → 站内路由）。顶栏通知铃与通知中心共用，不要再各自维护 switch：此前两份副本同时漏了 `mention` / `watch` / `motion`，同一个缺陷要修两遍 |
 | `hooks/use-announcements.ts` | 公告取数与展示状态 |
 | `hooks/use-trust-levels.ts` | 等级名称的唯一来源：`useTrustLevels()` 读公开接口 `GET /levels`（staleTime 5 分钟），`trustLevelName()` 渲染；P2.9 起不再有硬编码中文标签（旧的 `lib/trust.ts` 已删除） |
-| `theme.ts` | `useTheme`（light/dark/system + localStorage + 系统偏好），首绘前脚本在根布局 |
+| `theme.ts` | `useTheme`（light/dark/system + localStorage + 系统偏好），首绘前脚本在根布局。`cycle()` 切换后自带 `toast.success` 提示（读切换后 `<html>` 的真实明暗），前后台共用，调用方不要重复发 |
 | `i18n.ts` | `useLocale` / `t()`，zh-CN 词条表；前台与后台共用 |
 | `settings.ts` | `usePublicSettings` / `useSiteName`（`qk.settings`），前后台共用一份缓存 |
 | `seo.ts` | `listPageMetadataFromSettings` / `siteImage`：列表页元数据 + 自指 canonical（**刻意不带**筛选与分页参数） |
 | `pagination.ts` | 分页尺寸 fallback（与服务端 `model.DefaultSettings` 一致） |
 | `toast.ts` | 命令式 toast（zustand store + 视口组件在 `components/ui/toast.tsx`） |
 | `icons.ts` | 图标唯一出口；`biome.json` 禁止直接 import `lucide-react` |
-| `utils.ts` | `cn()` = `@orinforum/shared-utils` 的 `cx` |
+| `utils.ts` | `cn()` = `@feedchamber/shared-utils` 的 `cx` |
 
 ## 三条最容易踩的规则
 
@@ -66,3 +67,13 @@ lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / ut
 - `qk` 顶层结构变化
 - `query/client.ts` 的 staleTime / retry 策略变化
 - RSC 接缝（`queries/server.ts`）的降级语义变化
+
+## 自定义层（`lib/customization/`，2026-10-30）
+
+| 文件 | 职责 |
+|------|------|
+| `server.ts` | RSC 侧读 `customization/public`（`cache()` 包裹，失败降级空值）+ `buildThemeOverrideCss`（token 名/值白名单） |
+| `client.ts` | 客户端 queryOptions（`qk.customization`，与后台 invalidate 共用同一个 key） |
+| `emit.ts` | **片段 → DOM 容器的唯一映射**：按 kind 选 `<style>` / `<script>` / 容器 `<div>`，并中和 `</style` / `</script` |
+
+根布局把 `customization` 一并 `setQueryData(qk.customization, …)`，否则首屏 HomeModules/CustomNav 读到 pending 先返回 null 再补发请求。

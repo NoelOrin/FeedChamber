@@ -17,7 +17,7 @@
 - **跨进程传播**：`eventbus.go:177` 的 `nc.Publish` 改为 `nc.PublishMsg`（nats.go v1.39.1 无 MsgPublish） 并携带 `traceparent` 头；消费端 `handleNATSMessage`（`eventbus.go:114`）恢复上下文，替换 `:123` 的 `Ctx: context.Background()`。nginx 增设 `proxy_set_header X-Request-ID` 与含该字段的 `log_format`。
 - **指标暴露面迁移**：`/metrics` 从 `/api/v1` 业务路由（`router/router.go:119`）移除，改由 `METRICS_PORT`（默认 9091）独立监听，不经 nginx 对外暴露。
 - **业务指标 7 族**：EventBus（发布/分发耗时/panic/队列深度/丢弃）、KV 操作、限流拒绝与 fail-open、权限判定、SSE 在线数、登录失败分类、webhook 投递与积压——全部注册到 `internal/metrics.Registry`。
-- **部署与告警**：补 `deploy/prometheus.yml` + `deploy/prometheus/rules/orinforum.yml`（8 条告警）+ `deploy/grafana/provisioning/`，Grafana 口令改 env 注入。
+- **部署与告警**：补 `deploy/prometheus.yml` + `deploy/prometheus/rules/feedchamber.yml`（8 条告警）+ `deploy/grafana/provisioning/`，Grafana 口令改 env 注入。
 
 ## Capabilities
 

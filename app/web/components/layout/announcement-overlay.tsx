@@ -1,6 +1,6 @@
 'use client';
 
-import type { Announcement } from '@orinforum/api-client';
+import type { Announcement } from '@feedchamber/api-client';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 

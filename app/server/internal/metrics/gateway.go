@@ -12,7 +12,7 @@ var (
 	// 两类策略共用 pkg/ratelimit 引擎，因此指标、日志与失败语义完全一致。
 	RatelimitRejectionsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_ratelimit_rejections_total",
+			Name: "feedchamber_ratelimit_rejections_total",
 			Help: "Requests rejected by a rate limiter, by policy name.",
 		},
 		[]string{"name"},
@@ -22,7 +22,7 @@ var (
 	// after the KV backend failed, i.e. protection was silently absent.
 	RatelimitFailopenTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_ratelimit_failopen_total",
+			Name: "feedchamber_ratelimit_failopen_total",
 			Help: "Rate limiter fail-open occurrences, by policy name.",
 		},
 		[]string{"name"},
@@ -40,7 +40,7 @@ func init() {
 // cannot enumerate them. Each wiring point calls this once at construction, so
 // the family exists before the first rejection — otherwise a healthy instance
 // that never saw abuse would look identical to a broken instrumentation to the
-// absent() canary in deploy/prometheus/rules/orinforum.yml.
+// absent() canary in deploy/prometheus/rules/feedchamber.yml.
 func SeedRatelimitPolicy(name string) {
 	RatelimitRejectionsTotal.WithLabelValues(name)
 	RatelimitFailopenTotal.WithLabelValues(name)

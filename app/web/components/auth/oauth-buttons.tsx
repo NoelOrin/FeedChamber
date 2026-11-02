@@ -1,6 +1,6 @@
 'use client';
 
-import { type OAuthProviderConfig, oauthService } from '@orinforum/api-client';
+import { type OAuthProviderConfig, oauthService } from '@feedchamber/api-client';
 import { useQuery } from '@tanstack/react-query';
 
 import { Button } from '~/components/ui/button';

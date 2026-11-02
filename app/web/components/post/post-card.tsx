@@ -1,4 +1,4 @@
-import type { PostListItem } from '@orinforum/api-client';
+import type { PostListItem } from '@feedchamber/api-client';
 import Link from 'next/link';
 
 import { Avatar, AvatarFallback, AvatarImage } from '~/components/ui/avatar';

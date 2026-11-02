@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // SessionStore is the server-side session authority (implemented by

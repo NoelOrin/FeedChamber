@@ -9,28 +9,29 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"syscall"
 
-	"orinforum/internal/config"
-	"orinforum/internal/container"
-	"orinforum/internal/db"
-	"orinforum/internal/gateway"
-	"orinforum/internal/metrics"
-	"orinforum/internal/middleware"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/pkg/logger"
-	"orinforum/internal/pkg/ratelimit"
-	"orinforum/internal/repository"
-	"orinforum/internal/router"
-	"orinforum/internal/service"
-	"orinforum/internal/storage"
+	"feedchamber/internal/config"
+	"feedchamber/internal/container"
+	"feedchamber/internal/db"
+	"feedchamber/internal/gateway"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/middleware"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/pkg/logger"
+	"feedchamber/internal/pkg/ratelimit"
+	"feedchamber/internal/repository"
+	"feedchamber/internal/router"
+	"feedchamber/internal/service"
+	"feedchamber/internal/storage"
 	"time"
 
-	_ "orinforum/docs"
+	_ "feedchamber/docs"
 
 	irisSwagger "github.com/iris-contrib/swagger"
 	"github.com/iris-contrib/swagger/swaggerFiles"
@@ -127,6 +128,14 @@ func Start(env Env) {
 		&model.XPAdjustment{},
 		&model.GateRule{},
 		&model.GateDomainDefault{},
+		// 站点自定义层（P1）。五张表都是新增，对存量库无破坏性变更。
+		&model.Snippet{},
+		&model.ThemeToken{},
+		&model.NavItem{},
+		&model.HomeModule{},
+		&model.CustomPage{},
+		// MCP 客户端（P3）：外部 MCP Server 登记表。
+		&model.MCPServer{},
 	); err != nil {
 		logrus.Warnf("AutoMigrate: %v", err)
 	}
@@ -193,7 +202,7 @@ func Start(env Env) {
 		logrus.Fatalf("初始化 EventBus 失败: %v", err)
 	}
 
-	permSvc, settingSvc, bannedSvc := seedPermissions(store, kvStore, alreadySeeded)
+	permSvc, settingSvc, bannedSvc := seedPermissions(store, kvStore, metaRepo, alreadySeeded)
 
 	// 从 settings 表加载运行时配置（OAuth token TTL、分页参数等）
 	initCtx := context.Background()
@@ -386,6 +395,11 @@ func Start(env Env) {
 		Security:   secSvc,
 	})
 
+	// ── MCP Server（P2）──────────────────────────────────────────
+	// 在设置服务、权限服务、限流引擎都就绪之后装配：MCP 的 Enforcer 要复用
+	// 同一份实例，否则会出现「网关认为已封禁、MCP 认为未封禁」的分叉。
+	c.MCP = buildMCP(c, settingSvc, permSvc, bannedSvc, deps.Limiter)
+
 	runtime, err := c.Start(context.Background())
 	if err != nil {
 		logrus.WithError(err).Fatal("failed to start background workers")
@@ -403,7 +417,7 @@ func Start(env Env) {
 		_ = ln.Close()
 	}
 
-	logrus.Infof("OrinForum listening on %s", addr)
+	logrus.Infof("Feed Chamber listening on %s", addr)
 
 	// Run server in background goroutine
 	go func() {
@@ -507,7 +521,7 @@ func seedAdmin(store db.Store) {
 		ID:          pkg.NewID(),
 		Username:    "admin",
 		DisplayName: "admin",
-		Email:       "admin@orinforum.local",
+		Email:       "admin@feedchamber.local",
 		Role:        "admin",
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
@@ -585,6 +599,22 @@ func ensureRolePermission(ctx context.Context, permRepo repository.PermissionRep
 	}
 }
 
+// allDefaultCodes 汇总默认角色映射里出现的全部权限码。
+func allDefaultCodes() []string {
+	seen := map[string]struct{}{}
+	for _, codes := range model.DefaultRolePermissions {
+		for _, code := range codes {
+			seen[code] = struct{}{}
+		}
+	}
+	out := make([]string, 0, len(seen))
+	for code := range seen {
+		out = append(out, code)
+	}
+	sort.Strings(out)
+	return out
+}
+
 func roleMappingsEmpty(ctx context.Context, permRepo repository.PermissionRepository) bool {
 	all, err := permRepo.GetAllRolePermissions(ctx)
 	if err != nil {
@@ -594,7 +624,7 @@ func roleMappingsEmpty(ctx context.Context, permRepo repository.PermissionReposi
 	return len(all) == 0
 }
 
-func seedPermissions(store db.Store, kv kvstore.Store, alreadySeeded bool) (service.PermissionService, service.SettingService, service.BannedService) {
+func seedPermissions(store db.Store, kv kvstore.Store, metaRepo repository.MetaRepository, alreadySeeded bool) (service.PermissionService, service.SettingService, service.BannedService) {
 	permRepo := repository.NewPermissionRepository(store)
 	ctx := context.Background()
 
@@ -613,6 +643,40 @@ func seedPermissions(store db.Store, kv kvstore.Store, alreadySeeded bool) (serv
 	// role-permission customizations an administrator has made (R-04).
 	if alreadySeeded && !roleMappingsEmpty(ctx, permRepo) {
 		logrus.Info("default role-permission mappings already seeded, skipping")
+		// 增量补齐：版本升级新增的权限码必须能到已有部署的内置角色上。
+		//
+		// 但不能「每次启动把默认映射里缺的都补回」——那样管理员从内置角色上
+		// 撤销的任何默认权限都会在下次重启静默复活，R-04 的保护形同虚设。
+		// 因此记录「已经应用过的权限码」到 meta：只补**首次出现**的新码，
+		// 管理员之后撤销的码属于「已应用过」，不会再加回来。
+		appliedRaw, found, err := metaRepo.Get(ctx, model.MetaSeededRolePermissionCodes)
+		if err != nil {
+			logrus.Warnf("read applied role-permission codes: %v", err)
+		}
+		applied := service.ParseAppliedCodes(appliedRaw)
+		if !found {
+			// 老部署没有这个标记：把当前默认映射视为已应用，只补本次真正新增的码。
+			applied = service.ParseAppliedCodes(strings.Join(allDefaultCodes(), ","))
+		}
+
+		perRole, newlyApplied := service.RolePermissionTopUp(model.DefaultRolePermissions, applied)
+		for roleName, codes := range perRole {
+			added, err := permRepo.EnsureRolePermissions(ctx, roleName, codes)
+			if err != nil {
+				logrus.Warnf("ensure role permissions for %s: %v", roleName, err)
+				continue
+			}
+			if added > 0 {
+				logrus.Infof("ensured %d new permission(s) for role %s", added, roleName)
+			}
+		}
+		if len(newlyApplied) > 0 {
+			if err := metaRepo.Set(ctx, model.MetaSeededRolePermissionCodes,
+				service.MergeAppliedCodes(applied, newlyApplied)); err != nil {
+				logrus.Warnf("persist applied role-permission codes: %v", err)
+			}
+		}
+
 		// 增量补齐 pending_user（审批注册）角色权限：仅当该角色尚无任何映射时写入，不覆盖自定义。
 		if codes, ok := model.DefaultRolePermissions["pending_user"]; ok {
 			all, err := permRepo.GetAllRolePermissions(ctx)
@@ -633,12 +697,15 @@ func seedPermissions(store db.Store, kv kvstore.Store, alreadySeeded bool) (serv
 			}
 		}
 		logrus.Info("seeded default role-permission mappings")
-	}
-
-	// 新增权限码在升级库上不会自动进入 admin 映射（上面的同步只跑首启）。
-	// 逐个补齐：只追加缺失项，不重置管理员已有的自定义映射。
-	for _, code := range []string{model.PermLevelManage, model.PermGateManage} {
-		ensureRolePermission(ctx, permRepo, "admin", code)
+		// 首启把这些默认码全部标记为「已应用」：之后管理员撤销的不再补回。
+		codes := make([]string, 0, len(model.DefaultPermissions))
+		for _, perm := range model.DefaultPermissions {
+			codes = append(codes, perm.Code)
+		}
+		if err := metaRepo.Set(ctx, model.MetaSeededRolePermissionCodes,
+			strings.Join(service.AllPermissionCodes(codes), ",")); err != nil {
+			logrus.Warnf("persist applied role-permission codes: %v", err)
+		}
 	}
 
 	// Build permission service and load cache

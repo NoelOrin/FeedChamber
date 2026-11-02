@@ -25,7 +25,7 @@
 ## 3. panic 边界
 
 - [x] 3.1 新增 `internal/middleware/recovery.go`，挂在 `Logger` 之后并说明顺序理由
-- [x] 3.2 指标 `orinforum_http_panics_total`（无标签）注册进独立 Registry
+- [x] 3.2 指标 `feedchamber_http_panics_total`（无标签）注册进独立 Registry
 - [x] 3.3 3 项 httptest：handler panic、party 级（网关）panic、正常请求不受影响
 
 ## 4. 装配层重构
@@ -63,7 +63,7 @@
 ## 7. 验证
 
 - [x] 7.1 `go build ./... && go vet ./... && go test -count=1 ./...` 全绿（每步改动后各跑一次）
-- [x] 7.2 `orinforum_test.sh -all` 113/113 通过（信封改动后、装配重构后、身份键改动后各一次）
+- [x] 7.2 `feedchamber_test.sh -all` 113/113 通过（信封改动后、装配重构后、身份键改动后各一次）
 - [x] 7.3 实机冒烟：成功信封 `msg:"success"`、网关 401/429 带中文原因、维护模式 503+5005、登出清 cookie、API Key 创建与 `X-API-Key` 鉴权、SIGTERM 优雅关停
 - [x] 7.4 前端引用面核对：无任何消费者引用被废弃的网关私有码；`.msg` 仅在失败路径读取
 

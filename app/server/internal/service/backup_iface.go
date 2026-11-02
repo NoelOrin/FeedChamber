@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 type BackupService interface {

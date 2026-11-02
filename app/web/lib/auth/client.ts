@@ -1,4 +1,4 @@
-import { type AuthResponse, authService, clearAuthTokens, type User, userService } from '@orinforum/api-client';
+import { type AuthResponse, authService, clearAuthTokens, type User, userService } from '@feedchamber/api-client';
 
 import { authSession } from './session';
 

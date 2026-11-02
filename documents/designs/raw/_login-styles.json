@@ -31,7 +31,7 @@
 		{
 			"tag": "div",
 			"cls": "min-h-screen.grid.lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]",
-			"text": "ARCHIVEOrinForumINDEX — ",
+			"text": "ARCHIVEFeed ChamberINDEX — ",
 			"color": "rgb(20, 20, 22)",
 			"background-color": "rgb(252, 250, 248)",
 			"font-family": "\"Segoe UI\", system-ui, -apple-system, \"Helvetica Neue\", Arial, \"Microsoft Yahei\", sans-serif",
@@ -52,7 +52,7 @@
 		{
 			"tag": "div",
 			"cls": "relative.hidden.lg:flex",
-			"text": "ARCHIVEOrinForumINDEX — ",
+			"text": "ARCHIVEFeed ChamberINDEX — ",
 			"color": "rgb(255, 255, 255)",
 			"background-color": "rgb(20, 20, 22)",
 			"font-family": "\"Segoe UI\", system-ui, -apple-system, \"Helvetica Neue\", Arial, \"Microsoft Yahei\", sans-serif",
@@ -178,7 +178,7 @@
 		{
 			"tag": "div",
 			"cls": "relative.z-10.flex",
-			"text": "OrinForumINDEX — 档案索引 ED",
+			"text": "Feed ChamberINDEX — 档案索引 ED",
 			"color": "rgb(255, 255, 255)",
 			"background-color": "rgba(0, 0, 0, 0)",
 			"font-family": "\"Segoe UI\", system-ui, -apple-system, \"Helvetica Neue\", Arial, \"Microsoft Yahei\", sans-serif",
@@ -199,7 +199,7 @@
 		{
 			"tag": "a",
 			"cls": "inline-flex.items-center.gap-2.5",
-			"text": "OrinForumINDEX — 档案索引",
+			"text": "Feed ChamberINDEX — 档案索引",
 			"color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.95)",
 			"background-color": "oklab(0.999994 0.0000455678 0.0000200868 / 0.1)",
 			"font-family": "\"Segoe UI\", system-ui, -apple-system, \"Helvetica Neue\", Arial, \"Microsoft Yahei\", sans-serif",
@@ -640,7 +640,7 @@
 		{
 			"tag": "p",
 			"cls": "font-mono.text-[11px].tracking-[0.08em]",
-			"text": "© 2026 OrinForum — 档案索引 ",
+			"text": "© 2026 Feed Chamber — 档案索引 ",
 			"color": "oklab(0.999994 0.0000455677 0.0000200868 / 0.6)",
 			"background-color": "rgba(0, 0, 0, 0)",
 			"font-family": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Cascadia Code\", monospace",
@@ -661,7 +661,7 @@
 		{
 			"tag": "div",
 			"cls": "flex.items-center.justify-center",
-			"text": "OrinForum登录还没有账号？立即注册 SI",
+			"text": "Feed Chamber登录还没有账号？立即注册 SI",
 			"color": "rgb(20, 20, 22)",
 			"background-color": "rgb(255, 255, 255)",
 			"font-family": "\"Segoe UI\", system-ui, -apple-system, \"Helvetica Neue\", Arial, \"Microsoft Yahei\", sans-serif",
@@ -703,7 +703,7 @@
 		{
 			"tag": "div",
 			"cls": "w-full.max-w-[380px].relative",
-			"text": "OrinForum登录还没有账号？立即注册 SI",
+			"text": "Feed Chamber登录还没有账号？立即注册 SI",
 			"color": "rgb(20, 20, 22)",
 			"background-color": "rgba(0, 0, 0, 0)",
 			"font-family": "\"Segoe UI\", system-ui, -apple-system, \"Helvetica Neue\", Arial, \"Microsoft Yahei\", sans-serif",
@@ -724,7 +724,7 @@
 		{
 			"tag": "div",
 			"cls": "lg:hidden.flex.items-center",
-			"text": "OrinForum",
+			"text": "Feed Chamber",
 			"color": "rgb(20, 20, 22)",
 			"background-color": "rgba(0, 0, 0, 0)",
 			"font-family": "\"Segoe UI\", system-ui, -apple-system, \"Helvetica Neue\", Arial, \"Microsoft Yahei\", sans-serif",
@@ -745,7 +745,7 @@
 		{
 			"tag": "a",
 			"cls": "inline-flex.items-center.gap-2",
-			"text": "OrinForum",
+			"text": "Feed Chamber",
 			"color": "rgb(20, 20, 22)",
 			"background-color": "rgba(0, 0, 0, 0)",
 			"font-family": "\"Segoe UI\", system-ui, -apple-system, \"Helvetica Neue\", Arial, \"Microsoft Yahei\", sans-serif",
@@ -1228,7 +1228,7 @@
 		{
 			"tag": "p",
 			"cls": "mt-6.text-center.font-mono",
-			"text": "© 2026 OrinForum — 安全登录 ",
+			"text": "© 2026 Feed Chamber — 安全登录 ",
 			"color": "rgb(154, 149, 144)",
 			"background-color": "rgba(0, 0, 0, 0)",
 			"font-family": "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, \"Cascadia Code\", monospace",
@@ -1249,7 +1249,7 @@
 		{
 			"tag": "p",
 			"cls": "lg:hidden.text-center.text-xs",
-			"text": "© 2026 OrinForum",
+			"text": "© 2026 Feed Chamber",
 			"color": "rgb(154, 149, 144)",
 			"background-color": "rgba(0, 0, 0, 0)",
 			"font-family": "\"Segoe UI\", system-ui, -apple-system, \"Helvetica Neue\", Arial, \"Microsoft Yahei\", sans-serif",

@@ -6,9 +6,9 @@ import (
 	"errors"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/repository"
 )
 
 type pluginService struct {

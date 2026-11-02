@@ -3,8 +3,8 @@ package router
 import (
 	"time"
 
-	"orinforum/internal/middleware"
-	"orinforum/internal/model"
+	"feedchamber/internal/middleware"
+	"feedchamber/internal/model"
 
 	"github.com/kataras/iris/v12"
 )

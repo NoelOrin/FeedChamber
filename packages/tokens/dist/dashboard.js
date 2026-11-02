@@ -1,5 +1,5 @@
-/* @orinforum/tokens - Dashboard tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
-   Run: pnpm --filter @orinforum/tokens tokens:build */
+/* @feedchamber/tokens - Dashboard tokens — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
+   Run: pnpm --filter @feedchamber/tokens tokens:build */
 
 export const lightDashboardTokens = {
   headingColor: '#141416',

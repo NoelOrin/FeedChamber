@@ -1,0 +1,6 @@
+# 构建产物
+dist/
+.astro/
+
+# 由 scripts/sync-openapi.mjs 从仓库根复制，不提交（避免与真相源漂移）
+public/openapi.json

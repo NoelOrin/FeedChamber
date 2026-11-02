@@ -13,7 +13,7 @@
 - **死代码删除**：`middleware.JWTAuth` / `OptionalJWTAuth` / `BanCheck` / `RequireRole` / `RequireOwnerOrPermission` / `SetPermissionChecker`、`Deps.Blacklist` + `TokenRevoker`、`pkg/jwt.SigningKey`、master_access_token 时代的 3 个 cookie helper、空的 `handler/cookie.go`、以及 6 个零调用者的模型/服务/仓储符号（`Space.IsRoot`/`ComputeDepth`/`FlattenSpaceTree`、`GetSpaceRolePermissionsWithInheritance`、`ProviderNames`、`MaskedKey`、`CheckInRepository.GetLatestByUser`）。生产调用数逐个实测为 0。
 - **重复实现合一**：`pkg.ClientIP`（两份 22 行逐字相同）；登出只剩 `SessionManager.LogoutHandler`（保留有 3 项测试的那份）；删除 `pkgSuccess` 复制品（其注释称避免循环依赖，而同包 `apikey.go` 早已直接调 `pkg.Success`）。
 - **响应信封单一出口**（**BREAKING**：网关错误体由 `{"code":…,"message":…}` 变为 `{code,msg,data}`；成功 `msg` 由 `"成功"` 改为规范字面量 `"success"`）：93 处改经 `pkg.Fail`/`pkg.Success`；号段收回共享表；新增 `pkg.FailStatus` 用于「状态本身是契约」的封禁 404；`MAINTENANCE(5005)→503`、`REQUEST_TIMEOUT(5004)→504`；OAuth2/OIDC 协议端点显式豁免。
-- **panic recovery**：新增 `middleware.Recover()` 挂在 `Logger` 之后，堆栈只进日志、响应固定 5001，指标 `orinforum_http_panics_total`（无标签）。
+- **panic recovery**：新增 `middleware.Recover()` 挂在 `Logger` 之后，堆栈只进日志、响应固定 5001，指标 `feedchamber_http_panics_total`（无标签）。
 - **装配重构**：`container` 拆 `deps.go`/`container.go`/`runtime.go`，`New` 只构造、`Start` 起后台并返回 `Runtime`；`Deps` 具名结构取代 11 个位置参数；事务管理器 9 份 → 1 份；`SetEventBus` 类型断言改为构造参数；`Handler` 不再引用 container（`handler.Deps` 显式 38 个服务，映射在 `server/wiring.go`）；`Handler.Shutdown()` 删除。
 - **网关依赖与身份契约**：`gateway.Deps.KV` 由 `any` 改为 `kvstore.Store`，删掉 6 处运行时断言与 `sessionKV`/`kvClient` 两份复制；`Register` 不再接收 `*gorm.DB`、不再就地 `gateway.New`；身份上下文键收敛为 `internal/pkg/ctxkey.go` 的常量（55 处调用点）。
 - **文档纠偏**：4 份 AGENTS.md 与 `docs/ARCHITECTURE.md` 中描述已删除中间件、不存在文件（`auth_gate.go`、`handler/metrics.go`、`handler/cookie.go`、11 个不存在的 repository 文件）、已废弃技术栈（SolidJS）与失真规模的部分全部按实测重写；`docs/backend-overview.md` 补 §9.1 可观察性（即上一 change 唯一未做的 10.5）；`make swag` 补齐 session-auth 遗漏的 `openapi.json` 再生成。
@@ -34,6 +34,6 @@
 ## Impact
 
 - **代码**：`app/server` 内 13 个包的 100+ 文件；净删除约 700 行死码，另有 93 处响应改写点。
-- **对外契约**：错误体字段名与部分业务码值变化（见上）；`packages/api-client` 的 `ErrorCode` 补 `BODY_TOO_LARGE/REQUEST_TIMEOUT/MAINTENANCE`，无需改解析逻辑（它本来就读 `msg`）。前端 e2e 与 `orinforum_test.sh` 只断言 `code`/状态码/成功路径，实测 113/113 通过。
+- **对外契约**：错误体字段名与部分业务码值变化（见上）；`packages/api-client` 的 `ErrorCode` 补 `BODY_TOO_LARGE/REQUEST_TIMEOUT/MAINTENANCE`，无需改解析逻辑（它本来就读 `msg`）。前端 e2e 与 `feedchamber_test.sh` 只断言 `code`/状态码/成功路径，实测 113/113 通过。
 - **不受影响**：URL、请求体字段、成功响应 `data` 结构、会话与权限语义。
 - **风险**：网关错误码收敛后，任何依赖旧私有号（`1004/1020/109x`）的外部消费者会看到新码。已核对仓库内前端、Dashboard、测试脚本与 `openapi.json`，无一处引用这些私有号。

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/sqlite"

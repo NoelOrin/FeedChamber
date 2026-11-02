@@ -35,6 +35,28 @@ export const settingsGroups: SettingsGroup[] = [
 		],
 	},
 	{
+		name: 'MCP Server',
+		tab: 'site',
+		items: [
+			{
+				key: 'mcp_enabled',
+				value: 'false',
+				description: '对外暴露 /mcp（AI 客户端以 API Key 调用本站）',
+				type: 'boolean',
+			},
+			{
+				key: 'mcp_disabled_tools',
+				value: '',
+				description: '工具启停覆盖，后台「MCP 工具」页维护；负号表示显式启用写工具',
+			},
+			{
+				key: 'mcp_max_result_bytes',
+				value: '8192',
+				description: '工具结果正文上限（字节），超限截断',
+			},
+		],
+	},
+	{
 		name: 'SEO 设置',
 		tab: 'site',
 		items: [
@@ -175,7 +197,7 @@ export const settingsGroups: SettingsGroup[] = [
 			{ key: 'email_username', value: '', description: 'SMTP / 邮箱用户名' },
 			{ key: 'email_password', value: '', description: 'SMTP / 邮箱密码', type: 'secret' },
 			{ key: 'email_from', value: '', description: '发件人邮箱' },
-			{ key: 'email_from_name', value: 'OrinForum', description: '发件人名称' },
+			{ key: 'email_from_name', value: 'Feed Chamber', description: '发件人名称' },
 			{ key: 'email_use_tls', value: 'false', description: 'SMTP 使用 TLS', type: 'boolean' },
 			{ key: 'email_api_key', value: '', description: 'SendGrid / Resend API Key', type: 'secret' },
 			{ key: 'email_code_ttl', value: '600', description: '邮箱验证码有效期（秒）' },

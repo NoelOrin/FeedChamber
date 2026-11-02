@@ -1,6 +1,6 @@
 'use client';
 
-import { oauthService } from '@orinforum/api-client';
+import { oauthService } from '@feedchamber/api-client';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 

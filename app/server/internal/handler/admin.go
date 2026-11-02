@@ -2,10 +2,10 @@ package handler
 
 import (
 	"encoding/json"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/service"
 	"log/slog"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/service"
 	"strconv"
 
 	"github.com/kataras/iris/v12"

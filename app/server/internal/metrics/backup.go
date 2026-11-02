@@ -19,7 +19,7 @@ var (
 	// because a failing restore is far more urgent than a failing cleanup.
 	BackupJobsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_backup_jobs_total",
+			Name: "feedchamber_backup_jobs_total",
 			Help: "Backup operations by kind and outcome.",
 		},
 		[]string{"kind", "outcome"},
@@ -28,7 +28,7 @@ var (
 	// BackupJobDuration records how long each backup operation took.
 	BackupJobDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "orinforum_backup_job_duration_seconds",
+			Name:    "feedchamber_backup_job_duration_seconds",
 			Help:    "Backup operation latency in seconds.",
 			Buckets: []float64{0.5, 1, 5, 15, 60, 300, 900, 3600},
 		},

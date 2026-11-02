@@ -1,0 +1,220 @@
+---
+title: Feed Chamber
+description: 可自托管的社区论坛：Go + Iris 后端、React 19 前端，内建成长体系、可见性与门控、内容审核、站点自定义与 MCP 双向能力。
+tableOfContents: false
+pagefind: false
+---
+
+import HomeLead from '../../components/home/HomeLead.astro';
+import FeatureGrid from '../../components/home/FeatureGrid.astro';
+import LinkGroups from '../../components/home/LinkGroups.astro';
+
+<div class="fc-home">
+
+<HomeLead
+	version="v1.0.0"
+	lead="一个可自托管的社区论坛：Iris 后端 + React 19 前端，内建成长体系、可见性与门控、内容审核与 MCP 双向能力。跑起来只需一条 docker compose，改外观和加功能都不用碰前端构建。"
+	ctas={[
+		{ label: '快速开始', href: '/getting-started/', variant: 'primary', icon: 'rocket' },
+		{ label: 'Docker Compose 安装', href: '/install/docker-compose/', icon: 'download' },
+		{ label: 'GitHub', href: 'https://github.com/NoelOrin/FeedChamber', icon: 'github' },
+	]}
+	shot={{
+		src: 'screenshots/timeline-light.png',
+		alt: 'Feed Chamber 时间线页面：左侧版面与标签导航，右侧帖子列表与筛选器',
+		caption: '时间线 · 版面与标签筛选、四种排序、未读与参与视图',
+	}}
+	stats={[
+		{ value: '314', label: '个 API 操作' },
+		{ value: '61', label: '个权限码' },
+		{ value: '15', label: '个 MCP 工具' },
+		{ value: '4', label: '种审核模式' },
+	]}
+/>
+
+## 为什么是 Feed Chamber
+
+<FeatureGrid
+	items={[
+		{
+			title: '会话即凭证，删行即失效',
+			description: '登录签发服务端会话 sid，登出 / 改密 / 改角色 / 封号都直接删行，不依赖黑名单。',
+			icon: 'approve-check',
+		},
+		{
+			title: 'XP 是行为聚合',
+			description: 'total_xp = Σ(指标 × 当前规则) + 连续签到 + 人工调整；删帖、取消点赞会自动回收。',
+			icon: 'star',
+		},
+		{
+			title: '可见性与门控',
+			description: '版面 public / login / level 三档，沿祖先链取最严；门控规则按优先级决定放行、拒绝、转审或限流。',
+			icon: 'padlock',
+		},
+		{
+			title: '四种审核模式',
+			description: 'off / async / external / manual，机器凭证写入高风险内容会被强制存草稿，等人工启用。',
+			icon: 'comment-alt',
+		},
+		{
+			title: 'MCP 双向能力',
+			description: '既对外暴露 15 个工具供 AI 客户端读写，也能把内容审核委托给外部 MCP 服务。',
+			icon: 'puzzle',
+		},
+		{
+			title: '不改代码改站点',
+			description: '主题 token、自定义 CSS/JS/HTML、导航项、首页模块与自定义页面，全部在后台维护。',
+			icon: 'setting',
+		},
+	]}
+/>
+
+## 从这里开始
+
+<LinkGroups
+	groups={[
+		{
+			title: '部署',
+			icon: 'rocket',
+			items: [
+				{
+					title: 'Docker Compose 安装',
+					description: '一台服务器、NAS 或虚拟机跑起完整栈',
+					href: '/install/docker-compose/',
+				},
+				{
+					title: '本地开发',
+					description: 'Go、Node 与外部 NATS 的启动顺序',
+					href: '/install/local/',
+				},
+				{
+					title: '生产部署清单',
+					description: 'TLS、密钥、备份与监控上线前检查',
+					href: '/install/production/',
+				},
+			],
+		},
+		{
+			title: '配置',
+			icon: 'setting',
+			items: [
+				{
+					title: '站点设置',
+					description: '站点信息、注册、SEO 与分页',
+					href: '/configuration/site/',
+				},
+				{
+					title: '认证与安全',
+					description: '会话、MFA、OAuth、OIDC 与 API Key',
+					href: '/configuration/authentication/',
+				},
+				{
+					title: '内容管线',
+					description: '审核模式、可见性与门控规则',
+					href: '/configuration/content/',
+				},
+			],
+		},
+		{
+			title: '管理',
+			icon: 'server',
+			items: [
+				{
+					title: '后台总览',
+					description: '菜单分组、权限门控与首改密',
+					href: '/administration/overview/',
+				},
+				{
+					title: '用户与权限',
+					description: '角色、权限码、用户组与禁言',
+					href: '/administration/users/',
+				},
+				{
+					title: '内容与审核',
+					description: '版面、帖子、评论、举报与回收站',
+					href: '/administration/content/',
+				},
+			],
+		},
+		{
+			title: '运维',
+			icon: 'laptop',
+			items: [
+				{
+					title: '架构总览',
+					description: '请求链路、分层职责与关键取舍',
+					href: '/operations/architecture/',
+				},
+				{
+					title: '观测与指标',
+					description: 'Prometheus、结构化日志与 trace',
+					href: '/operations/observability/',
+				},
+				{
+					title: '排障',
+					description: '按错误、状态码与运行信号定位',
+					href: '/operations/troubleshooting/',
+				},
+			],
+		},
+		{
+			title: 'API 与集成',
+			icon: 'puzzle',
+			items: [
+				{
+					title: 'API 约定',
+					description: 'RPC 风格、响应信封与错误码',
+					href: '/api/conventions/',
+				},
+				{
+					title: '调用示例',
+					description: '登录、发帖、评论与分页的真实请求',
+					href: '/api/examples/',
+				},
+				{
+					title: 'MCP 集成',
+					description: '作为 Server 暴露工具、作为 Client 消费',
+					href: '/api/mcp/',
+				},
+			],
+		},
+		{
+			title: '参考',
+			icon: 'open-book',
+			items: [
+				{
+					title: '端点索引',
+					description: '313 个 path / 314 个操作，按域分组',
+					href: '/reference/endpoints/',
+				},
+				{
+					title: '配置字段',
+					description: 'settings 表全部键与默认值',
+					href: '/reference/configuration/',
+				},
+				{
+					title: '错误码',
+					description: '统一错误码与 HTTP 状态映射',
+					href: '/reference/errors/',
+				},
+			],
+		},
+	]}
+/>
+
+## 技术栈
+
+| 层 | 选型 |
+|----|------|
+| 后端 | Go 1.25 + [Iris v12](https://www.iris-go.com/)，handler / service / repository 分层，SQL 走 GORM |
+| 前端 | React 19 + vinext（App Router）、TanStack Query、shadcn 风格原语、Tailwind v4 |
+| 存储 | SQLite（本地）/ PostgreSQL / MySQL；文件走本地磁盘或 S3 |
+| 基础设施 | 外部 NATS（JetStream）：KV、限流窗口、会话缓存与事件总线 |
+| 观测 | Prometheus（独立 9091 listener）+ 结构化 JSON 日志 + W3C traceparent |
+
+:::note[文档范围]
+本站面向**使用者**：怎么跑、怎么调、怎么接、怎么改。仓库内部的计划、评审与
+ADR 留在 `docs/` 目录，不进这套导航。
+:::
+
+</div>

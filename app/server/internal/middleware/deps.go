@@ -1,8 +1,8 @@
 package middleware
 
 import (
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/ratelimit"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/ratelimit"
 )
 
 // Deps holds all dependencies needed by middleware factories.

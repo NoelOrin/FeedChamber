@@ -25,6 +25,20 @@ func registerNotFoundChecker(fn notFoundChecker) {
 	notFoundCheckers = append(notFoundCheckers, fn)
 }
 
+// duplicateChecker 检查 err 是否为唯一约束冲突。
+type duplicateChecker func(error) bool
+
+var duplicateCheckers []duplicateChecker
+
+// registerDuplicateChecker 注册一个后端唯一冲突检查器。
+//
+// 之前每个 service 自己用 strings.Contains(err.Error(), "UNIQUE") 判断，
+// 三家后端的错误文案各不相同（SQLite "UNIQUE constraint failed"、
+// MySQL 1062、PostgreSQL 23505），漏一种就把冲突报成 500。
+func registerDuplicateChecker(fn duplicateChecker) {
+	duplicateCheckers = append(duplicateCheckers, fn)
+}
+
 // WrapDBErr 将底层数据库错误转换为统一错误。
 // 通过已注册的后端检查器识别 ErrNotFound，其他错误原样返回。
 func WrapDBErr(err error) error {
@@ -34,6 +48,11 @@ func WrapDBErr(err error) error {
 	for _, check := range notFoundCheckers {
 		if check(err) {
 			return ErrNotFound
+		}
+	}
+	for _, check := range duplicateCheckers {
+		if check(err) {
+			return ErrDuplicate
 		}
 	}
 	return err

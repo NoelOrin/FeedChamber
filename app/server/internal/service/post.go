@@ -3,14 +3,14 @@ package service
 import (
 	"context"
 	"errors"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/pkg/readcache"
+	"feedchamber/internal/repository"
 	"fmt"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/pkg/readcache"
-	"orinforum/internal/repository"
 	"strconv"
 	"strings"
 	"time"
@@ -646,7 +646,7 @@ func (s *postService) Create(ctx context.Context, authorID, title, body, spaceID
 	}
 
 	// @提及通知（标题 + 正文）
-	publishUserMentions(s.bus, s.users, ctx, authorID, post.ID, title+"\n"+body, senderName)
+	publishUserMentions(s.bus, s.users, ctx, authorID, post.ID, title+"\n"+body, senderName, map[string]struct{}{})
 
 	s.invalidateListCache(ctx)
 	return post, nil

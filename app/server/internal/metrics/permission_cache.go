@@ -12,7 +12,7 @@ var (
 	// space permissions, say) was previously only observable by reading memory.
 	PermissionCacheEntries = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "orinforum_permission_cache_entries",
+			Name: "feedchamber_permission_cache_entries",
 			Help: "Entries held in each permission cache.",
 		},
 		[]string{"cache"},

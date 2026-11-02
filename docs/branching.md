@@ -135,7 +135,7 @@ pre-push:
 
 ```bash
 # main：必须 PR + Quality 状态检查通过
-gh api -X PUT repos/NoelOrin/OrinForum/branches/main/protection \
+gh api -X PUT repos/NoelOrin/Feed Chamber/branches/main/protection \
   -f required_status_checks.strict=true \
   -f required_status_checks.contexts[]=Quality \
   -f enforce_admins=true \
@@ -143,9 +143,9 @@ gh api -X PUT repos/NoelOrin/OrinForum/branches/main/protection \
   -f restrictions=null
 
 # develop：不做 PR 强制，仅保留状态检查建议（用空 protection 或仅 dismiss stale）
-gh api -X DELETE repos/NoelOrin/OrinForum/branches/develop/protection 2>/dev/null || true
+gh api -X DELETE repos/NoelOrin/Feed Chamber/branches/develop/protection 2>/dev/null || true
 # develop 直接 push 即放行；如需禁止 force-push 可单独设：
-gh api -X PUT repos/NoelOrin/OrinForum/branches/develop/protection \
+gh api -X PUT repos/NoelOrin/Feed Chamber/branches/develop/protection \
   -f required_pull_request_reviews=null \
   -f enforce_admins=false \
   -f restrictions=null \

@@ -1,6 +1,6 @@
 'use client';
 
-import { themeService } from '@orinforum/api-client';
+import { themeService } from '@feedchamber/api-client';
 import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { NotificationBell } from '~/components/layout/notification-bell';

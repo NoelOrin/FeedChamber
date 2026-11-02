@@ -1,0 +1,142 @@
+---
+import { Icon } from '@astrojs/starlight/components';
+
+interface Item {
+	title: string;
+	description: string;
+	href: string;
+}
+
+interface Group {
+	title: string;
+	icon: string;
+	items: Item[];
+}
+
+interface Props {
+	groups: Group[];
+}
+
+const { groups } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const withBase = (href: string) => (href.startsWith('/') ? `${base}${href.slice(1)}` : href);
+---
+
+<div class="groups">
+	{
+		groups.map((group) => (
+			<section>
+				<h2 class="group-title">
+					<Icon name={group.icon} size="1rem" />
+					<span>{group.title}</span>
+				</h2>
+				<ul>
+					{group.items.map((item) => (
+						<li>
+							<a href={withBase(item.href)}>
+								<span class="text">
+									<span class="title">{item.title}</span>
+									<span class="desc">{item.description}</span>
+								</span>
+								<Icon name="right-arrow" size="0.9rem" class="arrow" />
+							</a>
+						</li>
+					))}
+				</ul>
+			</section>
+		))
+	}
+</div>
+
+<style>
+	.groups {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		column-gap: 3rem;
+		row-gap: 2.5rem;
+		margin-top: 2.5rem;
+	}
+
+	.group-title {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		margin: 0 0 0.5rem;
+		padding: 0;
+		border: none;
+		font-size: 0.9375rem;
+		font-weight: 650;
+		color: var(--fc-text-strong);
+		letter-spacing: -0.005em;
+	}
+
+	.group-title :global(svg) {
+		color: var(--fc-accent);
+	}
+
+	ul {
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	li {
+		margin: 0;
+		border-top: 1px solid var(--fc-hairline);
+	}
+
+	li a {
+		display: flex;
+		align-items: center;
+		gap: 1rem;
+		padding: 0.7rem 0.25rem;
+		color: inherit;
+		text-decoration: none;
+		transition: background 120ms ease;
+	}
+
+	li a:hover {
+		background: color-mix(in srgb, var(--fc-bg-soft) 60%, transparent);
+		text-decoration: none;
+	}
+
+	.text {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		min-width: 0;
+	}
+
+	.title {
+		font-size: 0.9rem;
+		font-weight: 550;
+		color: var(--fc-text-strong);
+	}
+
+	.desc {
+		font-size: 0.78rem;
+		line-height: 1.5;
+		color: var(--fc-text-muted);
+	}
+
+	.arrow {
+		margin-inline-start: auto;
+		flex: none;
+		color: var(--fc-text-muted);
+		transition:
+			transform 120ms ease,
+			color 120ms ease;
+	}
+
+	li a:hover .arrow {
+		color: var(--fc-accent);
+		transform: translateX(2px);
+	}
+
+	@media (max-width: 52rem) {
+		.groups {
+			grid-template-columns: minmax(0, 1fr);
+			row-gap: 2rem;
+		}
+	}
+</style>

@@ -10,7 +10,7 @@
 
 - [x] 2.1 `openspec/specs/operations/spec.md`：删除「集群监控栈运行与校验」整条 requirement（含两个 scenario）
 - [x] 2.2 `openspec/specs/observability/spec.md`：删除「监控栈可部署」整条 requirement（含 scenario）
-- [x] 2.3 确认「告警规则最低集」requirement 无需改动（`prometheus/rules/orinforum.yml` 仍在）
+- [x] 2.3 确认「告警规则最低集」requirement 无需改动（`prometheus/rules/feedchamber.yml` 仍在）
 
 ## 3. 文档与注释同步
 
@@ -20,7 +20,7 @@
 - [x] 3.4 `docs/backend-overview.md`：`expose` 说明改指 `docker-compose.yml`；编排表删陈旧档位（lite/basic/full/cluster）
 - [x] 3.5 `docs/design/nats-deploy.md`：档位表、运行命令、「集群部署」小节改为自备外部服务
 - [x] 3.6 `deploy/docker-compose.yml` 头注释：去掉「需要集群档时改用 …」
-- [x] 3.7 `deploy/prometheus.yml`、`deploy/prometheus/rules/orinforum.yml` 头注释：改为「挂到外部实例」
+- [x] 3.7 `deploy/prometheus.yml`、`deploy/prometheus/rules/feedchamber.yml` 头注释：改为「挂到外部实例」
 
 ## 4. 不动的部分（有意保留）
 

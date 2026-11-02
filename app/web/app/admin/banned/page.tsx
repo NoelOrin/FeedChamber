@@ -1,8 +1,8 @@
 'use client';
 
+import { type BannedUser, bannedService, userService } from '@feedchamber/api-client';
+import { formatTime } from '@feedchamber/shared-utils';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { type BannedUser, bannedService, userService } from '@orinforum/api-client';
-import { formatTime } from '@orinforum/shared-utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';

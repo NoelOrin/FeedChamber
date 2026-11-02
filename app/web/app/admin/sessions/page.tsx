@@ -1,7 +1,7 @@
 'use client';
 
-import { sessionService, type UserSession } from '@orinforum/api-client';
-import { formatTime } from '@orinforum/shared-utils';
+import { sessionService, type UserSession } from '@feedchamber/api-client';
+import { formatTime } from '@feedchamber/shared-utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo } from 'react';

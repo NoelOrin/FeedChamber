@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/pkg/tracing"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/pkg/tracing"
 
 	"github.com/nats-io/nats.go"
 	"github.com/sirupsen/logrus"
@@ -46,7 +46,7 @@ const (
 	defaultQueueSize   = 100
 	defaultWorkerCnt   = 4
 	eventSubjectPrefix = "nats.eventbus."
-	eventQueue         = "orinforum_eventbus"
+	eventQueue         = "feedchamber_eventbus"
 )
 
 type wireEvent struct {

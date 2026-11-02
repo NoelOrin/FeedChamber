@@ -15,7 +15,7 @@ export const KIND_FILTER = (__ENV.KINDS || '')
 	.filter(Boolean);
 
 // 压测流量在服务端日志里可辨识（不伪装成真实用户 UA）
-export const USER_AGENT = __ENV.USER_AGENT || 'OrinForum-LoadTest/0.1 (k6)';
+export const USER_AGENT = __ENV.USER_AGENT || 'Feed Chamber-LoadTest/0.1 (k6)';
 
 // 报告里要 p50/p95/p99 同口径出现：k6 的 summaryTrendStats 决定 values 里有哪些分位
 export const TREND_STATS = ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'];

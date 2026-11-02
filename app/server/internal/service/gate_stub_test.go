@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // stubGateService 只实现测试用到的求值路径：固定返回一个动作。

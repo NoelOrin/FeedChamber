@@ -1,4 +1,4 @@
-import { ApiError, HttpError, NetworkError } from '@orinforum/api-client';
+import { ApiError, HttpError, NetworkError } from '@feedchamber/api-client';
 import { QueryClient } from '@tanstack/react-query';
 import { cache } from 'react';
 

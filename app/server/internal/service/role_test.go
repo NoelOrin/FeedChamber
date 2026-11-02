@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // MockRoleRepository is a mock implementation of RoleRepository for testing

@@ -75,7 +75,7 @@ docker compose -f deploy/dev.yml up -d
 # 必填：外部 NATS，必须启用 JetStream（-js）。
 # 为空时后端启动即失败（config.Validate 拦截），不再回退内嵌。
 NATS_URL=nats://localhost:4222
-NATS_BUCKET=orin_kv
+NATS_BUCKET=feedchamber_kv
 ```
 
 ## 生产部署
@@ -151,7 +151,7 @@ brew install nats-io/nats-tools/nats
 # 常用命令
 nats stream ls                    # 查看 JetStream streams
 nats kv ls                        # 查看 KV buckets
-nats kv get orin_kv <key>         # 读 KV 值
+nats kv get feedchamber_kv <key>         # 读 KV 值
 nats server check connection      # 连接健康检查
 nats consumer ls                  # 查看消费者
 ```

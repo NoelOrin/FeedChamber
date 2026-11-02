@@ -18,7 +18,7 @@ var (
 	// reconnect wait is visible instead of only appearing as a log line.
 	NATSConnected = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "orinforum_nats_connected",
+			Name: "feedchamber_nats_connected",
 			Help: "1 while the NATS client connection is usable, 0 while disconnected.",
 		},
 		[]string{"client"},
@@ -27,7 +27,7 @@ var (
 	// NATSDisconnectsTotal counts transitions out of a connected state.
 	NATSDisconnectsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_nats_disconnects_total",
+			Name: "feedchamber_nats_disconnects_total",
 			Help: "NATS connection losses, by client.",
 		},
 		[]string{"client"},
@@ -37,7 +37,7 @@ var (
 	// climbs while disconnects does not means the link is flapping.
 	NATSReconnectsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_nats_reconnects_total",
+			Name: "feedchamber_nats_reconnects_total",
 			Help: "Successful NATS reconnections, by client.",
 		},
 		[]string{"client"},

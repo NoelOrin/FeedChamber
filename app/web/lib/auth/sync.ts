@@ -1,6 +1,6 @@
 type AuthSyncEvent = 'AUTH_LOGIN' | 'AUTH_LOGOUT' | 'AUTH_REFRESHED' | 'AUTH_EXPIRED' | 'PROFILE_UPDATED';
 
-const CHANNEL_NAME = 'orinforum-auth';
+const CHANNEL_NAME = 'feedchamber-auth';
 let channel: BroadcastChannel | null = null;
 
 function getChannel(): BroadcastChannel | null {

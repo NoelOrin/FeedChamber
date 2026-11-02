@@ -1,0 +1,369 @@
+---
+import reference from '../../data/reference.json';
+
+interface Props {
+	locale?: 'zh' | 'en';
+}
+
+const { locale = 'zh' } = Astro.props;
+const isEn = locale === 'en';
+const { endpoints } = reference;
+const groups = endpoints.groups.map((group) => ({
+	key: group.key,
+	title: isEn ? group.titleEn : group.title,
+	items: group.items,
+}));
+
+const labels = isEn
+	? {
+			filter: 'Filter by path or description…',
+			paths: 'paths',
+			operations: 'operations',
+			group: 'group',
+			groups: 'groups',
+			show: 'Show',
+			hide: 'Hide',
+			empty: 'No endpoint matches that filter.',
+			method: 'Method',
+			path: 'Path',
+			summary: 'Description',
+		}
+	: {
+			filter: '按路径或说明筛选…',
+			paths: '个 path',
+			operations: '个操作',
+			group: '个分组',
+			groups: '个分组',
+			show: '展开',
+			hide: '收起',
+			empty: '没有匹配的端点。',
+			method: '方法',
+			path: '路径',
+			summary: '说明',
+		};
+---
+
+<div class="endpoint-index" data-endpoint-index>
+	<div class="toolbar">
+		<input
+			type="search"
+			class="filter"
+			placeholder={labels.filter}
+			aria-label={labels.filter}
+			data-endpoint-filter
+		/>
+		<p class="counts">
+			<strong>{endpoints.paths}</strong>{labels.paths}
+			<span class="sep">·</span>
+			<strong>{endpoints.operations}</strong>{labels.operations}
+			<span class="sep">·</span>
+			<strong>{groups.length}</strong>{labels.groups}
+		</p>
+	</div>
+
+	<nav class="toc" aria-label={isEn ? 'Endpoint groups' : '端点分组'}>
+		{
+			groups.map((group) => (
+				<a href={`#group-${group.key}`} data-group-link={group.key}>
+					{group.title}
+					<span>{group.items.length}</span>
+				</a>
+			))
+		}
+	</nav>
+
+	{
+		groups.map((group) => (
+			<details class="group" id={`group-${group.key}`} data-group={group.key} open={group.items.length <= 24}>
+				<summary>
+					<span class="group-title">{group.title}</span>
+					<span class="group-count">{group.items.length}</span>
+					<span class="group-toggle" aria-hidden="true" />
+				</summary>
+				<table>
+					<thead>
+						<tr>
+							<th class="col-method">{labels.method}</th>
+							<th class="col-path">{labels.path}</th>
+							<th class="col-summary">{labels.summary}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{group.items.map((item) => (
+							<tr data-row>
+								<td class="col-method">
+									<span class:list={['method', item.method.toLowerCase()]}>{item.method}</span>
+								</td>
+								<td class="col-path">
+									<code>{item.path}</code>
+								</td>
+								<td class="col-summary">{item.summary}</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+				<p class="empty" data-empty hidden>
+					{labels.empty}
+				</p>
+			</details>
+		))
+	}
+</div>
+
+<script>
+	const root = document.querySelector('[data-endpoint-index]');
+	if (root) {
+		const filter = root.querySelector('[data-endpoint-filter]');
+		const groups = [...root.querySelectorAll('[data-group]')];
+		const apply = () => {
+			const term = (filter?.value ?? '').trim().toLowerCase();
+			for (const group of groups) {
+				let visible = 0;
+				for (const row of group.querySelectorAll('[data-row]')) {
+					const match = !term || row.textContent.toLowerCase().includes(term);
+					row.hidden = !match;
+					if (match) visible += 1;
+				}
+				group.hidden = visible === 0;
+				const empty = group.querySelector('[data-empty]');
+				if (empty) empty.hidden = visible !== 0;
+				if (term && visible > 0) group.open = true;
+			}
+		};
+		filter?.addEventListener('input', apply);
+	}
+</script>
+
+<style>
+	.endpoint-index .toolbar {
+		position: sticky;
+		top: calc(var(--sl-nav-height) + 0.5rem);
+		z-index: 2;
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem;
+		margin: 1.25rem 0 0.75rem;
+		padding: 0.65rem;
+		border: 1px solid var(--fc-hairline);
+		border-radius: 9px;
+		background: color-mix(in srgb, var(--fc-bg) 88%, transparent);
+		backdrop-filter: blur(8px);
+	}
+
+	.endpoint-index .filter {
+		flex: 1 1 18rem;
+		min-width: 0;
+		padding: 0.45rem 0.7rem;
+		border: 1px solid var(--fc-hairline-strong);
+		border-radius: 6px;
+		background: var(--fc-bg-soft);
+		color: var(--fc-text-strong);
+		font-size: 0.85rem;
+	}
+
+	.endpoint-index .filter:focus {
+		outline: 2px solid var(--fc-accent);
+		outline-offset: 1px;
+	}
+
+	.endpoint-index .counts {
+		margin: 0;
+		font-size: 0.78rem;
+		color: var(--fc-text-muted);
+		white-space: nowrap;
+	}
+
+	.endpoint-index .counts strong {
+		margin-right: 0.15rem;
+		color: var(--fc-text-strong);
+		font-family: var(--sl-font-mono);
+	}
+
+	.endpoint-index .sep {
+		margin: 0 0.4rem;
+		color: var(--fc-hairline-strong);
+	}
+
+	.endpoint-index .toc {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem 0.5rem;
+		margin: 0 0 1.5rem;
+	}
+
+	.endpoint-index .toc a {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.35rem;
+		padding: 0.2rem 0.55rem;
+		border: 1px solid var(--fc-hairline);
+		border-radius: 999px;
+		font-size: 0.75rem;
+		color: var(--fc-text-muted);
+		text-decoration: none;
+	}
+
+	.endpoint-index .toc a:hover {
+		border-color: var(--fc-accent);
+		color: var(--fc-text-strong);
+	}
+
+	.endpoint-index .toc span {
+		font-family: var(--sl-font-mono);
+		font-size: 0.68rem;
+		color: var(--fc-text-muted);
+	}
+
+	.endpoint-index .group {
+		margin: 0 0 0.75rem;
+		border: 1px solid var(--fc-hairline);
+		border-radius: 9px;
+		overflow: hidden;
+	}
+
+	.endpoint-index .group summary {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.6rem 0.85rem;
+		cursor: pointer;
+		background: var(--fc-bg-soft);
+		list-style: none;
+	}
+
+	.endpoint-index .group summary::-webkit-details-marker {
+		display: none;
+	}
+
+	.endpoint-index .group-title {
+		font-size: 0.88rem;
+		font-weight: 600;
+		color: var(--fc-text-strong);
+	}
+
+	.endpoint-index .group-count {
+		font-family: var(--sl-font-mono);
+		font-size: 0.72rem;
+		color: var(--fc-text-muted);
+	}
+
+	.endpoint-index .group-toggle {
+		position: relative;
+		margin-inline-start: auto;
+		width: 0.75rem;
+		height: 0.75rem;
+	}
+
+	.endpoint-index .group-toggle::before,
+	.endpoint-index .group-toggle::after {
+		content: '';
+		position: absolute;
+		inset-inline-start: 50%;
+		top: 50%;
+		width: 0.7rem;
+		height: 1.5px;
+		background: var(--fc-text-muted);
+		transform: translate(-50%, -50%);
+	}
+
+	.endpoint-index .group-toggle::after {
+		transform: translate(-50%, -50%) rotate(90deg);
+		transition: transform 120ms ease;
+	}
+
+	.endpoint-index .group[open] .group-toggle::after {
+		transform: translate(-50%, -50%) rotate(0deg);
+	}
+
+	.endpoint-index table {
+		display: table;
+		width: 100%;
+		margin: 0;
+		border: none;
+		border-radius: 0;
+		font-size: 0.82rem;
+	}
+
+	.endpoint-index thead th {
+		background: var(--fc-bg);
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--fc-text-muted);
+	}
+
+	.endpoint-index tbody tr {
+		background: none;
+	}
+
+	.endpoint-index tbody tr:hover {
+		background: color-mix(in srgb, var(--fc-bg-soft) 55%, transparent);
+	}
+
+	.endpoint-index td,
+	.endpoint-index th {
+		border-color: var(--fc-hairline);
+		padding: 0.42rem 0.8rem;
+	}
+
+	.endpoint-index .col-method {
+		width: 4.5rem;
+	}
+
+	.endpoint-index .col-path {
+		white-space: nowrap;
+	}
+
+	.endpoint-index code {
+		font-size: 0.78rem;
+		color: var(--fc-text-strong);
+	}
+
+	.endpoint-index .method {
+		display: inline-block;
+		min-width: 3.2rem;
+		padding: 0.05rem 0.35rem;
+		border-radius: 4px;
+		border: 1px solid var(--fc-hairline-strong);
+		font-family: var(--sl-font-mono);
+		font-size: 0.65rem;
+		font-weight: 600;
+		text-align: center;
+		color: var(--fc-text-muted);
+	}
+
+	.endpoint-index .method.post {
+		border-color: color-mix(in srgb, var(--fc-accent) 55%, transparent);
+		background: color-mix(in srgb, var(--fc-accent) 12%, transparent);
+		color: var(--fc-accent);
+	}
+
+	.endpoint-index .method.get {
+		border-color: color-mix(in srgb, #22c55e 55%, transparent);
+		background: color-mix(in srgb, #22c55e 10%, transparent);
+		color: #22c55e;
+	}
+
+	.endpoint-index .empty {
+		margin: 0;
+		padding: 0.8rem;
+		font-size: 0.8rem;
+		color: var(--fc-text-muted);
+	}
+
+	@media (max-width: 52rem) {
+		.endpoint-index .col-summary {
+			display: none;
+		}
+
+		.endpoint-index .col-path code {
+			white-space: normal;
+			word-break: break-all;
+		}
+
+		.endpoint-index .toolbar {
+			position: static;
+		}
+	}
+</style>

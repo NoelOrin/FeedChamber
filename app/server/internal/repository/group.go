@@ -2,8 +2,8 @@ package repository
 
 import (
 	"context"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 )
 
 // GroupRepository 用户组、成员与组权限数据访问。

@@ -128,7 +128,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # 共享包要先出 dist，web 的 tsconfig 才解析得到 @orinforum/*
+      # 共享包要先出 dist，web 的 tsconfig 才解析得到 @feedchamber/*
       - name: Build shared packages
         run: pnpm exec turbo run build --filter='./packages/*'
 

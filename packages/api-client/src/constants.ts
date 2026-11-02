@@ -57,6 +57,10 @@ export const PermissionCode = {
 	RECONCILE_COUNTERS: 'reconcile:counters',
 	LEVEL_MANAGE: 'level:manage',
 	GATE_MANAGE: 'gate:manage',
+	// 站点自定义层：独立权限域，MUST NOT 并入任何既有 scope（见 mcp-server 规范）。
+	CUSTOMIZE_READ: 'customize:read',
+	CUSTOMIZE_WRITE: 'customize:write',
+	CUSTOMIZE_PUBLISH: 'customize:publish',
 } as const;
 
 export type PermissionCode = (typeof PermissionCode)[keyof typeof PermissionCode];
@@ -72,6 +76,9 @@ export const SettingKey = {
 	SITE_MAINTENANCE: 'site_maintenance',
 	EMAIL_VERIFICATION_REQUIRED: 'email_verification_required',
 	API_KEY_ENABLED: 'api_key_enabled',
+	MCP_ENABLED: 'mcp_enabled',
+	MCP_DISABLED_TOOLS: 'mcp_disabled_tools',
+	MCP_MAX_RESULT_BYTES: 'mcp_max_result_bytes',
 	MFA_TOTP_ENABLED: 'mfa_totp_enabled',
 	// 文章审核模式：off / async / external / manual（默认 async）
 	MODERATION_MODE: 'moderation_mode',

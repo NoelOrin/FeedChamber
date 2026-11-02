@@ -20,3 +20,5 @@ Cobra 命令行根命令，负责解析子命令并启动服务。
 - `.env` — 基础配置（始终加载）
 - `.env.dev` — 开发环境覆盖
 - `.env.prod` — 生产环境覆盖
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

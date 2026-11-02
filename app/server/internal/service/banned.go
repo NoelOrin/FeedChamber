@@ -6,11 +6,11 @@ import (
 	"errors"
 	"time"
 
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/repository"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/repository"
 )
 
 const (
@@ -243,16 +243,20 @@ func (s *bannedService) IsBannedInSpace(ctx context.Context, userID, spaceID str
 	return banned.IsValid()
 }
 
-func (s *bannedService) List(ctx context.Context, page, pageSize int) ([]model.Banned, error) {
+func (s *bannedService) List(ctx context.Context, page, pageSize int) ([]model.Banned, int64, error) {
 	page, pageSize = pkg.NormalizePagination(page, pageSize)
 	bans, err := s.bannedRepo.List(ctx, (page-1)*pageSize, pageSize)
 	if err != nil {
-		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+		return nil, 0, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	return bans, nil
+	total, err := s.bannedRepo.Count(ctx)
+	if err != nil {
+		return nil, 0, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	return bans, total, nil
 }
 
-func (s *bannedService) ListByScope(ctx context.Context, scope, spaceID string, page, pageSize int) ([]model.Banned, error) {
+func (s *bannedService) ListByScope(ctx context.Context, scope, spaceID string, page, pageSize int) ([]model.Banned, int64, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -261,9 +265,13 @@ func (s *bannedService) ListByScope(ctx context.Context, scope, spaceID string, 
 	}
 	bans, err := s.bannedRepo.ListByScope(ctx, scope, spaceID, (page-1)*pageSize, pageSize)
 	if err != nil {
-		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+		return nil, 0, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	return bans, nil
+	total, err := s.bannedRepo.CountByScope(ctx, scope, spaceID)
+	if err != nil {
+		return nil, 0, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	return bans, total, nil
 }
 
 func (s *bannedService) ListByUserID(ctx context.Context, userID string) ([]model.Banned, error) {

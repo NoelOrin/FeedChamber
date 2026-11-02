@@ -1,6 +1,6 @@
 # API 端点参考
 
-> 本文件是 OrinForum 后端 HTTP 接口的端点快照，按模块分组罗列。
+> 本文件是 Feed Chamber 后端 HTTP 接口的端点快照，按模块分组罗列。
 > **权威来源**为仓库根目录的 `openapi.json` 与运行时的 `/swagger/` 页面，由 handler 上的 swag 注解经 `make swag` 生成。本文件便于离线速查，若与 `openapi.json` 不一致，以 `openapi.json` 为准。
 > API 风格约定（全部 RPC 风格 `POST`、动词后缀 URL、body 传参、统一响应）见根目录 [AGENTS.md](AGENTS.md) 的「API 风格约定」。
 

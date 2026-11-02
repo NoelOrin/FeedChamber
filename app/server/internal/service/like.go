@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/repository"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/repository"
 
 	"github.com/sirupsen/logrus"
 )

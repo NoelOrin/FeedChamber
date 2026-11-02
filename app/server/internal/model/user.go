@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"orinforum/internal/pkg"
+	"feedchamber/internal/pkg"
 
 	"gorm.io/gorm"
 )

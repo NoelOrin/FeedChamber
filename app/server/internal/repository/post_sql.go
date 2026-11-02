@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/db"
-	"orinforum/internal/model"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 
 	"gorm.io/gorm"
 )

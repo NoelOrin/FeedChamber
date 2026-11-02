@@ -10,9 +10,9 @@
 
 - React 19 + vinext 1.1 — App Router（`app/` 目录、RSC、Server Actions），`proxy.ts` 取代 `middleware.ts`
 - TanStack Query 5 — 取数/缓存（**不再使用 TanStack Router**，路由由 vinext 承担；`TanStack` 在本包只指 Query）
-- shadcn/ui 基准的原语 + `app/globals.css` 自带的 shadcn token（中性色 + 冷紫主色）。**Web 不再依赖 `@orinforum/tokens`**（该包只服务 Dashboard）；daisyUI 已移除
-- `@orinforum/api-client` — 唯一请求层（`authFetch` + 401 单飞刷新），SSR cookie 经 `next/headers` 转发
-- `@orinforum/sse-client` — 实时未读数
+- shadcn/ui 基准的原语 + `app/globals.css` 自带的 shadcn token（中性色 + 冷紫主色）。**Web 不再依赖 `@feedchamber/tokens`**（该包只服务 Dashboard）；daisyUI 已移除
+- `@feedchamber/api-client` — 唯一请求层（`authFetch` + 401 单飞刷新），SSR cookie 经 `next/headers` 转发
+- `@feedchamber/sse-client` — 实时未读数
 - nuqs — URL 查询参数校验（取代 TanStack 的 `validateSearch`）
 - **容器运行时是 Bun，本地开发仍是 Node**：`Dockerfile` Stage 2 用 `oven/bun:1.4.4-alpine` + `bun node_modules/vinext/dist/cli.js start`，Stage 1 构建仍走 `node:22-alpine` + pnpm（产物是纯 JS，换运行时不碰锁文件）。**不要降到 Bun 1.3.x**：那版 `node:http` 对 HTTP/1.0 请求返回 200 后不关连接，`ab`/`curl --http1.0` 会挂死，1.4.4 已修。
 
@@ -149,4 +149,19 @@ make release-android                 # 生成 .aab（Google Play）
 - 登录后的 `?redirect=` 只接受站内相对路径，拒绝 `//host` 与 `/\host`（防开放重定向）
 - 会话凭据是 HttpOnly cookie（`master_session`），JS 只读非 HttpOnly 的 `master_auth` 标志位
 - 公告弹窗的 `iframe` 带 `sandbox`，且 `content` 为空时不渲染（空 `src` 会让浏览器重复下载整页）
-- 正文渲染统一走 `rehype-sanitize`（`components/content/markdown-renderer.tsx`）。`dangerouslySetInnerHTML` 的**受控例外**只有两处：根布局的首绘主题脚本，以及 `components/seo/json-ld.tsx` 的 JSON-LD（输入是结构化对象、序列化后强制转义 `<`）。新增第三处前先扩展已有组件，不要就地再写一次。
+- 正文渲染统一走 `rehype-sanitize`（`components/content/markdown-renderer.tsx`）。`dangerouslySetInnerHTML` 的**受控例外**共五处：根布局的首绘主题脚本、`components/seo/json-ld.tsx` 的 JSON-LD（输入是结构化对象、序列化后强制转义 `<`），以及**站点自定义层的三处注入**（主题 token 覆盖 / 自定义 CSS / 自定义 JS，见下条）。新增第六处前先扩展已有组件，不要就地再写一次。
+- **站点自定义注入是产品决定的「有意允许任意内容」**：`app/layout.tsx` 的 `fc-theme-overrides` / `fc-custom-css` / `fc-custom-js` / `fc-custom-body` 四处，内容来自后台「站点自定义」。风险由**写入侧**控制（仅 admin 可写、机器凭证写 JS/HTML 强制草稿、全量审计），**渲染侧刻意不做过滤**——过滤会让站长写不了复杂选择器。`/admin/**` 不注入（`isAdmin` 分支返回空），避免任意脚本在后台上下文执行。
+
+## 站点自定义注入（2026-10-30 修订）
+
+注入的容器选择统一在 `lib/customization/emit.ts`（`emitSnippets(snippets, slot)`），`app/layout.tsx` 只渲染结果，不按 kind 临时判断：
+
+| kind | 容器 | 说明 |
+|------|------|------|
+| css | `<style>` | 会中和 `</style` |
+| js | `<script>` | 会中和 `</script>` |
+| html | 容器 `<div>` | 塞进 `<script>` 只会变成语法错误；html 一律 body_end |
+
+服务端写入时已拒绝含 `</style` / `</script` 的内容（`service.validateSnippetContent`），emit 层再做一次中和——这条链路的失效模式是全站脚本执行，两处都独立成立。
+
+因此本节的 `dangerouslySetInnerHTML` 受控例外清单以 `emit.ts` 为准：`fc-theme-overrides`（token）、`fc-custom-css-*`、`fc-custom-js-*`、`fc-custom-body-*`（容器 div）、首绘主题脚本、JSON-LD。

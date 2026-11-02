@@ -1,4 +1,4 @@
-# OrinForum 扩展点指南
+# Feed Chamber 扩展点指南
 
 ## 原则
 

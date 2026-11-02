@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import { create } from 'zustand';
 
+import { toast } from './toast';
+
 type ThemeMode = 'light' | 'dark' | 'system';
 type ResolvedTheme = 'light' | 'dark';
 
@@ -82,6 +84,18 @@ export function useTheme() {
 		const next = ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length];
 		setTheme(next);
 		onChange?.(next);
+		/*
+		 * 提示统一在这里发：前台 ThemeToggle 与后台 AdminShell 的三个切换入口共用 cycle()，
+		 * 放在调用方会漏掉后台。文案读切换后的 <html> 真实明暗，zustand 的 resolved 要等下一次渲染。
+		 */
+		const isDark = document.documentElement.classList.contains('dark');
+		toast.success(
+			next === 'light'
+				? '已切换到亮色模式'
+				: next === 'dark'
+					? '已切换到暗色模式'
+					: `已切换为跟随系统（当前${isDark ? '暗色' : '亮色'}）`,
+		);
 	}
 
 	return { mode, isDark: resolved === 'dark', setMode: setTheme, title, cycle };

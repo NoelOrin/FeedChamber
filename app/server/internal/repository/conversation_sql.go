@@ -5,9 +5,9 @@ import (
 	"errors"
 	"time"
 
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
 
 	"gorm.io/gorm"
 )

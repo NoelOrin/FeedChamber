@@ -18,6 +18,7 @@
 			"!!**/next-env.d.ts",
 			"!!**/node_modules",
 			"!!**/*.log",
+			"!!**/*.astro",
 			"!!**/.env",
 			"!!**/.env.local",
 			"!!**/.env.*.local",
@@ -112,6 +113,16 @@
 		}
 	},
 	"overrides": [
+		{
+			"includes": ["app/web/app/layout.tsx", "app/web/components/customization/snippet-slot.tsx"],
+			"linter": {
+				"rules": {
+					"security": {
+						"noDangerouslySetInnerHtml": "off"
+					}
+				}
+			}
+		},
 		{
 			"includes": ["*.json"],
 			"formatter": {

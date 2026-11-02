@@ -1,4 +1,4 @@
-import { clearAuthTokens } from '@orinforum/api-client';
+import { clearAuthTokens } from '@feedchamber/api-client';
 
 export interface SSEMessage {
 	data: Record<string, unknown>;

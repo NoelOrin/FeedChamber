@@ -3,7 +3,7 @@
 > 现行规范见 `app/web/app/globals.css`（shadcn token）与 `app/web/components/ui/` 下的原语。
 > 本文仅作历史参考，其中的视觉建议（网格、颗粒、眉标、索引编号）不再执行。
 
-# OrinForum 设计系统 — 从现有 UI 提取
+# Feed Chamber 设计系统 — 从现有 UI 提取
 
 > 提取来源：运行中的 `app/web`（dev server :3000）截图 + `packages/tokens/w3c-tokens.json` 及其产物 + `app/web/src/assets/css/global.css`。
 > 参考截图：`documents/reference-images/current-ui/`；计算样式原始数据：`documents/designs/raw/`。
@@ -315,7 +315,7 @@ hover 抬升 `translateY(-2px)` + 阴影加深；**帖子详情页例外**：`.p
 ## 11. 页面解剖（补录自真实渲染页）
 
 ### 11.1 全站报头（masthead）
-- 顶栏左：`☰` 抽屉钮 → 品牌方块（深色底 + 白色图标）+ `灵思社区 OrinForum` / 下方 `ARCHIVE — 档案索引` 小字 + `• LIVE` 状态点
+- 顶栏左：`☰` 抽屉钮 → 品牌方块（深色底 + 白色图标）+ `灵思社区 Feed Chamber` / 下方 `ARCHIVE — 档案索引` 小字 + `• LIVE` 状态点
 - 顶栏右：搜索 / 通知铃 / 私信 / 头像（渐变紫圆）
 - 报头下方一条 **kicker 带**：左 `EDITION — 2026 —— OFFSET LITHO · 24…`，右 `VOL. 01 — ARCHIVE INDEX`（全大写 mono + 宽字距）
 - 顶栏之下可挂**橙色公告条**（`--color-warning` 底、白字、右侧 `×`），标题加粗 + 副行说明
@@ -334,7 +334,7 @@ hover 抬升 `translateY(-2px)` + 阴影加深；**帖子详情页例外**：`.p
   4. 右下 `OPEN ↗` mono 小字
   5. 左侧一条**竖向发丝轨**从头像向下延伸，串起卡片内容
 - 列表尾部 `没有更多了` + `— END OF INDEX —` 居中 mono 分隔
-- 页脚带：`OF 灵思社区 OrinForum / ARCHIVE INDEX` + 一行说明 `档案索引 · 对话留痕 · 以纸页承载讨论，以索引编织社区。— Offset litho · 24px grid · hairline rule.` + 三枚胶囊 `© 2026 灵思社区 ORINFORUM` `CRAFTED — 纸 · 油墨 · 网格` + 右侧版权声明
+- 页脚带：`OF 灵思社区 Feed Chamber / ARCHIVE INDEX` + 一行说明 `档案索引 · 对话留痕 · 以纸页承载讨论，以索引编织社区。— Offset litho · 24px grid · hairline rule.` + 三枚胶囊 `© 2026 灵思社区 ORINFORUM` `CRAFTED — 纸 · 油墨 · 网格` + 右侧版权声明
 
 ### 11.4 帖子详情页
 - 面包眉标：`# TOPIC — 主题 / 技术`，右上 `📌 置顶`

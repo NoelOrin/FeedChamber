@@ -33,3 +33,5 @@
 - 新增/删除脚本
 - 某个脚本被接入或移出 CI
 - 脚本的调用约定（参数、退出码语义）变化
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

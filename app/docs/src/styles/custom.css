@@ -1,0 +1,434 @@
+/*
+ * Feed Chamber 文档站设计层。
+ *
+ * 只做三件事：
+ *   1. 用品牌 token 覆盖 Starlight 的语义变量（主色 / 中性色 / 排版 / 布局宽度）
+ *   2. 把默认的侧栏、代码块、表格、提示块调成"产品文档"的样子
+ *   3. 暴露少量全局类给首页组件复用（版本徽标、卡片行）
+ *
+ * 组件自身的样式写在 .astro 的 scoped style 里，这里不放一次性布局。
+ */
+
+/* ── 品牌色与中性色 ─────────────────────────────────────────────────────── */
+
+:root,
+:root[data-theme="dark"] {
+	--fc-bg: #0b0b0f;
+	--fc-bg-elevated: #121218;
+	--fc-bg-soft: #17171e;
+	--fc-hairline: #212129;
+	--fc-hairline-strong: #2e2e38;
+	--fc-text: #d4d4dc;
+	--fc-text-strong: #f5f5f7;
+	--fc-text-muted: #9191a0;
+	--fc-accent: #a78bfa;
+	--fc-accent-strong: #c4b5fd;
+	--fc-accent-soft: #2a1a4d;
+	--fc-code-bg: #101016;
+
+	--sl-color-white: #ffffff;
+	--sl-color-black: var(--fc-bg);
+	--sl-color-gray-1: #ececf1;
+	--sl-color-gray-2: var(--fc-text);
+	--sl-color-gray-3: var(--fc-text-muted);
+	--sl-color-gray-4: #55555f;
+	--sl-color-gray-5: var(--fc-hairline-strong);
+	--sl-color-gray-6: var(--fc-bg-soft);
+	--sl-color-gray-7: var(--fc-bg);
+
+	--sl-color-accent-low: var(--fc-accent-soft);
+	--sl-color-accent: #8b5cf6;
+	--sl-color-accent-high: var(--fc-accent-strong);
+
+	--sl-color-text: var(--fc-text);
+	--sl-color-text-accent: var(--fc-accent-strong);
+	--sl-color-text-invert: #1a1030;
+	--sl-color-bg: var(--fc-bg);
+	--sl-color-bg-nav: color-mix(in srgb, var(--fc-bg) 86%, transparent);
+	--sl-color-bg-sidebar: var(--fc-bg);
+	--sl-color-bg-inline-code: var(--fc-bg-soft);
+	--sl-color-bg-accent: var(--fc-accent-strong);
+	--sl-color-hairline-light: var(--fc-hairline-strong);
+	--sl-color-hairline: var(--fc-hairline);
+	--sl-color-hairline-shade: var(--fc-bg);
+	--sl-color-backdrop-overlay: rgba(5, 5, 9, 0.7);
+}
+
+:root[data-theme="light"] {
+	--fc-bg: #ffffff;
+	--fc-bg-elevated: #ffffff;
+	--fc-bg-soft: #f6f6f9;
+	--fc-hairline: #ececf1;
+	--fc-hairline-strong: #dcdce3;
+	--fc-text: #3d3d47;
+	--fc-text-strong: #131318;
+	--fc-text-muted: #71717d;
+	--fc-accent: #6d28d9;
+	--fc-accent-strong: #5b21b6;
+	--fc-accent-soft: #f1ecfe;
+	--fc-code-bg: #f8f8fa;
+
+	--sl-color-white: #131318;
+	--sl-color-black: var(--fc-bg);
+	--sl-color-gray-1: #1c1c22;
+	--sl-color-gray-2: var(--fc-text);
+	--sl-color-gray-3: var(--fc-text-muted);
+	--sl-color-gray-4: #a3a3ad;
+	--sl-color-gray-5: var(--fc-hairline-strong);
+	--sl-color-gray-6: var(--fc-bg-soft);
+	--sl-color-gray-7: #fbfbfd;
+
+	--sl-color-accent-low: var(--fc-accent-soft);
+	--sl-color-accent: #7c3aed;
+	--sl-color-accent-high: var(--fc-accent-strong);
+
+	--sl-color-text: var(--fc-text);
+	--sl-color-text-accent: var(--fc-accent);
+	--sl-color-text-invert: #ffffff;
+	--sl-color-bg: var(--fc-bg);
+	--sl-color-bg-nav: color-mix(in srgb, var(--fc-bg) 88%, transparent);
+	--sl-color-bg-sidebar: var(--fc-bg);
+	--sl-color-bg-inline-code: var(--fc-bg-soft);
+	--sl-color-bg-accent: var(--fc-accent);
+	--sl-color-hairline-light: var(--fc-hairline-strong);
+	--sl-color-hairline: var(--fc-hairline);
+	--sl-color-hairline-shade: #ffffff;
+	--sl-color-backdrop-overlay: rgba(15, 15, 20, 0.4);
+}
+
+/* ── 排版与栅格 ─────────────────────────────────────────────────────────── */
+
+:root {
+	--sl-font:
+		-apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "PingFang SC", "Hiragino Sans GB", "Noto Sans SC",
+		"Microsoft YaHei", sans-serif;
+	--sl-font-mono:
+		"JetBrains Mono", "SF Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", "Courier New",
+		monospace;
+	--sl-text-body: 0.9875rem;
+	--sl-text-h1: 2.125rem;
+	--sl-text-h2: 1.5rem;
+	--sl-text-h3: 1.1875rem;
+	--sl-line-height: 1.75;
+	--sl-line-height-headings: 1.25;
+	--sl-nav-height: 3.75rem;
+	--sl-sidebar-width: 17.5rem;
+	--sl-content-width: 48rem;
+	--sl-content-pad-x: 1.5rem;
+	--sl-sidebar-pad-x: 1.25rem;
+}
+
+body {
+	-webkit-font-smoothing: antialiased;
+	text-rendering: optimizeLegibility;
+}
+
+/* ── 顶栏 ───────────────────────────────────────────────────────────────── */
+
+.header {
+	backdrop-filter: saturate(180%) blur(12px);
+	-webkit-backdrop-filter: saturate(180%) blur(12px);
+	border-bottom: 1px solid var(--fc-hairline);
+}
+
+site-search button[data-open-modal] {
+	border-radius: 8px;
+	border-color: var(--fc-hairline-strong);
+	background: var(--fc-bg-soft);
+}
+
+site-search button[data-open-modal]:hover {
+	border-color: var(--fc-accent);
+}
+
+:root[data-theme="dark"] site-search button[data-open-modal] {
+	background: var(--fc-bg-elevated);
+}
+
+/* ── 侧栏 ───────────────────────────────────────────────────────────────── */
+
+#starlight__sidebar {
+	border-inline-end: 1px solid var(--fc-hairline);
+}
+
+.sidebar-content {
+	font-size: 0.875rem;
+	padding-inline: var(--sl-sidebar-pad-x);
+	padding-block: 1.25rem 2rem;
+}
+
+.sidebar-content ul ul {
+	border-inline-start: none;
+	padding-inline-start: 0;
+	margin-inline-start: 0;
+}
+
+.sidebar-content li {
+	margin-block: 1px;
+}
+
+.sidebar-content a {
+	border-radius: 6px;
+	padding: 0.375rem 0.625rem;
+	color: var(--fc-text);
+	transition:
+		background 120ms ease,
+		color 120ms ease;
+}
+
+.sidebar-content a:hover {
+	background: var(--fc-bg-soft);
+	color: var(--fc-text-strong);
+}
+
+.sidebar-content a.large {
+	font-size: 0.9rem;
+}
+
+.sidebar-content a[aria-current="page"] {
+	background: var(--fc-accent-soft);
+	color: var(--fc-accent-strong);
+	font-weight: 550;
+	box-shadow: inset 2px 0 0 var(--fc-accent);
+}
+
+:root[data-theme="light"] .sidebar-content a[aria-current="page"] {
+	color: var(--fc-accent-strong);
+}
+
+.sidebar-content summary {
+	border-radius: 6px;
+	padding: 0.375rem 0.625rem;
+	cursor: pointer;
+}
+
+.sidebar-content summary:hover {
+	background: var(--fc-bg-soft);
+}
+
+.sidebar-content .group-label .large {
+	font-size: 0.8125rem;
+	font-weight: 650;
+	letter-spacing: 0.01em;
+	color: var(--fc-text-strong);
+}
+
+.sidebar-content details > summary .caret {
+	color: var(--fc-text-muted);
+}
+
+/* 分组之间加一条细分割线，让 7 个分组在视觉上真正分开 */
+.sidebar-content > ul > li + li {
+	margin-top: 0.375rem;
+	padding-top: 0.375rem;
+	border-top: 1px solid var(--fc-hairline);
+}
+
+/* ── 正文 ───────────────────────────────────────────────────────────────── */
+
+.sl-markdown-content {
+	font-size: var(--sl-text-body);
+}
+
+.sl-markdown-content :is(h1, h2, h3, h4) {
+	color: var(--fc-text-strong);
+	letter-spacing: -0.015em;
+}
+
+.sl-markdown-content h2 {
+	border-top: 1px solid var(--fc-hairline);
+	padding-top: 1.75rem;
+	margin-top: 3rem;
+}
+
+.sl-markdown-content h2:first-of-type {
+	border-top: none;
+	padding-top: 0;
+	margin-top: 2rem;
+}
+
+.sl-markdown-content a:not(:where(.not-content *)) {
+	text-underline-offset: 0.2em;
+	text-decoration-thickness: 1px;
+}
+
+.sl-markdown-content a:hover {
+	color: var(--fc-accent-strong);
+}
+
+.sl-markdown-content table {
+	width: 100%;
+	font-size: 0.875rem;
+	border: 1px solid var(--fc-hairline);
+	border-radius: 8px;
+	overflow: hidden;
+}
+
+.sl-markdown-content table th {
+	background: var(--fc-bg-soft);
+	font-weight: 600;
+	color: var(--fc-text-strong);
+	text-align: start;
+}
+
+.sl-markdown-content table :is(th, td) {
+	border-color: var(--fc-hairline);
+	padding: 0.5rem 0.75rem;
+}
+
+.sl-markdown-content table tr:nth-child(2n) {
+	background: color-mix(in srgb, var(--fc-bg-soft) 45%, transparent);
+}
+
+.sl-markdown-content code:not(:where(.not-content *)) {
+	border: 1px solid var(--fc-hairline);
+	border-radius: 5px;
+	padding: 0.1em 0.36em;
+	font-size: 0.86em;
+}
+
+.sl-markdown-content :not(pre) > code {
+	background: var(--fc-bg-soft);
+	color: var(--fc-text-strong);
+}
+
+.expressive-code {
+	margin-block: 1.25rem;
+}
+
+.expressive-code .frame {
+	border: 1px solid var(--fc-hairline);
+}
+
+:root[data-theme="dark"] .expressive-code .frame pre {
+	background: var(--fc-code-bg) !important;
+}
+
+.sl-markdown-content blockquote {
+	border-inline-start: 3px solid var(--fc-hairline-strong);
+	color: var(--fc-text-muted);
+}
+
+/* 提示块：默认是全包裹色块，改成左侧色条 + 淡底，减少视觉噪音 */
+.starlight-aside {
+	border-radius: 8px;
+	border-inline-start-width: 3px;
+	padding: 0.85rem 1rem;
+	background: var(--fc-bg-soft);
+}
+
+.starlight-aside--note {
+	border-inline-start-color: var(--sl-color-blue);
+}
+
+.starlight-aside--tip {
+	border-inline-start-color: var(--sl-color-green);
+}
+
+.starlight-aside--caution {
+	border-inline-start-color: var(--sl-color-orange);
+}
+
+.starlight-aside--danger {
+	border-inline-start-color: var(--sl-color-red);
+}
+
+/* ── 页脚（编辑此页 / 最近更新 / 上一页下一页） ─────────────────────────── */
+
+.pagination-links a {
+	border-radius: 8px;
+	border-color: var(--fc-hairline);
+}
+
+.pagination-links a:hover {
+	border-color: var(--fc-accent);
+}
+
+/* ── 首页与通用组件 ─────────────────────────────────────────────────────── */
+
+.fc-eyebrow {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	font-size: 0.8125rem;
+	font-weight: 500;
+	color: var(--fc-text-muted);
+	letter-spacing: 0.01em;
+}
+
+.fc-dot {
+	width: 0.5rem;
+	height: 0.5rem;
+	border-radius: 999px;
+	background: #22c55e;
+	box-shadow: 0 0 0 3px color-mix(in srgb, #22c55e 18%, transparent);
+}
+
+.fc-version {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.45rem;
+	padding: 0.2rem 0.6rem;
+	border: 1px solid var(--fc-hairline-strong);
+	border-radius: 999px;
+	font-family: var(--sl-font-mono);
+	font-size: 0.75rem;
+	color: var(--fc-text);
+	background: var(--fc-bg-elevated);
+}
+
+.fc-kbd {
+	font-family: var(--sl-font-mono);
+	font-size: 0.72rem;
+	padding: 0.08rem 0.35rem;
+	border: 1px solid var(--fc-hairline-strong);
+	border-bottom-width: 2px;
+	border-radius: 4px;
+	color: var(--fc-text-muted);
+	background: var(--fc-bg-elevated);
+}
+
+.fc-muted {
+	color: var(--fc-text-muted);
+}
+
+.fc-mono {
+	font-family: var(--sl-font-mono);
+	font-size: 0.85em;
+}
+
+/* 让正文里的普通段落不要顶到导航栏下沿 */
+main > .content-panel:first-of-type {
+	padding-top: 2rem;
+}
+
+/* 首页比正文页宽一点，链接卡片才排得开 */
+body:has(.fc-home) {
+	--sl-content-width: 52rem;
+}
+
+@media (max-width: 50rem) {
+	/* 窄屏让表格横向滚动，而不是把首列挤成竖排单字 */
+	.sl-markdown-content table {
+		display: block;
+		overflow-x: auto;
+		white-space: nowrap;
+	}
+
+	:root {
+		--sl-text-h1: 1.75rem;
+		--sl-text-h2: 1.375rem;
+		--sl-content-pad-x: 1rem;
+	}
+
+	main > .content-panel:first-of-type {
+		padding-top: 1.25rem;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	* {
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+	}
+}

@@ -1,0 +1,36 @@
+---
+title: 端点索引
+description: 由 openapi.json 生成的完整端点清单：313 个 path、314 个操作，按业务域分组
+---
+
+import EndpointIndex from '../../../components/reference/EndpointIndex.astro';
+
+这一页由仓库根的 `openapi.json` 在构建时生成，不是手写清单。改了路由却忘记跑
+`make swag`，`quality.yml` 的 swag 检查会先失败，所以这里不会静默过期。
+
+## 路径规则
+
+| 情况 | 实际路径 |
+|------|----------|
+| 业务接口 | `/api/v1` + 下面的路径（例：`/auth/login` → `/api/v1/auth/login`） |
+| 爬虫与订阅 | 应用根：`/sitemap.xml`、`/sitemap-posts.xml`、`/sitemap-spaces.xml`、`/sitemap-tags.xml`、`/robots.txt`、`/latest.rss` |
+| 协议端点 | `/.well-known/*`（应用根）；OAuth / OIDC 的 token、userinfo 仍在 `/api/v1` 下 |
+
+`/mcp` 走 JSON-RPC，不套论坛信封，也不在 OpenAPI 里——见 [MCP 集成](/api/mcp/)。
+
+健康检查的完整路径是 `/api/v1/health`；nginx 另有一个只返回 `healthy` 的 `/health`，
+那是反代本地探针，不经过后端。
+
+## 读这张表的方式
+
+- **写操作**一律 `POST`，路径带动作后缀（`/create`、`/{id}/update`、`/{id}/delete`）；
+  只读查询才可能出现 `GET`。
+- 列表接口都叫 `/list`，参数走请求体（`page` / `pageSize` 固定）。
+- 所有响应（协议端点除外）都是 `{ code, msg, data }`，见 [API 约定](/api/conventions/)。
+- 权限码不在这一页：路由级的权限门控记在 [认证与权限](/api/authentication/)。
+
+<EndpointIndex locale="zh" />
+
+:::tip[下载原始规格]
+完整的请求体、响应 schema 与枚举值在 OpenAPI 里，见 [OpenAPI](/api/openapi/)。
+:::

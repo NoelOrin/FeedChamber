@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // PostViewer 是「按帖子维度」的可见性判定入口，由 PostService 实现。

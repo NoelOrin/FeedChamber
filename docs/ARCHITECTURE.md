@@ -1,9 +1,9 @@
-# OrinForum 架构索引
+# Feed Chamber 架构索引
 
 
 > **规范真相源**：所有已采纳的稳定规范（API 风格、分层架构、服务设计、模块约定、前端共享包、运行配置）已迁移至 [OpenSpec](../openspec/specs/)。规范冲突时以 `openspec/specs/` 为准；后续规范变更须经 `openspec` change 提案流，不再直接改散文文档。
 
-本文件是 OrinForum 架构文档的入口。阅读顺序建议：先读本页建立全局分层心智模型，再读 [system-map.md](system-map.md) 看跨栈现状地图（后端/Web/Dashboard/共享包/部署 + 分层与数据流图），然后按需要深入各层的 `AGENTS.md` 与设计文档。完整项目约定（API 风格、模块说明、环境变量）见仓库根目录 [AGENTS.md](../AGENTS.md)；API 端点清单见 [docs/api-reference.md](api-reference.md)；后端实测现状梳理见 [docs/backend-overview.md](backend-overview.md)。
+本文件是 Feed Chamber 架构文档的入口。阅读顺序建议：先读本页建立全局分层心智模型，再读 [system-map.md](system-map.md) 看跨栈现状地图（后端/Web/Dashboard/共享包/部署 + 分层与数据流图），然后按需要深入各层的 `AGENTS.md` 与设计文档。完整项目约定（API 风格、模块说明、环境变量）见仓库根目录 [AGENTS.md](../AGENTS.md)；API 端点清单见 [docs/api-reference.md](api-reference.md)；后端实测现状梳理见 [docs/backend-overview.md](backend-overview.md)。
 
 ## 系统组成
 
@@ -74,7 +74,7 @@ HTTP Request
 
 - 后端启动：`cd app/server && go run main.go -e dev`（Cobra 用 `-e` 指定环境，`main.go dev` 会报 unknown command）；前端 `pnpm dev:web`（`/admin` 后台同进程）。
 - Swagger：启动后访问 `/swagger/`，由 `make swag` 从 handler 注解生成并同步到 `openapi.json`。
-- API 测试：根目录 `orinforum_test.sh` 全量脚本。
+- API 测试：根目录 `feedchamber_test.sh` 全量脚本。
 - 部署编排：仓库根 `deploy/`（2026-10 从 `app/server/deploy/` 移出），详见 [system-map.md §9.2](system-map.md#92-部署deploy仓库根)。
 
 ## 仓库杂项说明

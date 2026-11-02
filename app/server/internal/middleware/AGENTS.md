@@ -23,7 +23,7 @@
 | 中间件 | 文件 | 说明 |
 |--------|------|------|
 | `CORS()` | middleware.go | 跨域放行，OPTIONS 直接返回 204 |
-| `Recover()` | recovery.go | 捕获下游 panic → `500 {code:5001}`；堆栈只进日志（`panic`/`method`/`path`/`stack`），累加 `orinforum_http_panics_total`。MUST 排在 `Logger` 之后，否则请求日志不会写出；响应已开写时只 `StopExecution` 不伪造信封 |
+| `Recover()` | recovery.go | 捕获下游 panic → `500 {code:5001}`；堆栈只进日志（`panic`/`method`/`path`/`stack`），累加 `feedchamber_http_panics_total`。MUST 排在 `Logger` 之后，否则请求日志不会写出；响应已开写时只 `StopExecution` 不伪造信封 |
 | `Trace(enabled)` | trace.go | 确定/沿用 trace（`traceparent` > `X-Request-ID` 32hex > 新生成），写入 request context 并回写 `X-Request-ID`/`traceparent`；`RequestTrace(ctx)` 读取。`enabled=false` 时仍生成 trace 供日志关联，只是不解析/回写外部头 |
 | `Logger()` | middleware.go | 请求日志：`trace_id`/`span_id`/`method`/`path`/`status`/`latency_ms`/`user_uuid`/`ip`，路由匹配后追加 `route`；原 `request_id` 字段已并入 `trace_id` |
 | `Prometheus()` | prometheus.go | HTTP 指标；把路径中的 ID 段折叠成模板，避免高基数标签 |
@@ -55,3 +55,7 @@
 - **AuthGate 取代硬编码 public/protected 判断**：设置值经 `auth.go` 内 30s TTL 进程级缓存（key 为 `gateCache`），KV 故障时允许 2×TTL 的旧值降级，设置项缺失视为空值（fail-open），其它 KV 错误 fail-closed 返回 `INTERNAL_ERROR`。
 
 > 引用本包以外的位置时用符号名而非行号——行号在任何一次拆分或插入后都会腐化（本轮 router 拆分后即出现大批失效行号）。
+
+## RequirePermission 的凭证语义（2026-10-30）
+
+`RequirePermission(deps, code)` 不再只查角色权限表：它调用 `authz.Allowed(authz.CredentialFrom(ctx.Values()), …)`，与会话/网关同一判据——API Key 必须 scope 与角色同时覆盖，OAuth 客户端只认 scope。此前这里忽略 scope，等于让 route 级门控（`/admin/mcp`、`/admin/backups`、`/admin/webhooks`）对机器凭证失去上限。

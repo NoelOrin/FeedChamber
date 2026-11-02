@@ -1,6 +1,6 @@
 /* 页脚只留必要信息。 */
 export function Footer({ settings }: { settings: Record<string, string> }) {
-	const siteName = settings.site_name || 'OrinForum';
+	const siteName = settings.site_name || 'Feed Chamber';
 	const year = String(new Date().getFullYear());
 
 	return (

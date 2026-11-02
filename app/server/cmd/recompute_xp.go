@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/repository"
-	"orinforum/internal/service"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/repository"
+	"feedchamber/internal/service"
 
 	"github.com/spf13/cobra"
 )

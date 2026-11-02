@@ -1,7 +1,7 @@
 # layered-architecture Specification
 
 ## Purpose
-定义 OrinForum 后端请求处理的单向分层依赖链与各层职责边界，确保各层职责清晰隔离、不允许跨层调用。
+定义 Feed Chamber 后端请求处理的单向分层依赖链与各层职责边界，确保各层职责清晰隔离、不允许跨层调用。
 ## Requirements
 ### Requirement: 单向分层依赖链
 
@@ -95,7 +95,7 @@ trace 上下文 MUST 在网关/中间件层建立一次，并沿依赖链单向�
 
 应用 MUST 在请求链路上安装 panic 恢复边界（`middleware.Recover()`），位置 MUST 在 `Logger` 之后：Iris 先执行 app 级中间件再执行 per-party 中间件，恢复点若排在 `Logger` 之前，被 panic 的请求不会留下完成日志。
 
-恢复后 MUST 返回标准信封的 `500 / code 5001`；堆栈与 panic 值 MUST 只写入日志（`panic`/`method`/`path`/`stack` 字段），MUST NOT 出现在响应体中。响应已开始写出时 MUST NOT 追加或伪造信封。恢复计数 MUST 暴露为无标签指标 `orinforum_http_panics_total`（panic 文本与路由为无界取值，不得成为标签）。
+恢复后 MUST 返回标准信封的 `500 / code 5001`；堆栈与 panic 值 MUST 只写入日志（`panic`/`method`/`path`/`stack` 字段），MUST NOT 出现在响应体中。响应已开始写出时 MUST NOT 追加或伪造信封。恢复计数 MUST 暴露为无标签指标 `feedchamber_http_panics_total`（panic 文本与路由为无界取值，不得成为标签）。
 
 #### Scenario: handler panic 不打断连接
 
@@ -141,9 +141,44 @@ trace 上下文 MUST 在网关/中间件层建立一次，并沿依赖链单向�
 #### Scenario: 放进 pkg/ 需给出消费者证据
 
 - WHEN 某包申请位于 `app/server/pkg/` 下
-- THEN MUST 能指出至少一个 `orinforum` 模块之外的 import 方；指不出时评审 MUST 要求移入 `internal/`
+- THEN MUST 能指出至少一个 `feedchamber` 模块之外的 import 方；指不出时评审 MUST 要求移入 `internal/`
 
 #### Scenario: 现存例外已清空
 
 - WHEN 审查 `app/server/pkg/` 的目录内容
 - THEN MUST 为空（或不存在）；任何重新出现在此处的包 MUST 附模块外消费者证据，否则评审 MUST 要求移入 `internal/`
+
+### Requirement: 网关保护面之外的端点必须自行完成等价检查
+
+位于网关保护面（`gw.Enforce()` 覆盖的路由）之外的对外端点，MUST 在其自身实现中完成与受保护路由等价的检查：维护模式限制、账号封禁与禁言拦截、权限校验、限流。MUST NOT 因为「它不在保护面里」而省略这些检查，MUST NOT 依赖调用方配合。
+
+判据是端点的**可写性与可达性**，而非它挂在哪个 party 上：任何能改变服务端状态、或能读取非公开数据的端点，都必须具备等价检查，无论它位于 `/api/v1` 之下还是应用根。
+
+#### Scenario: 应用根的写端点自带检查
+
+- WHEN 一个可写端点注册在应用根而非 `/api/v1` 保护面内
+- THEN 该端点 MUST 自行完成 ban、权限与限流检查
+- AND MUST NOT 因绕过网关而放行被封禁用户
+
+#### Scenario: 协议端点不得成为鉴权缺口
+
+- WHEN 新增一个不套用论坛信封的协议端点（如 MCP）
+- THEN 该端点 MUST 仍要求凭证，并 MUST 自行完成权限与限流检查
+
+### Requirement: 能力可被多种入口驱动时共享同一业务入口
+
+当同一项能力既可由后台界面触发、也可由机器调用（如 MCP 工具）触发时，两条路径 MUST 调用同一组业务层入口，MUST NOT 各自实现一套校验逻辑。
+
+机器调用入口 MUST NOT 绕过业务层的既有校验（所有权检查、门控规则、可见性门槛、审核策略）；MUST NOT 为机器调用单独引入审核旁路或权限旁路。
+
+#### Scenario: 后台与 MCP 共用业务校验
+
+- WHEN 同一需求既能从后台页面发起、也能从 MCP 工具发起
+- THEN 两者 MUST 落到同一业务层函数
+- AND 机器入口产生的数据 MUST 经过与界面上相同的校验与审核策略
+
+#### Scenario: 机器入口不得旁路门控
+
+- WHEN 通过 MCP 工具创建内容而站点门控规则对该用户有限制
+- THEN 该限制 MUST 照常生效，MUST NOT 因入口是 MCP 而跳过
+

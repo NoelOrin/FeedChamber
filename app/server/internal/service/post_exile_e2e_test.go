@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/repository"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/repository"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

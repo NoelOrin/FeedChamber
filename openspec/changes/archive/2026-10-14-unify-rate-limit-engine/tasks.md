@@ -20,7 +20,7 @@
 - [x] 3.3 变异验证：摘掉 `recordFailure` 里的计数，`TestCheckFailOpenAndMetrics` 立刻失败
 - [x] 3.4 实测 global 60/分钟/IP：统一后 protected 第一个 429 ≈60 次（与统一前同源测量 58 的差异由窗口内前置请求数解释）
 - [x] 3.5 实测 per-endpoint `login` 10/分钟：第 10 次 429，且它挡住后续登录说明端点预算独立生效
-- [x] 3.6 `go build/vet/test ./...` 全绿（17 包），`orinforum_test.sh -all` 113/113
+- [x] 3.6 `go build/vet/test ./...` 全绿（17 包），`feedchamber_test.sh -all` 113/113
 
 ## 4. 文档
 

@@ -4,8 +4,8 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/db"
-	"orinforum/internal/model"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 )
 
 // ConversationRepository is the data access layer for private-message conversations.

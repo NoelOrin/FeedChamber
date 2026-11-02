@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"orinforum/internal/pkg"
+	"feedchamber/internal/pkg"
 
 	"github.com/kataras/iris/v12"
 	"github.com/stretchr/testify/require"

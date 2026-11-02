@@ -9,7 +9,7 @@
 |------|------|------|
 | Groups 成员与权限聚合 | 已完成 | system groups + group_permissions；`HasPermissionForUser`；Dashboard 组管理 |
 | 信任等级 TL0–TL2 | 已完成 | 字段 + 每日晋升 ticker；TL0 外链/进审门禁；admin 手动调级 API |
-| 站点备份导出 | 已完成 | CLI `orinforum backup --out`（sqlite 快照 + uploads 清单 + meta） |
+| 站点备份导出 | 已完成 | CLI `feedchamber backup --out`（sqlite 快照 + uploads 清单 + meta） |
 | Discourse JSON 导入 MVP | 已完成 | `import-discourse --dir`；`import_maps` 幂等；文档 `../design/import-discourse.md` |
 | 扩展点 / 事件目录 | 已完成 | `eventbus/events.go` + `../design/extension-points.md` |
 | Chat | won't do | ADR：`docs/adr/chat-mvp.md` |
@@ -22,7 +22,7 @@
 - **扩展模型：** 明确官方模块 + EventBus，拒绝动态插件运行时——与 Discourse 插件生态不同，更偏可维护 monorepo。
 - **实时协作：** 无私信之外的 Chat 频道；实时能力仍以通知 SSE 为主。
 
-**总体：** 阶段 4 把 OrinForum 从“运营留存论坛”推进到“可迁站、可分组授权、可信任分级”的平台化底座；距离完整 Discourse 仍差插件市场、完整 TL、高级审核工作流与 Chat。
+**总体：** 阶段 4 把 Feed Chamber 从“运营留存论坛”推进到“可迁站、可分组授权、可信任分级”的平台化底座；距离完整 Discourse 仍差插件市场、完整 TL、高级审核工作流与 Chat。
 
 ## 风险与后续
 

@@ -12,9 +12,9 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/pkg/logger"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/pkg/logger"
 )
 
 // Outcome is the result of one limiter check.

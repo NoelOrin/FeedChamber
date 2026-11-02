@@ -6,7 +6,7 @@
 
 - W3C Design Tokens (DTCG) — `w3c-tokens.json` 为唯一可信来源
 - TypeScript + tsx — 构建脚本运行环境
-- `pnpm --filter @orinforum/tokens tokens:build` — 生成 dist/ 输出
+- `pnpm --filter @feedchamber/tokens tokens:build` — 生成 dist/ 输出
 
 ## 结构
 

@@ -4,7 +4,7 @@
 
 ### Requirement: 环境变量配置
 
-系统 MUST 通过环境变量配置运行参数，关键变量包括：`PORT`（默认 8080）、`JWT_SECRET`、`DB_TYPE`（sqlite/mysql/postgres，默认 sqlite）、`DB_DSN`、`STORAGE_TYPE`（local/s3，默认 local）、S3 系列变量、`NATS_URL`（空则启动内嵌 nats-server）、`NATS_BUCKET`（默认 orin_kv）、`NATS_EMBEDDED_PORT`。
+系统 MUST 通过环境变量配置运行参数，关键变量包括：`PORT`（默认 8080）、`JWT_SECRET`、`DB_TYPE`（sqlite/mysql/postgres，默认 sqlite）、`DB_DSN`、`STORAGE_TYPE`（local/s3，默认 local）、S3 系列变量、`NATS_URL`（空则启动内嵌 nats-server）、`NATS_BUCKET`（默认 feedchamber_kv）、`NATS_EMBEDDED_PORT`。
 
 可观察性相关变量 MUST 同样由环境变量提供并带默认值：`LOG_LEVEL`（默认 `info`）、`LOG_FORMAT`（默认 `json`，可选 `text`）、`LOG_OUTPUT`（默认 `stderr`，可为文件路径）、`METRICS_ENABLED`（默认 `true`，控制 Prometheus 中间件与指标 listener）、`METRICS_PORT`（默认 9091，指标独立暴露端口）、`TRACING_ENABLED`（默认 `true`）。
 

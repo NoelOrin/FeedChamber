@@ -71,32 +71,32 @@ EventBus 发布 MUST 通过 `nc.PublishMsg`（nats.go v1.39.1 无 `MsgPublish`�
 
 ### Requirement: 业务指标覆盖
 
-系统 MUST 在 `internal/metrics.Registry` 上注册下列业务指标族（名称带 `orinforum_` 前缀），埋点位置为各子系统唯一的判定/交接点，MUST NOT 在调用方重复计数：
+系统 MUST 在 `internal/metrics.Registry` 上注册下列业务指标族（名称带 `feedchamber_` 前缀），埋点位置为各子系统唯一的判定/交接点，MUST NOT 在调用方重复计数：
 
 | 指标 | 类型 | 标签 | 记录点 |
 | --- | --- | --- | --- |
-| `orinforum_eventbus_publish_total` | Counter | `event`,`result` | `eventbus.go:177` 发布成功/失败分支 |
-| `orinforum_eventbus_dispatch_duration_seconds` | Histogram | `event` | `dispatch`（`eventbus.go:78`）逐 handler |
-| `orinforum_eventbus_dispatch_errors_total` | Counter | `event` | 既有 panic 恢复处（`eventbus.go:84-88`） |
-| `orinforum_eventbus_queue_depth` | Gauge | — | `enqueue`/消费循环（`eventbus.go:127`） |
-| `orinforum_eventbus_dropped_total` | Counter | `event` | 缓冲满静默丢弃分支（`eventbus.go:131`） |
-| `orinforum_kv_operation_duration_seconds` | Histogram | `op`,`outcome` | `kvstore/nats.go` 各方法出口（`:207`/`:223`/`:237`/`:260`/`:269`/`:285`/`:312`/`:376`） |
-| `orinforum_kv_cas_exhausted_total` | Counter | — | `incrCAS` 重试耗尽（`nats.go:369`） |
-| `orinforum_ratelimit_rejections_total` | Counter | `name` | `pkg/gateway/ratelimit.go:93` |
-| `orinforum_ratelimit_failopen_total` | Counter | `name` | `pkg/gateway/ratelimit.go:83,89` |
-| `orinforum_permission_decisions_total` | Counter | `scope`,`result` | `service/permission.go:217-226`、`:255` |
-| `orinforum_sse_connections` | Gauge | `channel` | `handler/notification.go:186`、`handler/realtime.go:29` 建连后递增、`defer` 递减 |
-| `orinforum_login_failures_total` | Counter | `reason` | `service/auth.go:283`/`:294`/`:303`（`unknown_user`/`no_credential`/`bad_password`） |
-| `orinforum_webhook_deliveries_total` | Counter | `outcome` | `service/webhook.go:327` `deliver` 出口；终态失败记 `failed_terminal`（`:295`） |
-| `orinforum_webhook_delivery_duration_seconds` | Histogram | — | `service/webhook.go:327`（已有 `start`/`LatencyMs`） |
-| `orinforum_webhook_pending_deliveries` | Gauge | — | `StartWorker` 每 tick（`webhook.go:261-272`） |
+| `feedchamber_eventbus_publish_total` | Counter | `event`,`result` | `eventbus.go:177` 发布成功/失败分支 |
+| `feedchamber_eventbus_dispatch_duration_seconds` | Histogram | `event` | `dispatch`（`eventbus.go:78`）逐 handler |
+| `feedchamber_eventbus_dispatch_errors_total` | Counter | `event` | 既有 panic 恢复处（`eventbus.go:84-88`） |
+| `feedchamber_eventbus_queue_depth` | Gauge | — | `enqueue`/消费循环（`eventbus.go:127`） |
+| `feedchamber_eventbus_dropped_total` | Counter | `event` | 缓冲满静默丢弃分支（`eventbus.go:131`） |
+| `feedchamber_kv_operation_duration_seconds` | Histogram | `op`,`outcome` | `kvstore/nats.go` 各方法出口（`:207`/`:223`/`:237`/`:260`/`:269`/`:285`/`:312`/`:376`） |
+| `feedchamber_kv_cas_exhausted_total` | Counter | — | `incrCAS` 重试耗尽（`nats.go:369`） |
+| `feedchamber_ratelimit_rejections_total` | Counter | `name` | `pkg/gateway/ratelimit.go:93` |
+| `feedchamber_ratelimit_failopen_total` | Counter | `name` | `pkg/gateway/ratelimit.go:83,89` |
+| `feedchamber_permission_decisions_total` | Counter | `scope`,`result` | `service/permission.go:217-226`、`:255` |
+| `feedchamber_sse_connections` | Gauge | `channel` | `handler/notification.go:186`、`handler/realtime.go:29` 建连后递增、`defer` 递减 |
+| `feedchamber_login_failures_total` | Counter | `reason` | `service/auth.go:283`/`:294`/`:303`（`unknown_user`/`no_credential`/`bad_password`） |
+| `feedchamber_webhook_deliveries_total` | Counter | `outcome` | `service/webhook.go:327` `deliver` 出口；终态失败记 `failed_terminal`（`:295`） |
+| `feedchamber_webhook_delivery_duration_seconds` | Histogram | — | `service/webhook.go:327`（已有 `start`/`LatencyMs`） |
+| `feedchamber_webhook_pending_deliveries` | Gauge | — | `StartWorker` 每 tick（`webhook.go:261-272`） |
 
 HTTP 与 DB 池既有指标（`metrics.go:18-55`、`collector.go:23`）保持不变。
 
 #### Scenario: 登录失败区分原因
 
 - WHEN 登录因用户不存在、凭证缺失、密码不匹配三种情况分别失败
-- THEN `orinforum_login_failures_total` MUST 递增到三个不同的 `reason` 取值，MUST NOT 合并为单一计数
+- THEN `feedchamber_login_failures_total` MUST 递增到三个不同的 `reason` 取值，MUST NOT 合并为单一计数
 
 #### Scenario: 已有安全机制不重复埋点
 
@@ -106,7 +106,7 @@ HTTP 与 DB 池既有指标（`metrics.go:18-55`、`collector.go:23`）保持不
 #### Scenario: handler panic 计入指标且不扩散
 
 - WHEN 某事件的订阅 handler 发生 panic
-- THEN `orinforum_eventbus_dispatch_errors_total{event}` MUST +1，恢复逻辑与其它 handler 的执行 MUST NOT 受影响
+- THEN `feedchamber_eventbus_dispatch_errors_total{event}` MUST +1，恢复逻辑与其它 handler 的执行 MUST NOT 受影响
 
 ### Requirement: 指标暴露面与访问边界
 
@@ -124,7 +124,7 @@ HTTP 与 DB 池既有指标（`metrics.go:18-55`、`collector.go:23`）保持不
 
 ### Requirement: 监控栈可部署
 
-`deploy/docker-compose.cluster.yml` 引用的每个挂载文件 MUST 在仓库中存在。系统 MUST 新增 `deploy/prometheus.yml`（抓取 backend 的 `METRICS_PORT`，并通过 `rule_files` 引入告警文件）、`deploy/prometheus/rules/orinforum.yml` 与 `deploy/grafana/provisioning/`（数据源 + dashboard 自动装配）。Grafana 管理员口令 MUST 由环境变量注入，MUST NOT 硬编码。
+`deploy/docker-compose.cluster.yml` 引用的每个挂载文件 MUST 在仓库中存在。系统 MUST 新增 `deploy/prometheus.yml`（抓取 backend 的 `METRICS_PORT`，并通过 `rule_files` 引入告警文件）、`deploy/prometheus/rules/feedchamber.yml` 与 `deploy/grafana/provisioning/`（数据源 + dashboard 自动装配）。Grafana 管理员口令 MUST 由环境变量注入，MUST NOT 硬编码。
 
 #### Scenario: 配置校验通过
 
@@ -133,11 +133,11 @@ HTTP 与 DB 池既有指标（`metrics.go:18-55`、`collector.go:23`）保持不
 
 ### Requirement: 告警规则最低集
 
-`deploy/prometheus/rules/orinforum.yml` MUST 至少定义 8 条告警：5xx 错误率过高、P99 请求延迟过高、DB 连接池饱和（`in_use` 逼近 `max_open` 或 `wait_count` 增长）、KV 操作延迟异常、EventBus 出现丢弃、webhook 终态失败、登录失败突增、`/api/v1/health` 探测失败。
+`deploy/prometheus/rules/feedchamber.yml` MUST 至少定义 8 条告警：5xx 错误率过高、P99 请求延迟过高、DB 连接池饱和（`in_use` 逼近 `max_open` 或 `wait_count` 增长）、KV 操作延迟异常、EventBus 出现丢弃、webhook 终态失败、登录失败突增、`/api/v1/health` 探测失败。
 
 #### Scenario: 丢弃事件触发告警
 
-- WHEN `orinforum_eventbus_dropped_total` 在 5 分钟内增长大于 0
+- WHEN `feedchamber_eventbus_dropped_total` 在 5 分钟内增长大于 0
 - THEN MUST 产生一条可定位到事件类型的告警
 
 ### Requirement: 指标基数护栏

@@ -60,7 +60,7 @@ protected.Use(gw.Enforce())
 | `session_store.go` | `SessionStore` | 会话权威：`Create` / `Lookup`（DB 行 + KV `sess:<sid>` read-through）/ `Revoke` / `RevokeAllForUser` / `Touch` / `Extend` |
 | `session_issue.go` | `SessionStore` | `Issue`（登录签发）/ `Rotate`（`/auth/refresh` 单用轮换）/ `shouldRenew` |
 | `session.go` | `SessionManager` | 会话列表 / 单点吊销 / logout-all / `POST /auth/logout`（**handler 层没有登出文件**）+ `TrackingMiddleware` |
-| `apikey.go` | `APIKeyManager` | `X-API-Key` 或 `Bearer ak_` 认证、scope → 权限码注册表（`read` / `write` / `admin`）、每 key 限流、Create/List/Revoke |
+| `apikey.go` | `APIKeyManager` | `X-API-Key` 或 `Bearer ak_` 认证、每 key 限流、Create/List/Revoke。scope → 权限码的注册表已移到 `internal/authz`（网关、middleware、MCP 共用一份） |
 | `security.go` | `SecurityManager` | 暴力破解计数、IP/用户黑名单、异常位置、安全事件与登录历史、可疑上报 |
 | `oauth.go` + `oauth_{google,github,discord}.go` | `OAuthManager` | **消费方** OAuth2 登录/绑定（Google / GitHub / Discord） |
 | `oauth_provider.go` + `token.go` | `OAuthProvider` | **自建** OAuth 2.0 Provider：客户端注册 / authorize / token（authorization_code + client_credentials）/ revoke；access token 为 opaque |
@@ -73,7 +73,7 @@ protected.Use(gw.Enforce())
 | 用户会话 | 64 位 hex sid，HttpOnly `master_session` cookie 或 `Authorization: Bearer <sid>` | `user_sessions` 行存在即有效；KV `sess:<sid>` 只做 read-through 缓存 |
 | OAuth2 / OIDC access token | `of_at_` + 32B base64url，库中只存 SHA-256 hex | `oauth_tokens` 行（`revoked` 列控制撤销） |
 | OIDC `id_token` | RS256 JWT | 签名私钥 PEM 持久化在 settings `sso_oidc_signing_key`，`kid` 由公钥推导 |
-| API Key | `ak_` 前缀 | `api_keys` 行 + scope 注册表 |
+| API Key | `ak_` 前缀 | `api_keys` 行 + scope 注册表（`internal/authz`） |
 
 **没有 token 黑名单**：「凭证是否有效」等价于「行是否存在」。登出 / 改密 / 改角色 / 封号都是删行。`pkg/jwt` 整包已删除；除 `id_token` 外不要再引入任何 JWT 签发或解析。
 
@@ -102,6 +102,7 @@ protected.Use(gw.Enforce())
 - **不要在任何 `routes_*.go` 里挂 `Use(gw.*)`**：Iris 在注册那一刻对 party 中间件做快照，兄弟 party 的 `Use` 会覆盖父切片空槽、改写邻居的链（2026-10-14 实测导致权限门整体失效）。`router` 包的 `TestGatewayStagesMountedOnlyInRegister` 会源码扫描禁止。
 - **ctx values 的键是跨包契约**：用 `pkg.CtxUserID` / `CtxUsername` / `CtxRole` / `CtxSession` / `CtxAuthMethod` / `CtxAPIKeyScopes` / `CtxClientScopes` 常量（`internal/pkg/ctxkey.go`），不要写字面量。`CtxUserID` 装的是 `User.ID`（ULID）。
 - **封禁返回 404 而非 403** 是刻意的：探测者无法区分「被禁」与「资源不存在」。改这个状态码等于改安全契约。
+- **吊销是一次性的，不能被缓存写回复活**。`sess:<sid>` 是 read-through 缓存，写入方（`Create` / `Lookup` 未命中路径 / `Touch` / `Extend`）都持有调用方快照，若无条件写回，并发请求就会把已吊销的会话重新塞回 KV，凭证在整个 TTL（最长 7 天）内继续有效。现约束：`revokeRow` **先删行、再删缓存**；`Touch` / `Extend` 以 `UPDATE` 的 `RowsAffected` 作为「行仍存在」的证明，为 0 时只删缓存不回写；`Lookup` 未命中路径写完缓存后再 `sessionExists` 复核，行已消失就丢弃并以 `ErrSessionNotFound` 返回。`session_store_test.go` 的 `TestSessionStore_RevokedSessionStaysDead*` 逐条钉住这些路径。
 - 新增测试优先用 `kvstub_test.go` 里的 KV 替身，别连真 NATS。
 
 ## 本文件何时更新
@@ -109,6 +110,8 @@ protected.Use(gw.Enforce())
 - 新增/删除子组件（`Gateway` 的字段、文件表一行）
 - 流水线阶段增减或顺序变化（尤其 `banCheck` / `permission` / `SecurityCheck` 的相对次序）
 - 凭证模型变化（会话 sid、opaque OAuth token、API Key scope 表）
+
+> 2026-10-30：授权判据统一到 `internal/authz.Allowed`——会话只看角色表，API Key 要 scope **且** 角色，OAuth 客户端只认 scope。此前这段逻辑在本包 `permission.go`、`middleware.RequirePermission`、`internal/mcp` 各写一份且互不一致（MCP 那条是「或」，比网关宽一格）。
 - 本包新增或移除自持 HTTP 端点
 - `Deps` 增删字段
 
@@ -119,3 +122,5 @@ protected.Use(gw.Enforce())
 - `/api/v1/admin/levels/`、`/admin/xp-rules/`、`/admin/xp-adjustments/`、`/admin/trust/recompute`、`/admin/users/{id}/xp*` → `level:manage`
 - `/api/v1/admin/gates/` → `gate:manage`
 - `/api/v1/posts/{id}/feature` → `report:manage`
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

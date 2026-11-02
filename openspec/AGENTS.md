@@ -13,6 +13,9 @@
 | `changes/archive/YYYY-MM-DD-<name>/` | 已归档 change，附带 `.openspec.yaml`（`schema` + `created`） |
 | `config.yaml` | OpenSpec 项目配置（`schema: spec-driven`） |
 
+归档目录里的 `.openspec.yaml` 由归档流程写入，只记录 `schema` 与归档日期 `created`；
+它不描述规范内容，改它不要求同步本文件。
+
 ## 现有 capabilities
 
 `access-gating` · `agents-docs` · `api-style` · `backend-service-design` · `community-motion` · `frontend-packages` · `layered-architecture` · `module-conventions` · `observability` · `operations` · `post-moderation` · `seo` · `trust-levels`

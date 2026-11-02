@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"orinforum/internal/metrics"
+	"feedchamber/internal/metrics"
 
 	"github.com/nats-io/nats.go"
 	"github.com/nats-io/nats.go/jetstream"
@@ -58,7 +58,7 @@ func decodeNATSKey(encoded string) (string, error) {
 }
 
 // KV operation names — the label vocabulary of
-// orinforum_kv_operation_duration_seconds{op}. Constants plus one list so the
+// feedchamber_kv_operation_duration_seconds{op}. Constants plus one list so the
 // observe() call sites and the startup seeding cannot drift apart.
 const (
 	opGet          = "get"
@@ -112,7 +112,7 @@ func NewNATSStore(url, bucket string) (Store, error) {
 	// per-key TTL is managed via the companion bucket.
 	kv, err := js.CreateKeyValue(ctx, jetstream.KeyValueConfig{
 		Bucket:       bucket,
-		Description:  "OrinForum KV Store",
+		Description:  "Feed Chamber KV Store",
 		MaxValueSize: 1 << 20,
 	})
 	if err != nil {
@@ -127,7 +127,7 @@ func NewNATSStore(url, bucket string) (Store, error) {
 	ttlBucket := bucket + "_ttl"
 	ttlKV, err := js.CreateKeyValue(ctx, jetstream.KeyValueConfig{
 		Bucket:       ttlBucket,
-		Description:  "OrinForum KV TTL companion",
+		Description:  "Feed Chamber KV TTL companion",
 		MaxValueSize: 32, // only stores Unix-second timestamps
 	})
 	if err != nil {

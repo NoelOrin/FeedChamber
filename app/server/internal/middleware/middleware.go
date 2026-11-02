@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/logger"
-	"orinforum/internal/pkg/tracing"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/logger"
+	"feedchamber/internal/pkg/tracing"
 
 	"github.com/kataras/iris/v12"
 	irisctx "github.com/kataras/iris/v12/context"

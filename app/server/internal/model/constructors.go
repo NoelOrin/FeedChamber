@@ -3,7 +3,7 @@ package model
 import (
 	"time"
 
-	"orinforum/internal/pkg"
+	"feedchamber/internal/pkg"
 )
 
 // NewUser creates a User with generated ID, timestamps and default role.

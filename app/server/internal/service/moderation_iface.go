@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg/eventbus"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg/eventbus"
 )
 
 type ModerationService interface {
@@ -38,4 +38,7 @@ type ModerationService interface {
 	SubscribeAsync(bus *eventbus.EventBus)
 	// SetTrustService 注入等级评估服务（审核通过/拒绝后重算作者 XP）。
 	SetTrustService(svc TrustService)
+	// SetMCPServerService 注入外部 MCP 客户端。外部审核优先走 MCP，
+	// 未配置或调用失败时回退既有 HTTP 契约（见 mcp-client 规范）。
+	SetMCPServerService(svc MCPServerService)
 }

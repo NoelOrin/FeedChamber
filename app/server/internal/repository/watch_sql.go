@@ -3,8 +3,8 @@ package repository
 import (
 	"context"
 	"errors"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 )
 
 type sqlWatchRepo struct{ db db.SQLStore }

@@ -15,7 +15,7 @@ var (
 	// keeps a registry, so each connection inc/defs itself on entry/exit.
 	SSEConnections = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "orinforum_sse_connections",
+			Name: "feedchamber_sse_connections",
 			Help: "Currently open SSE streams by channel.",
 		},
 		[]string{"channel"},
@@ -29,7 +29,7 @@ var (
 	// (typically a proxy buffering or dropping the stream).
 	SSEWriteFailuresTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_sse_write_failures_total",
+			Name: "feedchamber_sse_write_failures_total",
 			Help: "Failed SSE writes that terminated a stream, by channel.",
 		},
 		[]string{"channel"},

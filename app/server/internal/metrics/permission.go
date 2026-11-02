@@ -9,7 +9,7 @@ var (
 	// Roles are deliberately not a label: see the cardinality guard.
 	PermissionDecisionsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_permission_decisions_total",
+			Name: "feedchamber_permission_decisions_total",
 			Help: "Permission checks by scope (global|space) and result (allow|deny).",
 		},
 		[]string{"scope", "result"},

@@ -3,7 +3,7 @@ package service
 import (
 	"testing"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 
 	"github.com/stretchr/testify/assert"
 )

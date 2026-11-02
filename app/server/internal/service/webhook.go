@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/repository"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/repository"
 
 	"github.com/sirupsen/logrus"
 )

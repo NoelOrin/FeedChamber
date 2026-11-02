@@ -67,7 +67,7 @@
 | setting.go | SettingService | SettingRepository |
 | admin.go | AdminService | AdminRepository, UserRepository, KV, TokenBlacklist |
 | admin_iface.go | — | AdminService 接口 + `AdminStats`, `DashboardData`, `SearchResults`, `EntitySearchResult[T]`, `UserActivities` |
-| banned.go | BannedService | BannedRepository |
+| banned.go | BannedService | BannedRepository（`List` / `ListByScope` 返回 `(items, total, error)`，分页条依赖 total） |
 | banned_iface.go | — | BannedService 接口定义 |
 | token_blacklist.go | TokenBlacklist | KV Store (jti + user 級黑名单) |
 | token_blacklist_iface.go | — | TokenBlacklist 接口 |
@@ -144,3 +144,33 @@
 因为登录列表会注入已读状态（`ReadStates`）、拉黑作者排除（`ExcludeAuthorIDs`）
 与等级可见性——缓存它就是跨用户串数据。新增过滤条件时把它加进 `readcache.Key`
 的参数列表，否则不同过滤会命中同一条缓存。
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
+
+## 站点自定义的写入校验（2026-10-30）
+
+`customize.go` 的校验是**策略边界**（渲染侧只负责按 kind 选容器）：
+
+- `validateSnippetInput`：`position` 一律用 `model.Snippet{…}.EffectivePosition()` 归一化后落库（html 恒为 `body_end`）；`validateSnippetContent` 拒绝 css 含 `</style`、js 含 `</script`——这两类内容会被原样内联进 SSR 的 `<style>` / `<script>`，结束标签能闭合容器并把剩余内容当正常标记执行。
+- `ActiveSnippets(ctx, position)` 按 `EffectivePosition()` 分组（不是按 `position` 列），存量数据里写成 head 的 html 片段因此仍能发出去。
+- `validateNavHref`：只放行 `/…` 与 `http(s)://`；`javascript:` / `data:` / `//host` 一律拒（导航会被渲染进 `<Link href>`，点击即执行）。
+- `validateThemeToken`：token 必须是 `^--[a-zA-Z0-9-_]+$`，值禁 `; { } < >` 与换行、限长 512。token 覆盖只负责改色改圆角，不承担任意 CSS（那是 css 片段）。
+
+## 外部 MCP 客户端硬化（2026-10-30）
+
+`mcp_server.go` 是「管理员填 URL、服务端去请求」的 SSRF 面，四件事必须一起成立：
+
+- `validateEndpoint`：只放行 http(s)，拒回环 / 私网 / 链路本地（含 `169.254.169.254`）。
+- `CheckRedirect` 返回 `http.ErrUseLastResponse`：Go 只跨域剥离 Authorization/Cookie，Headers JSON 里的自定义鉴权头会被原样带到重定向目标。
+- `parseHeadersWithValidation`：必须是「字符串→字符串」的 JSON 对象，写入侧（`validateHeaderFormat`）同样校验。旧的 `json.Valid` 放行 `[1,2]`、`{"X-Key":123}`，随后反序列化失败被吞掉 → 鉴权头静默全丢。
+- `call` 用入参 ctx 派生超时（不再 `context.Background()`），响应超 1MB 报「响应过大」而不是「不是合法 JSON-RPC」，`id` 用 `json.RawMessage` 并按值比对（字符串 `"1"` 也算匹配），并缓存/回传 `Mcp-Session-Id`（有状态实现在第二个请求上会校验它）。
+
+## 唯一冲突与分页
+
+- `repository.WrapDBErr` 现在统一把三家后端的唯一冲突翻译成 `repository.ErrDuplicate`（`checker_sql.go` 注册 checker）。service 只判断 `errors.Is(err, ErrDuplicate)`，不要再用 `strings.Contains(err.Error(), "UNIQUE")`。
+- 分页 offset 一律用 `pkg.Offset(page, pageSize)`：`(page-1)*pageSize` 在 page 取极大值时溢出为负数，PostgreSQL 会直接报 `OFFSET must not be negative`（500 而不是空列表）。
+- `SetThemeTokens` 整批在一个事务里（先全量校验再写入），中途失败不留半套覆盖；`theme_tokens` 的身份是 `(token, mode)`，同一 token 的明暗两套覆盖各自一行。
+
+## 权限补齐的「只补新码」
+
+`service/perm_seed.go` 的 `RolePermissionTopUp` 是纯函数：只补 `applied`（历史上已应用过的权限码）里没有的码。`server/iris.go` 把新码并入 meta `seeded_role_permission_codes`。这样升级能拿到新权限，而管理员撤销过的默认权限不会在重启时复活（R-04 的两半都成立）。

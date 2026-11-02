@@ -1,0 +1,2917 @@
+{
+	"openapiVersion": "1.0",
+	"endpoints": {
+		"paths": 313,
+		"operations": 314,
+		"groups": [
+			{
+				"key": "admin",
+				"title": "管理后台",
+				"titleEn": "Admin",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/announcements/{id}/delete",
+						"summary": "删除公告"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/announcements/{id}/publish",
+						"summary": "发布公告"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/announcements/{id}/unpublish",
+						"summary": "撤回公告"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/announcements/{id}/update",
+						"summary": "更新公告"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/announcements/create",
+						"summary": "创建公告"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/announcements/list",
+						"summary": "公告列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/audit_logs/list",
+						"summary": "审计日志列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/backups/{id}/delete",
+						"summary": "删除备份"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/backups/{id}/download",
+						"summary": "下载备份"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/backups/{id}/restore",
+						"summary": "恢复备份"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/backups/cleanup",
+						"summary": "清理过期备份"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/backups/create",
+						"summary": "创建备份"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/backups/list",
+						"summary": "备份列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/banned/list",
+						"summary": "禁言记录列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/batch/comments",
+						"summary": "批量删除评论"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/batch/posts",
+						"summary": "批量帖子操作"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/batch/users",
+						"summary": "批量用户操作"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/modules/{id}/delete",
+						"summary": "删除首页模块"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/modules/{id}/update",
+						"summary": "更新首页模块"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/modules/create",
+						"summary": "创建首页模块"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/modules/list",
+						"summary": "首页模块列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/nav/{id}/delete",
+						"summary": "删除导航项"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/nav/{id}/update",
+						"summary": "更新导航项"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/nav/create",
+						"summary": "创建导航项"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/nav/list",
+						"summary": "导航项列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/pages/{id}/delete",
+						"summary": "删除自定义页"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/pages/{id}/publish",
+						"summary": "发布自定义页"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/pages/{id}/update",
+						"summary": "更新自定义页"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/pages/create",
+						"summary": "创建自定义页"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/pages/list",
+						"summary": "自定义页列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/snippets/{id}/delete",
+						"summary": "删除片段"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/snippets/{id}/toggle",
+						"summary": "启停片段"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/snippets/{id}/update",
+						"summary": "更新片段"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/snippets/create",
+						"summary": "创建片段"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/snippets/list",
+						"summary": "片段列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/tokens/{token}/delete",
+						"summary": "删除主题覆盖"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/tokens/clear",
+						"summary": "清空主题覆盖"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/tokens/list",
+						"summary": "主题覆盖列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/customization/tokens/set",
+						"summary": "设置主题覆盖"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/dashboard",
+						"summary": "运营概览"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/gates/{id}/delete",
+						"summary": "删除门控规则"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/gates/defaults/list",
+						"summary": "能力域默认动作"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/gates/defaults/save",
+						"summary": "保存能力域默认动作"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/gates/list",
+						"summary": "门控规则列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/gates/meta",
+						"summary": "门控元数据"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/gates/save",
+						"summary": "保存门控规则"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/gates/simulate",
+						"summary": "以用户试算门控"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/invites/{id}/delete",
+						"summary": "删除邀请码"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/invites/create",
+						"summary": "创建邀请码"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/invites/list",
+						"summary": "邀请码列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/levels/{level}/delete",
+						"summary": "删除等级"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/levels/list",
+						"summary": "等级定义列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/levels/save",
+						"summary": "保存等级定义"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/mcp-servers/{id}/delete",
+						"summary": "删除外部 MCP 服务"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/mcp-servers/{id}/test",
+						"summary": "测试连通性"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/mcp-servers/{id}/update",
+						"summary": "更新外部 MCP 服务"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/mcp-servers/create",
+						"summary": "登记外部 MCP 服务"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/mcp-servers/list",
+						"summary": "外部 MCP 服务列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/mcp/tools",
+						"summary": "MCP 工具清单"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/mcp/tools/status",
+						"summary": "启停 MCP 工具"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/moderation/{id}/approve",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/moderation/{id}/reject",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/moderation/configs",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/moderation/configs/set",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/moderation/pending",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/moderation/rules/create",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/moderation/rules/delete",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/moderation/rules/list",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/moderation/rules/update",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/plugins/{id}/delete",
+						"summary": "删除插件"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/plugins/{id}/status",
+						"summary": "启停插件"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/plugins/{id}/update",
+						"summary": "更新插件"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/plugins/install",
+						"summary": "安装插件"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/plugins/list",
+						"summary": "插件列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/reconcile/counters",
+						"summary": "修复计数器"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/search",
+						"summary": "全局搜索"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/settings",
+						"summary": "获取所有系统设置"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/settings/{key}",
+						"summary": "获取单个系统设置"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/settings/{key}/delete",
+						"summary": "删除系统设置"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/settings/{key}/update",
+						"summary": "设置系统设置"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/settings/batch",
+						"summary": "批量设置系统设置"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/stats",
+						"summary": "获取论坛统计数据"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/trash/comments/{id}/restore",
+						"summary": "恢复评论"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/trash/comments/list",
+						"summary": "回收站评论列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/trash/posts/{id}/restore",
+						"summary": "恢复帖子"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/trash/posts/list",
+						"summary": "回收站帖子列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/trust/recompute",
+						"summary": "全量重算"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/user/{id}/activities",
+						"summary": "获取用户活动记录"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/users/{id}/approve_registration",
+						"summary": "审批注册"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/admin/users/{id}/xp",
+						"summary": "用户 XP 详情"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/users/{id}/xp/adjust",
+						"summary": "人工调整 XP"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/users/{id}/xp/adjustments/list",
+						"summary": "人工调整记录"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/webhooks/{id}/delete",
+						"summary": "删除 Webhook"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/webhooks/{id}/deliveries/{deliveryId}/retry",
+						"summary": "重投投递"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/webhooks/{id}/deliveries/list",
+						"summary": "投递记录列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/webhooks/{id}/ping",
+						"summary": "Webhook 测试投递"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/webhooks/{id}/update",
+						"summary": "更新 Webhook"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/webhooks/create",
+						"summary": "创建 Webhook"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/webhooks/list",
+						"summary": "Webhook 列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/xp-adjustments/{id}/delete",
+						"summary": "撤销人工调整"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/xp-rules/list",
+						"summary": "XP 规则列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/xp-rules/save",
+						"summary": "保存 XP 规则"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/xp-rules/streak/{days}/delete",
+						"summary": "删除连续签到阶梯"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/xp-rules/streak/list",
+						"summary": "连续签到阶梯"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/admin/xp-rules/streak/save",
+						"summary": "保存连续签到阶梯"
+					}
+				]
+			},
+			{
+				"key": "announcements",
+				"title": "公告",
+				"titleEn": "Announcements",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/announcements/{id}",
+						"summary": "获取公告详情"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/announcements/published",
+						"summary": "已发布公告列表"
+					}
+				]
+			},
+			{
+				"key": "api-keys",
+				"title": "API Key",
+				"titleEn": "API Keys",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/api-keys",
+						"summary": "创建 API Key"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/api-keys/{id}/revoke",
+						"summary": "吊销 API Key"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/api-keys/list",
+						"summary": "API Key 列表"
+					}
+				]
+			},
+			{
+				"key": "auth",
+				"title": "认证",
+				"titleEn": "Authentication",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/change_password",
+						"summary": "修改密码"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/first_change_password",
+						"summary": "首次修改密码"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/forgot_password",
+						"summary": "发送重置密码验证码"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/login",
+						"summary": "用户登录"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/logout",
+						"summary": "用户登出"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/mfa/backup/regenerate",
+						"summary": "重新生成备份码"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/mfa/totp/disable",
+						"summary": "禁用 TOTP"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/mfa/totp/enable",
+						"summary": "启用 TOTP"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/mfa/totp/setup",
+						"summary": "初始化 TOTP 绑定"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/mfa/verify",
+						"summary": "MFA 登录校验"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/refresh",
+						"summary": "刷新会话"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/register",
+						"summary": "用户注册"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/reset_password",
+						"summary": "重置密码（管理员）"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/reset_password_by_code",
+						"summary": "通过验证码重置密码"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/send_verify_email",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/auth/verify_email",
+						"summary": ""
+					}
+				]
+			},
+			{
+				"key": "badges",
+				"title": "徽章",
+				"titleEn": "Badges",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/badges/list",
+						"summary": "徽章列表"
+					}
+				]
+			},
+			{
+				"key": "blocks",
+				"title": "用户拉黑",
+				"titleEn": "User Blocks",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/blocks/list",
+						"summary": ""
+					}
+				]
+			},
+			{
+				"key": "checkin",
+				"title": "签到",
+				"titleEn": "Check-in",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/checkin",
+						"summary": "每日签到"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/checkin/history",
+						"summary": "获取签到历史"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/checkin/status",
+						"summary": "获取签到状态"
+					}
+				]
+			},
+			{
+				"key": "comments",
+				"title": "评论",
+				"titleEn": "Comments",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/comments/{id}",
+						"summary": "评论详情"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/comments/{id}/delete",
+						"summary": "管理员删除评论"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/comments/{id}/revisions/{revisionId}/restore",
+						"summary": "恢复评论版本"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/comments/{id}/revisions/list",
+						"summary": "评论修订历史"
+					}
+				]
+			},
+			{
+				"key": "contents",
+				"title": "评论内容",
+				"titleEn": "Contents",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/contents/{contentId}/like",
+						"summary": "内容点赞/取消点赞"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/contents/{contentId}/like/status",
+						"summary": "获取内容点赞状态"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/contents/{contentId}/replies",
+						"summary": "子回复列表"
+					}
+				]
+			},
+			{
+				"key": "customization",
+				"title": "站点自定义",
+				"titleEn": "Customization",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/customization/public",
+						"summary": "前台自定义聚合"
+					}
+				]
+			},
+			{
+				"key": "dashboard",
+				"title": "首页聚合",
+				"titleEn": "Dashboard",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/dashboard",
+						"summary": "首页聚合数据"
+					}
+				]
+			},
+			{
+				"key": "drafts",
+				"title": "草稿",
+				"titleEn": "Drafts",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/drafts/{id}/delete",
+						"summary": "删除草稿"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/drafts/list",
+						"summary": "草稿列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/drafts/save",
+						"summary": "保存草稿"
+					}
+				]
+			},
+			{
+				"key": "favorites",
+				"title": "收藏",
+				"titleEn": "Favorites",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/favorites/list",
+						"summary": "用户收藏列表"
+					}
+				]
+			},
+			{
+				"key": "groups",
+				"title": "用户组",
+				"titleEn": "Groups",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/groups/{id}/delete",
+						"summary": "删除用户组"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/groups/{id}/members/add",
+						"summary": "添加组成员"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/groups/{id}/members/list",
+						"summary": "组成员列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/groups/{id}/members/remove",
+						"summary": "移除组成员"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/groups/{id}/permissions",
+						"summary": "获取组权限"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/groups/{id}/permissions/sync",
+						"summary": "同步组权限"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/groups/{id}/update",
+						"summary": "更新用户组"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/groups/create",
+						"summary": "创建用户组"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/groups/list",
+						"summary": "用户组列表"
+					}
+				]
+			},
+			{
+				"key": "health",
+				"title": "健康检查",
+				"titleEn": "Health",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/health",
+						"summary": "健康检查"
+					}
+				]
+			},
+			{
+				"key": "latest.rss",
+				"title": "RSS",
+				"titleEn": "RSS",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/latest.rss",
+						"summary": "获取最新帖子 RSS"
+					}
+				]
+			},
+			{
+				"key": "leaderboard",
+				"title": "排行榜",
+				"titleEn": "Leaderboard",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/leaderboard/list",
+						"summary": "排行榜"
+					}
+				]
+			},
+			{
+				"key": "levels",
+				"title": "等级",
+				"titleEn": "Levels",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/levels",
+						"summary": "等级名称（公开）"
+					}
+				]
+			},
+			{
+				"key": "messages",
+				"title": "私信",
+				"titleEn": "Messages",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/messages/conversations/{id}/messages/create",
+						"summary": "发送私信"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/messages/conversations/{id}/messages/list",
+						"summary": "私信消息列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/messages/conversations/{id}/read",
+						"summary": "标记私信已读"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/messages/conversations/create",
+						"summary": "发起私信"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/messages/conversations/list",
+						"summary": "私信会话列表"
+					}
+				]
+			},
+			{
+				"key": "motions",
+				"title": "社区动议",
+				"titleEn": "Motions",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/motions/{id}",
+						"summary": "动议详情"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/motions/{id}/delete",
+						"summary": "撤回动议"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/motions/{id}/resolve",
+						"summary": "结算动议"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/motions/{id}/status",
+						"summary": "动议状态变更"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/motions/{id}/vote",
+						"summary": "动议投票"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/motions/create",
+						"summary": "发起自治动议"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/motions/list",
+						"summary": "动议列表"
+					}
+				]
+			},
+			{
+				"key": "notifications",
+				"title": "通知",
+				"titleEn": "Notifications",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/notifications/{id}/delete",
+						"summary": "删除通知"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/notifications/{id}/read",
+						"summary": "标记通知已读"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/notifications/list",
+						"summary": "获取通知列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/notifications/read_all",
+						"summary": "标记所有通知已读"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/notifications/stream",
+						"summary": "SSE 推送通知"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/notifications/unread_count",
+						"summary": "获取未读通知数量"
+					}
+				]
+			},
+			{
+				"key": "oauth",
+				"title": "OAuth 2.0",
+				"titleEn": "OAuth 2.0",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/oauth/{provider}/auth",
+						"summary": "获取OAuth授权URL"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/oauth/{provider}/callback",
+						"summary": "OAuth回调处理"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/oauth/{provider}/config",
+						"summary": "获取单个OAuth提供商配置"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/oauth/{provider}/link",
+						"summary": "关联OAuth账号"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/oauth/{provider}/unlink",
+						"summary": "取消关联OAuth账号"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/oauth/accounts",
+						"summary": "获取已关联的OAuth账号"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/oauth/authorize",
+						"summary": "OAuth 授权端点"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/oauth/authorize",
+						"summary": "OAuth 授权端点"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/oauth/clients",
+						"summary": "注册 OAuth 客户端"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/oauth/clients/{id}/delete",
+						"summary": "删除 OAuth 客户端"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/oauth/clients/{id}/reset-secret",
+						"summary": "重置客户端密钥"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/oauth/clients/{id}/update",
+						"summary": "更新 OAuth 客户端"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/oauth/clients/list",
+						"summary": "OAuth 客户端列表"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/oauth/providers",
+						"summary": "获取所有OAuth配置"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/oauth/revoke",
+						"summary": "OAuth 令牌撤销"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/oauth/token",
+						"summary": "OAuth 令牌端点"
+					}
+				]
+			},
+			{
+				"key": "pages",
+				"title": "自定义页面",
+				"titleEn": "Custom Pages",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/pages/{slug}",
+						"summary": "读取自定义页"
+					}
+				]
+			},
+			{
+				"key": "permission",
+				"title": "权限",
+				"titleEn": "Permissions",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/permission/list",
+						"summary": "权限列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/permission/role",
+						"summary": "获取角色权限"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/permission/space",
+						"summary": "获取版块角色权限"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/permission/space/clear",
+						"summary": "清除版块角色权限覆盖"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/permission/space/effective",
+						"summary": "获取版块有效权限（继承）"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/permission/space/sync",
+						"summary": "设置版块角色权限覆盖"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/permission/space/tree",
+						"summary": "获取版面权限树（有效）"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/permission/sync",
+						"summary": "同步角色权限"
+					}
+				]
+			},
+			{
+				"key": "posts",
+				"title": "帖子",
+				"titleEn": "Posts",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/posts/{id}",
+						"summary": "获取帖子详情"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/close",
+						"summary": "关闭或打开话题"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/delete",
+						"summary": "删除帖子"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/posts/{id}/detail",
+						"summary": "获取帖子详情（含正文）"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/feature",
+						"summary": "设为精华"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/lock",
+						"summary": "切换帖子锁定"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/pin",
+						"summary": "切换帖子置顶"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/pin/remove",
+						"summary": "取消置顶"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/pin/set",
+						"summary": "设置置顶"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/read",
+						"summary": "标记话题已读"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/revisions/{revisionId}/restore",
+						"summary": "恢复帖子版本"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/revisions/list",
+						"summary": "帖子修订历史"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/status",
+						"summary": "变更帖子状态"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/suggestions",
+						"summary": "相关主题"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{id}/update",
+						"summary": "更新帖子"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{postId}/contents/{id}/delete",
+						"summary": "删除内容"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{postId}/contents/{id}/update",
+						"summary": "编辑内容"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{postId}/contents/create",
+						"summary": "创建评论/回复"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{postId}/contents/list",
+						"summary": "帖子评论列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{postId}/favorite",
+						"summary": "帖子收藏/取消收藏"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{postId}/favorite/status",
+						"summary": "获取帖子收藏状态"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{postId}/tags",
+						"summary": "获取帖子标签"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/{postId}/tags/set",
+						"summary": "设置帖子标签"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/batch",
+						"summary": "批量获取帖子"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/comments/list",
+						"summary": "全局评论列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/create",
+						"summary": "创建帖子"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/list",
+						"summary": "帖子列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/pinned/list",
+						"summary": "置顶帖子列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/posts/search",
+						"summary": "搜索帖子"
+					}
+				]
+			},
+			{
+				"key": "realtime",
+				"title": "实时事件",
+				"titleEn": "Realtime",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/realtime/stream",
+						"summary": "通用实时流 (SSE)"
+					}
+				]
+			},
+			{
+				"key": "reports",
+				"title": "举报",
+				"titleEn": "Reports",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/reports/{id}",
+						"summary": "举报详情"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/reports/{id}/delete",
+						"summary": "删除举报"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/reports/{id}/status",
+						"summary": "更新举报状态"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/reports/create",
+						"summary": "举报内容"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/reports/list",
+						"summary": "举报列表"
+					}
+				]
+			},
+			{
+				"key": "robots.txt",
+				"title": "robots.txt",
+				"titleEn": "robots.txt",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/robots.txt",
+						"summary": "获取 robots.txt"
+					}
+				]
+			},
+			{
+				"key": "role",
+				"title": "角色",
+				"titleEn": "Roles",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/role/{id}/delete",
+						"summary": "删除角色"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/role/{id}/update",
+						"summary": "更新角色"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/role/create",
+						"summary": "创建角色"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/role/list",
+						"summary": "角色列表"
+					}
+				]
+			},
+			{
+				"key": "security",
+				"title": "安全",
+				"titleEn": "Security",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/security/events",
+						"summary": "安全事件列表"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/security/login-history",
+						"summary": "登录历史"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/security/report",
+						"summary": "上报可疑活动"
+					}
+				]
+			},
+			{
+				"key": "sessions",
+				"title": "会话",
+				"titleEn": "Sessions",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/sessions",
+						"summary": "会话列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/sessions/{id}/revoke",
+						"summary": "吊销会话"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/sessions/logout-all",
+						"summary": "登出全部设备"
+					}
+				]
+			},
+			{
+				"key": "settings",
+				"title": "设置",
+				"titleEn": "Settings",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/settings/public",
+						"summary": "获取公开设置"
+					}
+				]
+			},
+			{
+				"key": "sitemap-posts.xml",
+				"title": "Sitemap（帖子）",
+				"titleEn": "Sitemap (posts)",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/sitemap-posts.xml",
+						"summary": "获取帖子 sitemap 分片"
+					}
+				]
+			},
+			{
+				"key": "sitemap-spaces.xml",
+				"title": "Sitemap（版面）",
+				"titleEn": "Sitemap (spaces)",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/sitemap-spaces.xml",
+						"summary": "获取版面 sitemap"
+					}
+				]
+			},
+			{
+				"key": "sitemap-tags.xml",
+				"title": "Sitemap（标签）",
+				"titleEn": "Sitemap (tags)",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/sitemap-tags.xml",
+						"summary": "获取标签 sitemap"
+					}
+				]
+			},
+			{
+				"key": "sitemap.xml",
+				"title": "Sitemap 索引",
+				"titleEn": "Sitemap index",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/sitemap.xml",
+						"summary": "获取 sitemap 索引"
+					}
+				]
+			},
+			{
+				"key": "spaces",
+				"title": "版面",
+				"titleEn": "Spaces",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/{space_id}",
+						"summary": "获取版面详情"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/{space_id}/ancestors",
+						"summary": "获取祖先版面"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/{space_id}/breadcrumb",
+						"summary": "获取版面面包屑"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/{space_id}/children",
+						"summary": "获取直接子版面"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/{space_id}/delete",
+						"summary": "删除版面"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/{space_id}/descendants",
+						"summary": "获取后代版面"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/{space_id}/move",
+						"summary": "移动版面"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/{space_id}/status",
+						"summary": "切换版面状态"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/{space_id}/subtree",
+						"summary": "获取版面子树"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/{space_id}/update",
+						"summary": "更新版面"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/create",
+						"summary": "创建版面"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/flat",
+						"summary": "获取版面平铺列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/reorder",
+						"summary": "版面同级重排"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/roots",
+						"summary": "获取根版面"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/spaces/tree",
+						"summary": "获取版面树"
+					}
+				]
+			},
+			{
+				"key": "sso",
+				"title": "OIDC SSO",
+				"titleEn": "OIDC SSO",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/sso/authorize",
+						"summary": "OIDC 授权端点"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/sso/token",
+						"summary": "OIDC 令牌端点"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/sso/userinfo",
+						"summary": "OIDC UserInfo"
+					}
+				]
+			},
+			{
+				"key": "tags",
+				"title": "标签",
+				"titleEn": "Tags",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/tags/{id}/delete",
+						"summary": "删除标签"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/tags/{id}/update",
+						"summary": "更新标签"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/tags/create",
+						"summary": "创建标签"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/tags/list",
+						"summary": "标签列表"
+					}
+				]
+			},
+			{
+				"key": "themes",
+				"title": "主题",
+				"titleEn": "Themes",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/themes/list",
+						"summary": "主题列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/themes/preference",
+						"summary": "读取主题偏好"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/themes/preference/update",
+						"summary": "设置主题偏好"
+					}
+				]
+			},
+			{
+				"key": "upload",
+				"title": "上传",
+				"titleEn": "Uploads",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/upload",
+						"summary": "上传文件"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/upload/{id}",
+						"summary": "获取文件"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/upload/{id}/delete",
+						"summary": "删除文件"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/upload/confirm",
+						"summary": "确认上传完成"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/upload/file/{key}",
+						"summary": "根据存储 key 获取上传文件"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/upload/list",
+						"summary": "上传列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/upload/presign",
+						"summary": "获取预签名上传信息"
+					}
+				]
+			},
+			{
+				"key": "user",
+				"title": "用户资料",
+				"titleEn": "User Profile",
+				"items": [
+					{
+						"method": "GET",
+						"path": "/api/v1/user/{id}",
+						"summary": "获取指定用户信息"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/activity",
+						"summary": "获取用户活跃度数据"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/badges/list",
+						"summary": "用户徽章"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/banned",
+						"summary": "禁言用户"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/banned/overview",
+						"summary": "用户禁言概览"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/banned/status",
+						"summary": "获取用户禁言记录"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/delete",
+						"summary": "删除用户"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/user/{id}/profile",
+						"summary": "获取用户公开资料"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/role/update",
+						"summary": "修改用户角色"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/space/{space_id}/banned",
+						"summary": "版面禁言用户"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/space/{space_id}/banned/status",
+						"summary": "获取版面禁言状态"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/space/{space_id}/unbanned",
+						"summary": "解除版面禁言"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/trust_level/update",
+						"summary": "更新用户信任等级"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/{id}/unbanned",
+						"summary": "解禁用户"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/list",
+						"summary": "用户列表"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/user/profile",
+						"summary": "获取当前用户信息"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/profile/update",
+						"summary": "更新当前用户信息"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/user/search",
+						"summary": "搜索用户"
+					}
+				]
+			},
+			{
+				"key": "users",
+				"title": "用户与关系",
+				"titleEn": "Users and Relations",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/users/{userId}/block",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/users/{userId}/block/status",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/users/{userId}/counts",
+						"summary": "获取关注计数"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/users/{userId}/follow",
+						"summary": "关注用户"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/users/{userId}/follow/status",
+						"summary": "获取关注状态"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/users/{userId}/followers",
+						"summary": "粉丝列表"
+					},
+					{
+						"method": "GET",
+						"path": "/api/v1/users/{userId}/following",
+						"summary": "关注列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/users/{userId}/unblock",
+						"summary": ""
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/users/{userId}/unfollow",
+						"summary": "取消关注"
+					}
+				]
+			},
+			{
+				"key": "watches",
+				"title": "主题订阅",
+				"titleEn": "Watches",
+				"items": [
+					{
+						"method": "POST",
+						"path": "/api/v1/watches/delete",
+						"summary": "取消关注"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/watches/list",
+						"summary": "关注列表"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/watches/set",
+						"summary": "设置关注"
+					},
+					{
+						"method": "POST",
+						"path": "/api/v1/watches/status",
+						"summary": "查询关注状态"
+					}
+				]
+			}
+		]
+	},
+	"settings": {
+		"total": 126,
+		"groups": [
+			{
+				"key": "site",
+				"title": "站点",
+				"titleEn": "Site",
+				"items": [
+					{
+						"key": "site_name",
+						"value": "Feed Chamber",
+						"public": true
+					},
+					{
+						"key": "site_description",
+						"value": "NoelOrin 的个人博客",
+						"public": true
+					},
+					{
+						"key": "site_logo",
+						"value": "",
+						"public": true
+					},
+					{
+						"key": "site_url",
+						"value": "",
+						"public": true
+					},
+					{
+						"key": "site_maintenance",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "site_maintenance_message",
+						"value": "站点维护中，请稍后再试",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "seo",
+				"title": "SEO",
+				"titleEn": "SEO",
+				"items": [
+					{
+						"key": "seo_title",
+						"value": "Feed Chamber",
+						"public": true
+					},
+					{
+						"key": "seo_keywords",
+						"value": "Feed Chamber,博客,社区,技术",
+						"public": true
+					},
+					{
+						"key": "seo_description",
+						"value": "",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "og",
+				"title": "Open Graph",
+				"titleEn": "Open Graph",
+				"items": [
+					{
+						"key": "og_image",
+						"value": "",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "google",
+				"title": "站点验证",
+				"titleEn": "Verification",
+				"items": [
+					{
+						"key": "google_site_verification",
+						"value": "",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "baidu",
+				"title": "站点验证",
+				"titleEn": "Verification",
+				"items": [
+					{
+						"key": "baidu_site_verification",
+						"value": "",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "user",
+				"title": "用户",
+				"titleEn": "Users",
+				"items": [
+					{
+						"key": "user_profile_indexable",
+						"value": "false",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "sitemap",
+				"title": "Sitemap",
+				"titleEn": "Sitemap",
+				"items": [
+					{
+						"key": "sitemap_page_size",
+						"value": "5000",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "register",
+				"title": "注册",
+				"titleEn": "Registration",
+				"items": [
+					{
+						"key": "register_enabled",
+						"value": "true",
+						"public": true
+					},
+					{
+						"key": "register_mode",
+						"value": "all",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "post",
+				"title": "帖子",
+				"titleEn": "Posts",
+				"items": [
+					{
+						"key": "post_approval",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "post_auth_required",
+						"value": "false",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "moderation",
+				"title": "审核",
+				"titleEn": "Moderation",
+				"items": [
+					{
+						"key": "moderation_mode",
+						"value": "async",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "mcp",
+				"title": "MCP",
+				"titleEn": "MCP",
+				"items": [
+					{
+						"key": "mcp_enabled",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "mcp_disabled_tools",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "mcp_max_result_bytes",
+						"value": "8192",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "trust",
+				"title": "成长体系",
+				"titleEn": "Trust",
+				"items": [
+					{
+						"key": "trust_tl0_require_approval",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "trust_tl0_block_links",
+						"value": "true",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "email",
+				"title": "邮件",
+				"titleEn": "Email",
+				"items": [
+					{
+						"key": "email_verification_required",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "email_enabled",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "email_provider",
+						"value": "log",
+						"public": false
+					},
+					{
+						"key": "email_smtp_host",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "email_smtp_port",
+						"value": "587",
+						"public": false
+					},
+					{
+						"key": "email_username",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "email_password",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "email_from",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "email_from_name",
+						"value": "Feed Chamber",
+						"public": false
+					},
+					{
+						"key": "email_use_tls",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "email_api_key",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "email_code_ttl",
+						"value": "600",
+						"public": false
+					},
+					{
+						"key": "email_code_length",
+						"value": "6",
+						"public": false
+					},
+					{
+						"key": "email_resend_cooldown",
+						"value": "60",
+						"public": false
+					},
+					{
+						"key": "email_daily_limit",
+						"value": "10",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "comment",
+				"title": "评论",
+				"titleEn": "Comments",
+				"items": [
+					{
+						"key": "comment_auth_required",
+						"value": "false",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "space",
+				"title": "版面",
+				"titleEn": "Spaces",
+				"items": [
+					{
+						"key": "space_view_auth_required",
+						"value": "false",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "tag",
+				"title": "标签",
+				"titleEn": "Tags",
+				"items": [
+					{
+						"key": "tag_list_auth_required",
+						"value": "false",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "announcement",
+				"title": "公告",
+				"titleEn": "Announcements",
+				"items": [
+					{
+						"key": "announcement_auth_required",
+						"value": "false",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "article",
+				"title": "文章",
+				"titleEn": "Articles",
+				"items": [
+					{
+						"key": "article_page_size",
+						"value": "20",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "oauth",
+				"title": "OAuth / OIDC",
+				"titleEn": "OAuth / OIDC",
+				"items": [
+					{
+						"key": "oauth_github_enabled",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "oauth_github_client_id",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_github_client_secret",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_github_callback",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_google_enabled",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "oauth_google_client_id",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_google_client_secret",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_google_callback",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_qq_enabled",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "oauth_qq_client_id",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_qq_client_secret",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_qq_callback",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_wechat_enabled",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "oauth_wechat_client_id",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_wechat_client_secret",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_wechat_callback",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_weibo_enabled",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "oauth_weibo_client_id",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_weibo_client_secret",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_weibo_callback",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_discord_enabled",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "oauth_discord_client_id",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_discord_client_secret",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_discord_callback",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_github_auth_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_github_token_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_github_user_api_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_github_scopes",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_google_auth_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_google_token_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_google_user_api_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_google_scopes",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_qq_auth_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_qq_token_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_qq_user_api_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_qq_scopes",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_wechat_auth_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_wechat_token_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_wechat_user_api_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_wechat_scopes",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_weibo_auth_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_weibo_token_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_weibo_user_api_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_weibo_scopes",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_discord_auth_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_discord_token_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_discord_user_api_url",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_discord_scopes",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "oauth_access_token_ttl",
+						"value": "86400",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "sso",
+				"title": "OIDC SSO",
+				"titleEn": "OIDC SSO",
+				"items": [
+					{
+						"key": "sso_oidc_enabled",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "sso_oidc_issuer",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "sso_oidc_client_id",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "sso_oidc_client_secret",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "sso_id_token_ttl",
+						"value": "3600",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "api",
+				"title": "API Key",
+				"titleEn": "API Keys",
+				"items": [
+					{
+						"key": "api_key_enabled",
+						"value": "false",
+						"public": false
+					},
+					{
+						"key": "api_key_default_rate_limit",
+						"value": "100",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "mfa",
+				"title": "多因素认证",
+				"titleEn": "MFA",
+				"items": [
+					{
+						"key": "mfa_totp_enabled",
+						"value": "false",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "rate",
+				"title": "限流",
+				"titleEn": "Rate Limits",
+				"items": [
+					{
+						"key": "rate_limit_enabled",
+						"value": "false",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "security",
+				"title": "安全",
+				"titleEn": "Security",
+				"items": [
+					{
+						"key": "security_brute_force_max_attempts",
+						"value": "5",
+						"public": false
+					},
+					{
+						"key": "security_brute_force_window",
+						"value": "300",
+						"public": false
+					},
+					{
+						"key": "security_unusual_location_enabled",
+						"value": "false",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "backup",
+				"title": "备份",
+				"titleEn": "Backups",
+				"items": [
+					{
+						"key": "backup_retention_days",
+						"value": "30",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "page",
+				"title": "分页",
+				"titleEn": "Pagination",
+				"items": [
+					{
+						"key": "page_max_size",
+						"value": "100",
+						"public": false
+					},
+					{
+						"key": "page_default_size",
+						"value": "20",
+						"public": true
+					}
+				]
+			},
+			{
+				"key": "upload",
+				"title": "上传",
+				"titleEn": "Uploads",
+				"items": [
+					{
+						"key": "upload_max_size",
+						"value": "10485760",
+						"public": false
+					},
+					{
+						"key": "upload_allowed_types",
+						"value": "image/jpeg,image/png,image/gif,image/webp",
+						"public": false
+					},
+					{
+						"key": "upload_presign_expiry",
+						"value": "900",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "sse",
+				"title": "实时推送",
+				"titleEn": "SSE",
+				"items": [
+					{
+						"key": "sse_polling_interval",
+						"value": "5",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "view",
+				"title": "view",
+				"titleEn": "view",
+				"items": [
+					{
+						"key": "view_count_flush_interval",
+						"value": "60",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "bcrypt",
+				"title": "bcrypt",
+				"titleEn": "bcrypt",
+				"items": [
+					{
+						"key": "bcrypt_cost",
+						"value": "10",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "password",
+				"title": "password",
+				"titleEn": "password",
+				"items": [
+					{
+						"key": "password_min_length",
+						"value": "8",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "storage",
+				"title": "storage",
+				"titleEn": "storage",
+				"items": [
+					{
+						"key": "storage_provider",
+						"value": "local",
+						"public": false
+					},
+					{
+						"key": "storage_local_dir",
+						"value": "uploads",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "s3",
+				"title": "s3",
+				"titleEn": "s3",
+				"items": [
+					{
+						"key": "s3_endpoint",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "s3_region",
+						"value": "us-east-1",
+						"public": false
+					},
+					{
+						"key": "s3_bucket",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "s3_access_key_id",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "s3_access_key_secret",
+						"value": "",
+						"public": false
+					},
+					{
+						"key": "s3_use_ssl",
+						"value": "true",
+						"public": false
+					},
+					{
+						"key": "s3_custom_domain",
+						"value": "",
+						"public": false
+					}
+				]
+			},
+			{
+				"key": "banned",
+				"title": "banned",
+				"titleEn": "banned",
+				"items": [
+					{
+						"key": "banned_status_visible",
+						"value": "true",
+						"public": false
+					},
+					{
+						"key": "banned_status_public_access",
+						"value": "true",
+						"public": false
+					}
+				]
+			}
+		]
+	},
+	"metrics": [
+		{
+			"name": "feedchamber_backup_job_duration_seconds",
+			"help": "Backup operation latency in seconds.",
+			"type": "Histogram"
+		},
+		{
+			"name": "feedchamber_backup_jobs_total",
+			"help": "Backup operations by kind and outcome.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_db_queries_total",
+			"help": "Queries executed through GORM.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_db_slow_queries_total",
+			"help": "Queries slower than the configured slow-query threshold.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_eventbus_dispatch_duration_seconds",
+			"help": "Event handler execution time in seconds.",
+			"type": "Histogram"
+		},
+		{
+			"name": "feedchamber_eventbus_dispatch_errors_total",
+			"help": "Event handler panics recovered during dispatch.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_eventbus_dropped_total",
+			"help": "Events dropped because the dispatch buffer was full.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_eventbus_publish_total",
+			"help": "Events published to NATS by event type and result.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_eventbus_queue_depth",
+			"help": "Number of events buffered and not yet dispatched.",
+			"type": "Gauge"
+		},
+		{
+			"name": "feedchamber_http_panics_total",
+			"help": "Total count of panics recovered while serving HTTP requests.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_http_request_duration_seconds",
+			"help": "HTTP request latency in seconds.",
+			"type": "Histogram"
+		},
+		{
+			"name": "feedchamber_http_request_size_bytes",
+			"help": "HTTP request body size in bytes.",
+			"type": "Histogram"
+		},
+		{
+			"name": "feedchamber_http_requests_total",
+			"help": "Total count of HTTP requests.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_http_response_size_bytes",
+			"help": "HTTP response body size in bytes.",
+			"type": "Histogram"
+		},
+		{
+			"name": "feedchamber_kv_cas_exhausted_total",
+			"help": "KV increment operations that exhausted all CAS attempts.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_kv_operation_duration_seconds",
+			"help": "KV store operation latency in seconds.",
+			"type": "Histogram"
+		},
+		{
+			"name": "feedchamber_login_failures_total",
+			"help": "Rejected login attempts by failure reason.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_nats_connected",
+			"help": "1 while the NATS client connection is usable, 0 while disconnected.",
+			"type": "Gauge"
+		},
+		{
+			"name": "feedchamber_nats_disconnects_total",
+			"help": "NATS connection losses, by client.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_nats_reconnects_total",
+			"help": "Successful NATS reconnections, by client.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_permission_cache_entries",
+			"help": "Entries held in each permission cache.",
+			"type": "Gauge"
+		},
+		{
+			"name": "feedchamber_permission_decisions_total",
+			"help": "Permission checks by scope (global|space) and result (allow|deny).",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_ratelimit_failopen_total",
+			"help": "Rate limiter fail-open occurrences, by policy name.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_ratelimit_rejections_total",
+			"help": "Requests rejected by a rate limiter, by policy name.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_readcache_hits_total",
+			"help": "Read-through cache hits, labelled by cache name.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_readcache_misses_total",
+			"help": "Read-through cache misses, labelled by cache name.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_sse_connections",
+			"help": "Currently open SSE streams by channel.",
+			"type": "Gauge"
+		},
+		{
+			"name": "feedchamber_sse_write_failures_total",
+			"help": "Failed SSE writes that terminated a stream, by channel.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_webhook_deliveries_total",
+			"help": "Webhook delivery attempts by outcome.",
+			"type": "Counter"
+		},
+		{
+			"name": "feedchamber_webhook_delivery_duration_seconds",
+			"help": "Webhook delivery request latency in seconds.",
+			"type": "Histogram"
+		},
+		{
+			"name": "feedchamber_webhook_pending_deliveries",
+			"help": "Webhook deliveries currently pending (true backlog).",
+			"type": "Gauge"
+		}
+	]
+}

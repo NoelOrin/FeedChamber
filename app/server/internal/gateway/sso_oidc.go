@@ -7,8 +7,8 @@ import (
 
 	"github.com/kataras/iris/v12"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
 )
 
 // OIDC Discovery endpoint: GET /.well-known/openid-configuration

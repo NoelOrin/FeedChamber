@@ -1,0 +1,123 @@
+---
+import { Icon } from '@astrojs/starlight/components';
+
+interface Item {
+	title: string;
+	description: string;
+	icon: string;
+	href?: string;
+}
+
+interface Props {
+	items: Item[];
+}
+
+const { items } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const withBase = (href?: string) => (!href ? undefined : href.startsWith('/') ? `${base}${href.slice(1)}` : href);
+---
+
+<ul class="grid">
+	{
+		items.map((item) => {
+			const href = withBase(item.href);
+			const Tag = href ? 'a' : 'div';
+			return (
+				<li>
+					<Tag class="card" href={href}>
+						<span class="icon">
+							<Icon name={item.icon} size="1.05rem" />
+						</span>
+						<span class="title">{item.title}</span>
+						<span class="desc">{item.description}</span>
+						{href && <span class="more">继续 →</span>}
+					</Tag>
+				</li>
+			);
+		})
+	}
+</ul>
+
+<style>
+	.grid {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		gap: 0.75rem;
+		margin: 1.5rem 0 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	li {
+		margin: 0;
+		display: flex;
+	}
+
+	.card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		flex: 1;
+		padding: 1.1rem 1.15rem;
+		border: 1px solid var(--fc-hairline);
+		border-radius: 10px;
+		background: var(--fc-bg-elevated);
+		color: inherit;
+		text-decoration: none;
+		transition:
+			border-color 120ms ease,
+			background 120ms ease,
+			transform 120ms ease;
+	}
+
+	a.card:hover {
+		border-color: var(--fc-accent);
+		background: var(--fc-bg-soft);
+		text-decoration: none;
+		transform: translateY(-1px);
+	}
+
+	.icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 1.9rem;
+		height: 1.9rem;
+		margin-bottom: 0.35rem;
+		border-radius: 7px;
+		border: 1px solid var(--fc-hairline-strong);
+		background: var(--fc-bg-soft);
+		color: var(--fc-accent);
+	}
+
+	.title {
+		font-size: 0.9rem;
+		font-weight: 600;
+		color: var(--fc-text-strong);
+	}
+
+	.desc {
+		font-size: 0.8rem;
+		line-height: 1.55;
+		color: var(--fc-text-muted);
+	}
+
+	.more {
+		margin-top: auto;
+		padding-top: 0.4rem;
+		font-size: 0.75rem;
+		color: var(--fc-accent);
+	}
+
+	@media (max-width: 64rem) {
+		.grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 40rem) {
+		.grid {
+			grid-template-columns: minmax(0, 1fr);
+		}
+	}
+</style>

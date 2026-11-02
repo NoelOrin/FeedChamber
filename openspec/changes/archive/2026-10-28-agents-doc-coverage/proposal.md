@@ -25,4 +25,4 @@
 
 - 不把 `docs/` 的散文文档迁进 `AGENTS.md`，也不反过来。分工不变：规范进 `openspec/specs/`，说明性材料留在 `docs/`，模块约定进各层 `AGENTS.md`。
 - 不为 `components/` 下每个子目录（21 个）都建文档。只有「文件多 + 有独立约定」的域才建：`ui`、`admin`、`markdown-editor`。其余域在 `components/AGENTS.md` 的子域一览里一行带过。
-- 不改本次无关的过期内容（例如 `docs/backend-overview.md` 的发现项编号体系、`orinforum_test.sh` 的用例）。
+- 不改本次无关的过期内容（例如 `docs/backend-overview.md` 的发现项编号体系、`feedchamber_test.sh` 的用例）。

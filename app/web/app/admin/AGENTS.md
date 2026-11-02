@@ -33,7 +33,7 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 1. `app/web/app/admin/<route>/page.tsx` — 新建目录即新增 `/admin/<route>` 路由
 2. `components/admin/layout/admin-shell.tsx` — 在 `menuItems` 里登记菜单项（`path` / `name` / `icon`）；详情页加 `hideInMenu: true`
 3. `lib/admin/auth/route-access.ts` — 在 `ROUTE_PERMISSIONS` 登记权限码；**详情页必须排在列表页之前**（顺序即优先级，`/admin` 只做精确匹配）。`/admin/levels` 与 `/admin/xp-rules` 登记为 `level:manage`、`/admin/gates` 登记为 `gate:manage`（后端 `routes_trust.go` / `routes_gate.go` 同一门）
-4. 取数用 `@orinforum/api-client` 的 service + `useQuery`（key 取 `~/lib/query/keys.ts` 的 `qk`），表格用 `components/ui/data-table.tsx` 的 `DataTable`，详情用 `components/ui/descriptions.tsx`
+4. 取数用 `@feedchamber/api-client` 的 service + `useQuery`（key 取 `~/lib/query/keys.ts` 的 `qk`），表格用 `components/ui/data-table.tsx` 的 `DataTable`，详情用 `components/ui/descriptions.tsx`
 
 > 注：根 `AGENTS.md` 曾写「菜单在 `components/admin/layout/pro-shell.tsx` 登记」——该文件不存在，实际是 `admin-shell.tsx` 的 `menuItems`。以本文件为准。
 
@@ -67,7 +67,7 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 - 不要在页面里读 `window.location` 拼跳转：用 `lib/admin/navigation.ts` 的 `useNavigate` / `useLocation` / 查询参数 hook。
 - 删除确认用 `components/ui/confirm-dialog.tsx` 的 `useConfirm`，不要 `window.confirm`。
 - 后台页面不允许被搜索引擎索引：`admin/layout.tsx` 的 metadata 已声明 `robots: { index: false, follow: false }`，新增路由段不要覆盖它。
-- **状态筛选的「全部状态」哨兵统一取 `@orinforum/api-client` 的 `STATUS_FILTER_ALL`（`'__all__'`）**，不要在页面里各自定义 `const ALL`（`/admin/posts` 与 `/admin/reports` 共用）。后端只对 `report:manage` 持有者把该值当「不按状态过滤」，所以 **pending 帖只会出现在 `/admin/posts` 的「全部状态」下**——存量待审帖靠该列表操作列的「通过 / 拒绝」（`postService.setStatus` → `POST /posts/{id}/status`）救回，`/admin/posts` 因此是该状态唯一的运营入口。
+- **状态筛选的「全部状态」哨兵统一取 `@feedchamber/api-client` 的 `STATUS_FILTER_ALL`（`'__all__'`）**，不要在页面里各自定义 `const ALL`（`/admin/posts` 与 `/admin/reports` 共用）。后端只对 `report:manage` 持有者把该值当「不按状态过滤」，所以 **pending 帖只会出现在 `/admin/posts` 的「全部状态」下**——存量待审帖靠该列表操作列的「通过 / 拒绝」（`postService.setStatus` → `POST /posts/{id}/status`）救回，`/admin/posts` 因此是该状态唯一的运营入口。
 
 ## 本文件何时更新
 
@@ -75,3 +75,17 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 - 准入链（`DASHBOARD_ROLES` / `DASHBOARD_PERMISSION_CODES` / `ROUTE_PERMISSIONS`）语义变化
 - 菜单结构或分组调整
 - 后台壳层或挂载门机制变化
+
+## 站点自定义后台（2026-10-30）
+
+- **主题覆盖页**（`customize/theme`）：草稿只在该 query `isSuccess` 时同步（依赖 `dataUpdatedAt`）；`data = []` 默认值 + `[data]` 依赖会导致 pending/error 期无限渲染。行内删除必须调用 `deleteThemeToken`——`tokens/set` 只按 token 名 upsert，「从草稿里删掉」不等于服务端删除。清空全部走 `useConfirm`。
+- **自定义页**（`customize/pages`）：服务端分页（`pagination` + `total`），不再固定 `pageSize:100` 丢弃 total。
+- **片段页**（`customize/snippets`）：高风险提示条按列表数据判定（`data.some(...)`），不是弹窗表单状态；kind=html 时注入位置固定展示 body_end 且禁用选择。
+- **首页模块页**（`customize/home`）：html 模块的 config 形如 `{"html":"<div>…</div>"}`，占位符必须给 JSON，否则照提示填会稳定 400。
+- **设置页**：`settingsConfig.ts` 是声明式白名单，新增设置 key（如 `mcp_enabled` / `mcp_disabled_tools` / `mcp_max_result_bytes`）必须同时登记到这里，否则后台根本改不到。
+
+## 列表页的错误态（2026-10-30）
+
+`customize/{nav,home,snippets}`、`mcp-servers`、`mcp` 等列表页统一：`const query = useQuery(...)` + `data = query.data ?? []` + `isError` 分支（`Alert variant="destructive"` 显示 `query.error.message`）。不要用 `const { data = [] } = useQuery()`：解构默认值在 pending/error 期每次渲染都是新数组，若再喂给 `useEffect` 依赖就是无限渲染（`customize/theme` 曾如此）。
+
+列表里的 `enabled` 只表达「启停」，不要套 `AppliedBadge`——列表接口没有 `applied` 字段，那是**写入结果**的语义，由保存回调的 toast 呈现（`applied=false` 时必须说明「已保存为草稿」及 `reason`）。

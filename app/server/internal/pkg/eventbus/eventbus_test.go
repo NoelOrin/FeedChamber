@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/pkg/testnats"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/pkg/testnats"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

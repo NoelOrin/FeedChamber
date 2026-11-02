@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"orinforum/internal/mock"
-	"orinforum/internal/repository"
+	"feedchamber/internal/mock"
+	"feedchamber/internal/repository"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

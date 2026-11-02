@@ -28,7 +28,7 @@ JSON 可为数组，或带一层对象包装（importer 会尝试解析首个数
 
 ## 字段映射
 
-| Discourse | OrinForum |
+| Discourse | Feed Chamber |
 |-----------|-----------|
 | user.id | 新 ULID，`import_maps` 保留 external_id |
 | category | space |

@@ -8,8 +8,8 @@ import {
 	trustService,
 	userService,
 	type XPAdjustment,
-} from '@orinforum/api-client';
-import { formatTime } from '@orinforum/shared-utils';
+} from '@feedchamber/api-client';
+import { formatTime } from '@feedchamber/shared-utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';

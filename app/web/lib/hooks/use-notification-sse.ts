@@ -1,7 +1,7 @@
 'use client';
 
-import { tryRefreshToken } from '@orinforum/api-client';
-import { SSEClient, type SSEClientOptions } from '@orinforum/sse-client';
+import { tryRefreshToken } from '@feedchamber/api-client';
+import { SSEClient, type SSEClientOptions } from '@feedchamber/sse-client';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /*

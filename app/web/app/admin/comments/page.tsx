@@ -1,7 +1,7 @@
 'use client';
 
-import { adminService, type ContentListItem, contentService } from '@orinforum/api-client';
-import { formatTime } from '@orinforum/shared-utils';
+import { adminService, type ContentListItem, contentService } from '@feedchamber/api-client';
+import { formatTime } from '@feedchamber/shared-utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef, RowSelectionState } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';

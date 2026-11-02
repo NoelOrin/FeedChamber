@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // sessionTouchInterval throttles last_active writes so a busy page does not

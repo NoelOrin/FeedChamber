@@ -1,6 +1,6 @@
 'use client';
 
-import { adminService, type SearchResults } from '@orinforum/api-client';
+import { adminService, type SearchResults } from '@feedchamber/api-client';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useState } from 'react';
 

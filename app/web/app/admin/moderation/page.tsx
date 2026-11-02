@@ -6,8 +6,8 @@ import {
 	moderationService,
 	SettingKey,
 	settingService,
-} from '@orinforum/api-client';
-import { cx, formatTime } from '@orinforum/shared-utils';
+} from '@feedchamber/api-client';
+import { cx, formatTime } from '@feedchamber/shared-utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';

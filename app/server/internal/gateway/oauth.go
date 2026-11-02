@@ -9,9 +9,9 @@ import (
 
 	"golang.org/x/oauth2"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/kvstore"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/kvstore"
 
 	"github.com/kataras/iris/v12"
 )

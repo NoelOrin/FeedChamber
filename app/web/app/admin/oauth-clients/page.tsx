@@ -1,7 +1,7 @@
 'use client';
 
+import { type OAuthClient, type OAuthClientSecretResult, oauthClientService } from '@feedchamber/api-client';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { type OAuthClient, type OAuthClientSecretResult, oauthClientService } from '@orinforum/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';

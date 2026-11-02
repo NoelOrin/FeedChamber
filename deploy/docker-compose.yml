@@ -1,9 +1,9 @@
-# OrinForum — 默认部署（一键可运行）
+# Feed Chamber — 默认部署（一键可运行）
 #
 #   docker compose -f deploy/docker-compose.yml up -d --build
 #
 # 依赖两个外部服务，均由本档一并启动：
-#   postgres  — 主库（DB_TYPE=postgres），数据落 named volume orin_pg
+#   postgres  — 主库（DB_TYPE=postgres），数据落 named volume feedchamber_pg
 #   nats      — KV Store / EventBus，必须启用 JetStream（-js）
 #
 # 后端进程内嵌 nats-server 已于 2026-10-28 剥离：KV 与 EventBus 的生命周期不再
@@ -19,26 +19,26 @@
 #                        docker compose -f deploy/docker-compose.yml logs backend | grep -i admin
 #   LOG_LEVEL / LOG_FORMAT / LOG_OUTPUT
 
-name: orinforum
+name: feedchamber
 
 services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-orinforum}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-orinforum}
-      POSTGRES_DB: ${POSTGRES_DB:-orinforum}
+      POSTGRES_USER: ${POSTGRES_USER:-feedchamber}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-feedchamber}
+      POSTGRES_DB: ${POSTGRES_DB:-feedchamber}
       # 时区与 backend 的 DB_DSN 保持一致，避免 created_at 落库差 8 小时。
       TZ: Asia/Shanghai
     volumes:
-      - orin_pg:/var/lib/postgresql/data
+      - feedchamber_pg:/var/lib/postgresql/data
     # 不映射到宿主机：只有 compose 网络内的 backend 需要连它。
     # 本地要用 psql/GUI 调试时临时加 "127.0.0.1:5432:5432"。
     expose: ["5432"]
     healthcheck:
       # pg_isready 比 TCP 探测可靠：postgres 在初始化阶段也会监听端口，
       # 但此时还不能接受连接，backend 会在建表时失败。
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-orinforum} -d ${POSTGRES_DB:-orinforum}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-feedchamber} -d ${POSTGRES_DB:-feedchamber}"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -52,7 +52,7 @@ services:
     # -m 8222 是监控端口，只在容器网络内（下面 expose），不对外。
     command: ["-js", "-sd", "/data", "-m", "8222"]
     volumes:
-      - orin_nats:/data
+      - feedchamber_nats:/data
     expose: ["4222", "8222"]
     healthcheck:
       # NATS 的 healthz 端点由 -m 监控端口提供，未开 -m 时会失败。
@@ -86,15 +86,15 @@ services:
       #   GOPROXY=https://goproxy.cn,direct docker compose build backend
       args:
         GOPROXY: ${GOPROXY:-https://proxy.golang.org,direct}
-    image: orinforum/server:local
+    image: feedchamber/server:local
     environment:
       DB_TYPE: postgres
       # host 用服务名；密码与库名与下方 postgres 服务保持一致。
       # sslmode=disable 是因为 postgres 与 backend 在同一个 compose 网络内。
-      DB_DSN: "host=postgres user=${POSTGRES_USER:-orinforum} password=${POSTGRES_PASSWORD:-orinforum} dbname=${POSTGRES_DB:-orinforum} port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+      DB_DSN: "host=postgres user=${POSTGRES_USER:-feedchamber} password=${POSTGRES_PASSWORD:-feedchamber} dbname=${POSTGRES_DB:-feedchamber} port=5432 sslmode=disable TimeZone=Asia/Shanghai"
       # 外部 NATS（必须启用 JetStream，见下方 nats 服务）。
       NATS_URL: nats://nats:4222
-      NATS_BUCKET: orin_kv
+      NATS_BUCKET: feedchamber_kv
       PORT: "8080"
       # 指标端口只在容器网络内可达，刻意不映射到宿主机（端点无鉴权）。
       METRICS_ENABLED: "true"
@@ -113,7 +113,7 @@ services:
       MASTER_COOKIE_SECURE: ${MASTER_COOKIE_SECURE:-true}
     volumes:
       # 上传仍落本地卷（S3 是可选替代，见 STORAGE_TYPE）。
-      - orin_uploads:/app/server/uploads
+      - feedchamber_uploads:/app/server/uploads
     expose: ["8080", "9091"]
     depends_on:
       postgres:
@@ -139,7 +139,7 @@ services:
       #   NPM_REGISTRY=https://registry.npmmirror.com docker compose build frontend
       args:
         NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmjs.org}
-    image: orinforum/web:local
+    image: feedchamber/web:local
     environment:
       # SSR 侧请求后端的 origin；浏览器侧仍走同源 /api/v1，由 nginx 转发。
       API_BASE_URL: http://backend:8080
@@ -173,8 +173,8 @@ services:
     restart: unless-stopped
 
 volumes:
-  # postgres 数据目录（原 SQLite 的 orin_db 已不再使用）。
-  orin_pg:
+  # postgres 数据目录（原 SQLite 的 feedchamber_db 已不再使用）。
+  feedchamber_pg:
   # NATS JetStream 存储：KV bucket + 事件队列。
-  orin_nats:
-  orin_uploads:
+  feedchamber_nats:
+  feedchamber_uploads:

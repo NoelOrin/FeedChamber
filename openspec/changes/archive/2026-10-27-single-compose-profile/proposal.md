@@ -12,12 +12,12 @@
 
 - **删除 `deploy/docker-compose.dokploy.yml`**（零引用，无需迁移说明）。
 - **删除 `deploy/docker-compose.cluster.yml`**：PG + nats×3 + 监控栈不再随仓库发布。
-- **保留监控素材**：`deploy/prometheus.yml`、`deploy/prometheus/rules/`、`deploy/blackbox/`、`deploy/grafana/` 全部保留，改为「挂到外部实例使用」的定位；其中 `rules/orinforum.yml` 的 13 条告警规则、Grafana provisioning 与 dashboard 都不动。
+- **保留监控素材**：`deploy/prometheus.yml`、`deploy/prometheus/rules/`、`deploy/blackbox/`、`deploy/grafana/` 全部保留，改为「挂到外部实例使用」的定位；其中 `rules/feedchamber.yml` 的 13 条告警规则、Grafana provisioning 与 dashboard 都不动。
 - **规范删除**（不是改写）：
   - `operations` 删除「集群监控栈运行与校验」整条 requirement——它要求的「一条命令拉起监控栈」与「`docker-compose.cluster.yml config` MUST 成功」都锚定在已删除的文件上。
   - `observability` 删除「监控栈可部署」整条 requirement——同理，它通篇以 cluster compose 的挂载文件为约束对象。
   - 删除后不再用 MUST 规定部署档的数量与形态：「只保留一个 compose」是本轮实现选择，不上升为规范。`METRICS_PORT` 的暴露方式、「告警规则最低集」等其他 requirement 不受影响，继续约束。
-- **文档同步**：`deploy/README.md`、`docs/system-map.md`、`docs/backend-overview.md`、`docs/design/nats-deploy.md`、以及 `deploy/docker-compose.yml` / `prometheus.yml` / `prometheus/rules/orinforum.yml` 三处文件头注释；`deploy/.env.example` 裁掉 cluster 专用的 `POSTGRES_PASSWORD` / `GRAFANA_*`（这些变量已无人读取）。
+- **文档同步**：`deploy/README.md`、`docs/system-map.md`、`docs/backend-overview.md`、`docs/design/nats-deploy.md`、以及 `deploy/docker-compose.yml` / `prometheus.yml` / `prometheus/rules/feedchamber.yml` 三处文件头注释；`deploy/.env.example` 裁掉 cluster 专用的 `POSTGRES_PASSWORD` / `GRAFANA_*`（这些变量已无人读取）。
 
 ## Capabilities
 

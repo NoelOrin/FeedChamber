@@ -7,7 +7,7 @@ import {
 	type GateMeta,
 	type GateRule,
 	gateService,
-} from '@orinforum/api-client';
+} from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';

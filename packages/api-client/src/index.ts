@@ -21,6 +21,22 @@ export type {
 } from './services/checkin';
 export { checkinService } from './services/checkin';
 export { contentService } from './services/content';
+export type {
+	CustomizeWriteResult,
+	CustomPage,
+	CustomPageStatus,
+	HomeModule,
+	HomeModuleKind,
+	NavItem,
+	NavVisibility,
+	PublicCustomization,
+	Snippet,
+	SnippetKind,
+	SnippetPosition,
+	ThemeToken,
+	ThemeTokenMode,
+} from './services/customize';
+export { customizeService } from './services/customize';
 export { dashboardService } from './services/dashboard';
 export type { Draft } from './services/draft';
 export { draftService } from './services/draft';
@@ -39,6 +55,8 @@ export { groupService } from './services/group';
 export { inviteService } from './services/invite';
 export { leaderboardService } from './services/leaderboard';
 export { likeService } from './services/like';
+export type { MCPServer, MCPServerInput, MCPTestResult, MCPToolState } from './services/mcp-server';
+export { mcpServerService, mcpToolService } from './services/mcp-server';
 export { mfaService } from './services/mfa';
 export type {
 	ModerationConfig,

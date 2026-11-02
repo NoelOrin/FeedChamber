@@ -9,7 +9,7 @@
 - 每个资源定义 `XxxRepository` 接口 + 工厂 `NewXxxRepository(store db.Store) XxxRepository`，工厂直接返回 SQL 实现；service 层只依赖接口。
 - SQL 实现命名为 `sqlXxxRepo{db db.SQLStore}`，所有 DB 访问经 `r.db.DB().WithContext(ctx)`。
 - 所有方法第一个参数为 `context.Context`（超时、trace、logger 都挂在它上面）。
-- 列表方法成对出现：`List(ctx, offset, limit)` + `Count(ctx)`；计数变体命名 `CountXxx`。
+- 列表方法成对出现：`List(ctx, offset, limit)` + `Count(ctx)`；计数变体命名 `CountXxx`。筛选版列表（`ListByScope` 等）同样要有对应的 `CountXxx`，否则分页条拿不到真实总数。`Banned` 曾是唯一例外（只有 `List` / `ListByScope`、没有计数），2026-10-29 补齐 `Count` / `CountByScope`。
 - 错误一律 `WrapDBErr(err)`（errors.go），把驱动错误翻译为 `ErrNotFound` / `ErrDuplicate` 等哨兵值，由 service 层再包装成 `*pkg.AppError`。
 - 软删除与审核相关的横切逻辑放在 `softdelete.go`、`checker_sql.go`、`post_filter.go`，不在各 repo 里重复。
 
@@ -51,3 +51,15 @@
 2. 实现 `sqlXxxRepo`（GORM），每个方法用 `WrapDBErr` 包装错误
 3. 工厂函数返回 `&sqlXxxRepo{db: store.SQL()}`
 4. 在 `internal/container/container.go` 装配，并在对应 service 构造函数里接收接口
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
+
+## 片段读取（2026-10-30）
+
+`SnippetRepository.ListEnabled(ctx)` **不再按 `position` 列过滤**：权威位置是 `model.Snippet.EffectivePosition()`（html 恒为 `body_end`），存量数据可能仍写着 head。位置匹配在 service 层做，SQL 只管 `enabled = true`——两套判定并存时会让「存了 head 的 html 片段」永远发不出去且不报错。
+
+## 错误翻译与主题 token 身份（2026-10-30）
+
+- `WrapDBErr` 除了 `ErrNotFound`，现在也把唯一约束冲突翻成 `ErrDuplicate`（`checker_sql.go` 注册 `gorm.ErrDuplicatedKey` + 三家后端文案匹配）。service 只判断 `errors.Is(err, ErrDuplicate)`，不要再字符串匹配。
+- `theme_tokens` 的身份是 `(token, mode)`（复合唯一索引 `idx_theme_token_mode`）：同一 token 的明暗两套覆盖各占一行。`Upsert` 按 `token AND mode` 匹配，`DeleteByToken` 删全部模式、`DeleteByTokenMode` 删单个模式。
+- `snippet` 的 `ListEnabled` 不按 `position` 列过滤（权威位置是 `EffectivePosition()`，见 service 层）。

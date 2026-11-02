@@ -1,11 +1,11 @@
 # operations Specification
 
 ## Purpose
-定义 OrinForum 的运行配置、环境变量、启动方式与 API 测试流程约定，作为运维与本地开发的一致依据。
+定义 Feed Chamber 的运行配置、环境变量、启动方式与 API 测试流程约定，作为运维与本地开发的一致依据。
 ## Requirements
 ### Requirement: 环境变量配置
 
-系统 MUST 通过环境变量配置运行参数，关键变量包括：`PORT`（默认 8080）、`DB_TYPE`（sqlite/mysql/postgres，默认 sqlite）、`DB_DSN`、`STORAGE_TYPE`（local/s3，默认 local）、S3 系列变量、`NATS_URL`（空则启动内嵌 nats-server）、`NATS_BUCKET`（默认 orin_kv）、`NATS_EMBEDDED_PORT`。
+系统 MUST 通过环境变量配置运行参数，关键变量包括：`PORT`（默认 8080）、`DB_TYPE`（sqlite/mysql/postgres，默认 sqlite）、`DB_DSN`、`STORAGE_TYPE`（local/s3，默认 local）、S3 系列变量、`NATS_URL`（空则启动内嵌 nats-server）、`NATS_BUCKET`（默认 feedchamber_kv）、`NATS_EMBEDDED_PORT`。
 
 `JWT_SECRET` MUST NOT 再作为配置项存在：该变量已随令牌 opaque 化退场，未设置、留空或保留旧值 MUST NOT 影响启动，且 MUST NOT 被任何代码路径读取。系统唯一保留的 JWT 是 OIDC `id_token`（OIDC Core 强制其为签名 JWT），其签名私钥以 PEM 持久化在 settings `sso_oidc_signing_key` 中，不依赖环境变量。
 
@@ -69,9 +69,9 @@ Storage 配置 MUST 以 settings 表为唯一可信来源，环境变量仅作�
 
 ### Requirement: API 测试流程
 
-仓库根目录 MUST 提供 `orinforum_test.sh` 全量 API 测试脚本。启动服务后 MUST 支持 `-all` 全量测试与按模块测试（如 `-auth -post -user`）；建议在全新 SQLite 数据库上运行。
+仓库根目录 MUST 提供 `feedchamber_test.sh` 全量 API 测试脚本。启动服务后 MUST 支持 `-all` 全量测试与按模块测试（如 `-auth -post -user`）；建议在全新 SQLite 数据库上运行。
 
 #### Scenario: 全量接口回归
 
-- WHEN 在干净 SQLite 实例上运行 `bash orinforum_test.sh -all`
+- WHEN 在干净 SQLite 实例上运行 `bash feedchamber_test.sh -all`
 - THEN MUST 覆盖全部模块端点并给出通过/失败结果

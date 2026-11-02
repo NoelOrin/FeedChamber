@@ -11,7 +11,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/httptest"

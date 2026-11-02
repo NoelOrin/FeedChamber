@@ -1,10 +1,10 @@
-# @orinforum/tokens 使用指南
+# @feedchamber/tokens 使用指南
 
 日期：2026-06-13
 
 ## 概览
 
-`@orinforum/tokens` 是 OrinForum monorepo 的共享设计令牌包，输出三类产物：
+`@feedchamber/tokens` 是 Feed Chamber monorepo 的共享设计令牌包，输出三类产物：
 
 | 产物 | 用途 | 消费方 |
 |------|------|--------|
@@ -22,7 +22,7 @@
 
 ```css
 /* 在任意 .css 文件中 import */
-@import "@orinforum/tokens/tokens.css";
+@import "@feedchamber/tokens/tokens.css";
 
 /* 使用语义变量 */
 .my-card {
@@ -46,7 +46,7 @@
 ### 3. 在 AntD 组件中使用（dashboard）
 
 ```tsx
-import { lightTheme, darkTheme, getAntdTheme } from '@orinforum/tokens/antd';
+import { lightTheme, darkTheme, getAntdTheme } from '@feedchamber/tokens/antd';
 import { ConfigProvider } from 'antd';
 
 // 静态导入
@@ -187,7 +187,7 @@ import { ConfigProvider } from 'antd';
 3. 构建：
 
 ```bash
-pnpm --filter @orinforum/tokens tokens:build
+pnpm --filter @feedchamber/tokens tokens:build
 ```
 
 4. 提交 `dist/` 变更：
@@ -228,9 +228,9 @@ export function mapLightSemantic(brand, seed): SemanticColors {
 
 | 导出路径 | 内容 |
 |---------|------|
-| `@orinforum/tokens/tokens.css` | CSS 变量（`@theme` 块 + `.dark` 覆盖） |
-| `@orinforum/tokens/daisyui.css` | daisyUI 主题定义（`orinlight` + `orindark`） |
-| `@orinforum/tokens/antd` | `lightTheme`、`darkTheme`、`getAntdTheme(isDark)` |
+| `@feedchamber/tokens/tokens.css` | CSS 变量（`@theme` 块 + `.dark` 覆盖） |
+| `@feedchamber/tokens/daisyui.css` | daisyUI 主题定义（`orinlight` + `orindark`） |
+| `@feedchamber/tokens/antd` | `lightTheme`、`darkTheme`、`getAntdTheme(isDark)` |
 
 ---
 
@@ -247,7 +247,7 @@ export function mapLightSemantic(brand, seed): SemanticColors {
 
 ```tsx
 // packages/dashboard/src/layout/ProShell.tsx
-import { lightTheme, darkTheme } from '@orinforum/tokens/antd';
+import { lightTheme, darkTheme } from '@feedchamber/tokens/antd';
 import { useThemeMode } from '@/hooks/useThemeMode';
 
 const { isDark } = useThemeMode();

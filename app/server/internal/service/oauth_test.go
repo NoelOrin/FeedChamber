@@ -7,9 +7,9 @@ import (
 	"strings"
 	"testing"
 
-	"orinforum/internal/mock"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg/testnats"
+	"feedchamber/internal/mock"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg/testnats"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

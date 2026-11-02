@@ -1,8 +1,8 @@
 'use client';
 
-import type { ContentListItem, PostListItem } from '@orinforum/api-client';
-import { adminService } from '@orinforum/api-client';
-import { formatTime } from '@orinforum/shared-utils';
+import type { ContentListItem, PostListItem } from '@feedchamber/api-client';
+import { adminService } from '@feedchamber/api-client';
+import { formatTime } from '@feedchamber/shared-utils';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';

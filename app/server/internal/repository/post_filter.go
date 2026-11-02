@@ -3,7 +3,7 @@ package repository
 import (
 	"time"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 // StatusFilterAll is the list-filter sentinel meaning "do not filter by status".

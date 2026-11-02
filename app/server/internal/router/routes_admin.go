@@ -1,8 +1,8 @@
 package router
 
 import (
-	"orinforum/internal/middleware"
-	"orinforum/internal/model"
+	"feedchamber/internal/middleware"
+	"feedchamber/internal/model"
 
 	"github.com/kataras/iris/v12"
 )
@@ -112,6 +112,62 @@ func (r *reg) adminRoutes() {
 			w.Post("/{id}/deliveries/list", h.Webhook.ListDeliveries)
 			w.Post("/{id}/ping", h.Webhook.Ping)
 			w.Post("/{id}/deliveries/{deliveryId}/retry", h.Webhook.RetryDelivery)
+		})
+
+		// ── Site Customization（站点自定义层，P1） ─────────────
+		// 读用 customize:read，写用 customize:write。发布用 customize:publish。
+		a.PartyFunc("/customization", func(ac iris.Party) {
+			// 片段
+			ac.Post("/snippets/list", h.Customize.ListSnippets)
+			ac.Post("/snippets/create", h.Customize.CreateSnippet)
+			ac.Post("/snippets/{id}/update", h.Customize.UpdateSnippet)
+			ac.Post("/snippets/{id}/delete", h.Customize.DeleteSnippet)
+			// 启用 JS/HTML 片段 = 让任意脚本对全站访客生效，风险级别等同于发布：
+			// 单独要求 customize:publish，不能与「改配置」共用 customize:write。
+			ac.Post("/snippets/{id}/toggle",
+				middleware.RequirePermission(deps, model.PermCustomizePublish),
+				h.Customize.ToggleSnippet)
+			// 主题 token
+			ac.Post("/tokens/list", h.Customize.ListThemeTokens)
+			ac.Post("/tokens/set", h.Customize.SetThemeTokens)
+			ac.Post("/tokens/clear", h.Customize.ClearThemeTokens)
+			ac.Post("/tokens/{token}/delete", h.Customize.DeleteThemeToken)
+			// 导航
+			ac.Post("/nav/list", h.Customize.ListNavItems)
+			ac.Post("/nav/create", h.Customize.CreateNavItem)
+			ac.Post("/nav/{id}/update", h.Customize.UpdateNavItem)
+			ac.Post("/nav/{id}/delete", h.Customize.DeleteNavItem)
+			// 首页模块
+			ac.Post("/modules/list", h.Customize.ListHomeModules)
+			ac.Post("/modules/create", h.Customize.CreateHomeModule)
+			ac.Post("/modules/{id}/update", h.Customize.UpdateHomeModule)
+			ac.Post("/modules/{id}/delete", h.Customize.DeleteHomeModule)
+			// 自定义页
+			ac.Post("/pages/list", h.Customize.ListCustomPages)
+			ac.Post("/pages/create", h.Customize.CreateCustomPage)
+			ac.Post("/pages/{id}/update", h.Customize.UpdateCustomPage)
+			ac.Post("/pages/{id}/delete", h.Customize.DeleteCustomPage)
+			// 发布自定义页同样可能把草稿里的 HTML 直接推到前台，按 publish 门控。
+			ac.Post("/pages/{id}/publish",
+				middleware.RequirePermission(deps, model.PermCustomizePublish),
+				h.Customize.PublishCustomPage)
+		})
+
+		// ── 本站 MCP Server 工具管理（P2） ─────────────────────
+		a.PartyFunc("/mcp", func(am iris.Party) {
+			am.Use(middleware.RequirePermission(deps, model.PermSettingManage))
+			am.Post("/tools", h.MCPServer.ListTools)
+			am.Post("/tools/status", h.MCPServer.SetToolEnabled)
+		})
+
+		// ── External MCP Servers（P3） ─────────────────────────
+		a.PartyFunc("/mcp-servers", func(am iris.Party) {
+			am.Use(middleware.RequirePermission(deps, model.PermSettingManage))
+			am.Post("/list", h.MCPServer.List)
+			am.Post("/create", h.MCPServer.Create)
+			am.Post("/{id}/update", h.MCPServer.Update)
+			am.Post("/{id}/delete", h.MCPServer.Delete)
+			am.Post("/{id}/test", h.MCPServer.Test)
 		})
 
 		// ── Stats / Dashboard ─────────────────────────────────

@@ -1,4 +1,4 @@
-import { postService } from '@orinforum/api-client';
+import { postService } from '@feedchamber/api-client';
 import { queryOptions } from '@tanstack/react-query';
 
 import { qk } from '~/lib/query/keys';

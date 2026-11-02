@@ -5,6 +5,8 @@
 export const qk = {
 	profile: ['profile'] as const,
 	settings: ['settings', 'public'] as const,
+	/** 站点自定义层（导航 / 首页模块 / 生效片段 / 主题覆盖）。 */
+	customization: ['customization', 'public'] as const,
 	home: ['dashboard', 'home'] as const,
 	themePreference: ['theme', 'preference'] as const,
 

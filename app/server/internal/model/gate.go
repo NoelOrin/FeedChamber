@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"orinforum/internal/pkg"
+	"feedchamber/internal/pkg"
 )
 
 // 能力域：每个域有且只有一个显式默认动作（无规则命中时执行）。

@@ -7,7 +7,7 @@ import {
 	roleService,
 	type Space,
 	spaceService,
-} from '@orinforum/api-client';
+} from '@feedchamber/api-client';
 import { useQueries, useQuery } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 

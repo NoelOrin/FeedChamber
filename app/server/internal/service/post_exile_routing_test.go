@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/mock"
-	"orinforum/internal/model"
-	"orinforum/internal/repository"
+	"feedchamber/internal/mock"
+	"feedchamber/internal/model"
+	"feedchamber/internal/repository"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

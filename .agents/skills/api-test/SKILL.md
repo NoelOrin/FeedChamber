@@ -1,13 +1,13 @@
 ---
 name: api-test
-description: Use when asked to test OrinForum APIs, run a regression / smoke test, or verify backend behaviour end to end. Runs the repo's orinforum_test.sh against a locally started server and writes a Markdown report to agent_test_logs/.
+description: Use when asked to test Feed Chamber APIs, run a regression / smoke test, or verify backend behaviour end to end. Runs the repo's feedchamber_test.sh against a locally started server and writes a Markdown report to agent_test_logs/.
 ---
 
-# API Test — OrinForum
+# API Test — Feed Chamber
 
 ## 描述
 
-使用项目根目录的 `orinforum_test.sh` 脚本进行 API 接口测试，并将测试结果以 Markdown 格式保存到 `agent_test_logs/` 文件夹（已纳入 `.gitignore`）。
+使用项目根目录的 `feedchamber_test.sh` 脚本进行 API 接口测试，并将测试结果以 Markdown 格式保存到 `agent_test_logs/` 文件夹（已纳入 `.gitignore`）。
 
 ## 触发条件
 
@@ -19,7 +19,7 @@ description: Use when asked to test OrinForum APIs, run a regression / smoke tes
 
 ## 测试脚本
 
-项目根目录的 `orinforum_test.sh` 是唯一的 API 测试入口，支持模块化测试。默认 `BASE_URL=http://localhost:8080/api/v1`。
+项目根目录的 `feedchamber_test.sh` 是唯一的 API 测试入口，支持模块化测试。默认 `BASE_URL=http://localhost:8080/api/v1`。
 
 ### 启动服务器
 
@@ -34,12 +34,12 @@ sleep 4
 ### 运行全量测试
 
 ```bash
-bash orinforum_test.sh -all      # 等价于 -a，或不带参数
+bash feedchamber_test.sh -all      # 等价于 -a，或不带参数
 ```
 
 ### 按模块测试
 
-flag 与 `orinforum_test.sh` 的 `case "$arg" in` 分发一一对应（别名一并列出）：
+flag 与 `feedchamber_test.sh` 的 `case "$arg" in` 分发一一对应（别名一并列出）：
 
 | 参数 | 测试内容 |
 |------|---------|
@@ -69,18 +69,18 @@ flag 与 `orinforum_test.sh` 的 `case "$arg" in` 分发一一对应（别名一
 ### 组合测试
 
 ```bash
-bash orinforum_test.sh -public -auth -post
+bash feedchamber_test.sh -public -auth -post
 ```
 
 ### 使用自定义 BASE_URL
 
 ```bash
-BASE_URL=http://staging:8080/api/v1 bash orinforum_test.sh -all
+BASE_URL=http://staging:8080/api/v1 bash feedchamber_test.sh -all
 ```
 
 ### 新增接口时的处理
 
-1. 打开项目根目录 `orinforum_test.sh`
+1. 打开项目根目录 `feedchamber_test.sh`
 2. 找到对应模块函数或在文件末尾新增函数
 3. 使用 `check` 函数添加测试项（格式：`check "描述" METHOD "/path" '{"body":""}' "$TOKEN" EXPECTED`）
 4. 在 `run_tests()` 的 `case "$mod" in` 中添加模块分发
@@ -97,9 +97,9 @@ BASE_URL=http://staging:8080/api/v1 bash orinforum_test.sh -all
 ### 2. 执行测试
 
 ```bash
-cd /path/to/OrinForum
-bash orinforum_test.sh -all          # 全量
-bash orinforum_test.sh -auth -post   # 模块组合
+cd /path/to/Feed Chamber
+bash feedchamber_test.sh -all          # 全量
+bash feedchamber_test.sh -auth -post   # 模块组合
 ```
 
 ### 3. 生成报告
@@ -152,7 +152,7 @@ bash orinforum_test.sh -auth -post   # 模块组合
 
 ## 注意事项
 
-- 所有测试通过 `orinforum_test.sh` 进行，无需手动拼 curl
+- 所有测试通过 `feedchamber_test.sh` 进行，无需手动拼 curl
 - `-all` 模式建议在干净的数据库上运行
 - 认证模块使用时间戳后缀创建唯一用户，避免重复运行冲突
 - 测试脚本不修改生产数据库，但会创建测试数据（帖子、评论、版面等）

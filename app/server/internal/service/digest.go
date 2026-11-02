@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/repository"
 
 	"github.com/sirupsen/logrus"
 )
@@ -86,7 +86,7 @@ func (s *digestService) RunWeekly(ctx context.Context) error {
 		if len(hotLines) > 0 {
 			body += "\n\n全站热门:\n" + strings.Join(hotLines, "\n")
 		}
-		if err := s.email.SendNotification(ctx, u.Email, "OrinForum 周报", "<pre>"+body+"</pre>", body); err != nil {
+		if err := s.email.SendNotification(ctx, u.Email, "Feed Chamber 周报", "<pre>"+body+"</pre>", body); err != nil {
 			logrus.Warnf("digest: send to %s: %v", u.Email, err)
 		}
 	}

@@ -73,32 +73,32 @@ EventBus 发布 MUST 通过 `nc.PublishMsg`（nats.go v1.39.1 无 `MsgPublish`�
 
 ### Requirement: 业务指标覆盖
 
-系统 MUST 在 `internal/metrics.Registry` 上注册下列业务指标族（名称带 `orinforum_` 前缀），埋点位置为各子系统唯一的判定/交接点，MUST NOT 在调用方重复计数：
+系统 MUST 在 `internal/metrics.Registry` 上注册下列业务指标族（名称带 `feedchamber_` 前缀），埋点位置为各子系统唯一的判定/交接点，MUST NOT 在调用方重复计数：
 
 | 指标 | 类型 | 标签 | 记录点 |
 | --- | --- | --- | --- |
-| `orinforum_eventbus_publish_total` | Counter | `event`,`result` | `eventbus.go:177` 发布成功/失败分支 |
-| `orinforum_eventbus_dispatch_duration_seconds` | Histogram | `event` | `dispatch`（`eventbus.go:78`）逐 handler |
-| `orinforum_eventbus_dispatch_errors_total` | Counter | `event` | 既有 panic 恢复处（`eventbus.go:84-88`） |
-| `orinforum_eventbus_queue_depth` | Gauge | — | `enqueue`/消费循环（`eventbus.go:127`） |
-| `orinforum_eventbus_dropped_total` | Counter | `event` | 缓冲满静默丢弃分支（`eventbus.go:131`） |
-| `orinforum_kv_operation_duration_seconds` | Histogram | `op`,`outcome` | `kvstore/nats.go` 各方法出口（`:207`/`:223`/`:237`/`:260`/`:269`/`:285`/`:312`/`:376`） |
-| `orinforum_kv_cas_exhausted_total` | Counter | — | `incrCAS` 重试耗尽（`nats.go:369`） |
-| `orinforum_ratelimit_rejections_total` | Counter | `name` | `internal/pkg/ratelimit` 的 `Limiter.Check` 超限分支（唯一发出点；两类调用方共用） |
-| `orinforum_ratelimit_failopen_total` | Counter | `name` | 同上的 `recordFailure`（KV SetNX/Incr 失败，两处出口合一） |
-| `orinforum_permission_decisions_total` | Counter | `scope`,`result` | `service/permission.go:217-226`、`:255` |
-| `orinforum_sse_connections` | Gauge | `channel` | `handler/notification.go:186`、`handler/realtime.go:29` 建连后递增、`defer` 递减 |
-| `orinforum_login_failures_total` | Counter | `reason` | `service/auth.go:283`/`:294`/`:303`（`unknown_user`/`no_credential`/`bad_password`） |
-| `orinforum_webhook_deliveries_total` | Counter | `outcome` | `service/webhook.go:327` `deliver` 出口；终态失败记 `failed_terminal`（`:295`） |
-| `orinforum_webhook_delivery_duration_seconds` | Histogram | — | `service/webhook.go:327`（已有 `start`/`LatencyMs`） |
-| `orinforum_webhook_pending_deliveries` | Gauge | — | `StartWorker` 每 tick（`webhook.go:261-272`） |
+| `feedchamber_eventbus_publish_total` | Counter | `event`,`result` | `eventbus.go:177` 发布成功/失败分支 |
+| `feedchamber_eventbus_dispatch_duration_seconds` | Histogram | `event` | `dispatch`（`eventbus.go:78`）逐 handler |
+| `feedchamber_eventbus_dispatch_errors_total` | Counter | `event` | 既有 panic 恢复处（`eventbus.go:84-88`） |
+| `feedchamber_eventbus_queue_depth` | Gauge | — | `enqueue`/消费循环（`eventbus.go:127`） |
+| `feedchamber_eventbus_dropped_total` | Counter | `event` | 缓冲满静默丢弃分支（`eventbus.go:131`） |
+| `feedchamber_kv_operation_duration_seconds` | Histogram | `op`,`outcome` | `kvstore/nats.go` 各方法出口（`:207`/`:223`/`:237`/`:260`/`:269`/`:285`/`:312`/`:376`） |
+| `feedchamber_kv_cas_exhausted_total` | Counter | — | `incrCAS` 重试耗尽（`nats.go:369`） |
+| `feedchamber_ratelimit_rejections_total` | Counter | `name` | `internal/pkg/ratelimit` 的 `Limiter.Check` 超限分支（唯一发出点；两类调用方共用） |
+| `feedchamber_ratelimit_failopen_total` | Counter | `name` | 同上的 `recordFailure`（KV SetNX/Incr 失败，两处出口合一） |
+| `feedchamber_permission_decisions_total` | Counter | `scope`,`result` | `service/permission.go:217-226`、`:255` |
+| `feedchamber_sse_connections` | Gauge | `channel` | `handler/notification.go:186`、`handler/realtime.go:29` 建连后递增、`defer` 递减 |
+| `feedchamber_login_failures_total` | Counter | `reason` | `service/auth.go:283`/`:294`/`:303`（`unknown_user`/`no_credential`/`bad_password`） |
+| `feedchamber_webhook_deliveries_total` | Counter | `outcome` | `service/webhook.go:327` `deliver` 出口；终态失败记 `failed_terminal`（`:295`） |
+| `feedchamber_webhook_delivery_duration_seconds` | Histogram | — | `service/webhook.go:327`（已有 `start`/`LatencyMs`） |
+| `feedchamber_webhook_pending_deliveries` | Gauge | — | `StartWorker` 每 tick（`webhook.go:261-272`） |
 
 HTTP 与 DB 池既有指标（`metrics.go:18-55`、`collector.go:23`）保持不变。
 
 #### Scenario: 登录失败区分原因
 
 - WHEN 登录因用户不存在、凭证缺失、密码不匹配三种情况分别失败
-- THEN `orinforum_login_failures_total` MUST 递增到三个不同的 `reason` 取值，MUST NOT 合并为单一计数
+- THEN `feedchamber_login_failures_total` MUST 递增到三个不同的 `reason` 取值，MUST NOT 合并为单一计数
 
 #### Scenario: 已有安全机制不重复埋点
 
@@ -108,7 +108,7 @@ HTTP 与 DB 池既有指标（`metrics.go:18-55`、`collector.go:23`）保持不
 #### Scenario: handler panic 计入指标且不扩散
 
 - WHEN 某事件的订阅 handler 发生 panic
-- THEN `orinforum_eventbus_dispatch_errors_total{event}` MUST +1，恢复逻辑与其它 handler 的执行 MUST NOT 受影响
+- THEN `feedchamber_eventbus_dispatch_errors_total{event}` MUST +1，恢复逻辑与其它 handler 的执行 MUST NOT 受影响
 
 ### Requirement: 指标暴露面与访问边界
 
@@ -126,11 +126,11 @@ HTTP 与 DB 池既有指标（`metrics.go:18-55`、`collector.go:23`）保持不
 
 ### Requirement: 告警规则最低集
 
-`deploy/prometheus/rules/orinforum.yml` MUST 至少定义 8 条告警：5xx 错误率过高、P99 请求延迟过高、DB 连接池饱和（`in_use` 逼近 `max_open` 或 `wait_count` 增长）、KV 操作延迟异常、EventBus 出现丢弃、webhook 终态失败、登录失败突增、`/api/v1/health` 探测失败。
+`deploy/prometheus/rules/feedchamber.yml` MUST 至少定义 8 条告警：5xx 错误率过高、P99 请求延迟过高、DB 连接池饱和（`in_use` 逼近 `max_open` 或 `wait_count` 增长）、KV 操作延迟异常、EventBus 出现丢弃、webhook 终态失败、登录失败突增、`/api/v1/health` 探测失败。
 
 #### Scenario: 丢弃事件触发告警
 
-- WHEN `orinforum_eventbus_dropped_total` 在 5 分钟内增长大于 0
+- WHEN `feedchamber_eventbus_dropped_total` 在 5 分钟内增长大于 0
 - THEN MUST 产生一条可定位到事件类型的告警
 
 ### Requirement: 指标基数护栏
@@ -146,14 +146,14 @@ Prometheus 标签取值 MUST 有界：允许 `method`、归一化 `path`（沿�
 
 HTTP 侧的限流 MUST 全部经 `internal/pkg/ratelimit` 的 `Limiter.Check`：滑动窗口算法（SetNX 起窗 + Incr 计数 + 比较）、计数器键形状、指标发出与 fail-open 日志 MUST 只有这一处实现。`internal/gateway` 的全局每 IP 上限与 `internal/middleware` 的每端点预算 MUST 只作为该引擎的两个调用方存在，差别仅限"策略从哪里来"（`rate_limit_enabled` 设置开关 vs 路由注册时声明）。
 
-策略名 MUST 共用一个标签值空间并在 `orinforum_ratelimit_*{name}` 中可读：全局策略为 `global`，其余为端点名（`login`、`register`、`post_create` …）。新增策略 MUST NOT 另开家族或另开标签。
+策略名 MUST 共用一个标签值空间并在 `feedchamber_ratelimit_*{name}` 中可读：全局策略为 `global`，其余为端点名（`login`、`register`、`post_create` …）。新增策略 MUST NOT 另开家族或另开标签。
 
 计数器键形状是契约的一部分：`rl:<ip>:<policy>`（端点）与 `rl:ratelimit:<ip>`（全局）由 `EndpointKey`/`GlobalKey` 单点产生并有测试钉住——改形状等于清零正在计数的窗口，使上线瞬间所有客户端获得新配额。
 
 #### Scenario: 两类策略共用失败语义
 
 - WHEN KV 后端读失败
-- THEN 两个调用方 MUST 都放行并各记一次 `orinforum_ratelimit_failopen_total{name}`，MUST NOT 出现"一个 fail-open、另一个 fail-close"的分歧
+- THEN 两个调用方 MUST 都放行并各记一次 `feedchamber_ratelimit_failopen_total{name}`，MUST NOT 出现"一个 fail-open、另一个 fail-close"的分歧
 
 #### Scenario: 端点预算不占用全局配额
 
@@ -166,9 +166,9 @@ KV Store 与 EventBus 各自持有一条 NATS 连接，两者都以无限重试�
 
 | 指标 | 类型 | 标签 | 语义 |
 | --- | --- | --- | --- |
-| `orinforum_nats_connected` | Gauge | `client` | 1 = 连接可用，0 = 已断开 |
-| `orinforum_nats_disconnects_total` | Counter | `client` | 从「可用」转为「断开」的次数 |
-| `orinforum_nats_reconnects_total` | Counter | `client` | 重连成功的次数 |
+| `feedchamber_nats_connected` | Gauge | `client` | 1 = 连接可用，0 = 已断开 |
+| `feedchamber_nats_disconnects_total` | Counter | `client` | 从「可用」转为「断开」的次数 |
+| `feedchamber_nats_reconnects_total` | Counter | `client` | 重连成功的次数 |
 
 `client` 取值 MUST 限于静态集合 `kv` / `eventbus`（符合「指标基数护栏」）。三族 MUST 在 `init()` 内以 `connected=1` seed，因为构造这两条连接的前提就是 `nats.Connect` 成功——若 seed 为 0，健康实例会立即触发断连告警。
 
@@ -177,25 +177,25 @@ KV Store 与 EventBus 各自持有一条 NATS 连接，两者都以无限重试�
 #### Scenario: 网络分区可见
 
 - WHEN 后端与 NATS 之间的网络中断且持续超过重连等待
-- THEN `orinforum_nats_connected{client}` MUST 在 2 分钟内变为 0，并触发 `NATSDisconnected` 告警
-- AND 该 client 的 `orinforum_nats_disconnects_total` MUST 恰好 +1
+- THEN `feedchamber_nats_connected{client}` MUST 在 2 分钟内变为 0，并触发 `NATSDisconnected` 告警
+- AND 该 client 的 `feedchamber_nats_disconnects_total` MUST 恰好 +1
 
 #### Scenario: 重连恢复
 
 - WHEN NATS 恢复可达
-- THEN `orinforum_nats_connected{client}` MUST 回到 1，`orinforum_nats_reconnects_total` +1
-- AND `orinforum_nats_disconnects_total` MUST 保持不变（不得被抵消）
+- THEN `feedchamber_nats_connected{client}` MUST 回到 1，`feedchamber_nats_reconnects_total` +1
+- AND `feedchamber_nats_disconnects_total` MUST 保持不变（不得被抵消）
 
 ### Requirement: SSE 写失败与正常断开可区分
 
-两个 SSE handler（`notification.Stream`、`realtime.Stream`）在向客户端写事件失败时 MUST 递增 `orinforum_sse_write_failures_total{channel}`（`channel` ∈ `notification` / `realtime`），并在写失败分支终止该流。
+两个 SSE handler（`notification.Stream`、`realtime.Stream`）在向客户端写事件失败时 MUST 递增 `feedchamber_sse_write_failures_total{channel}`（`channel` ∈ `notification` / `realtime`），并在写失败分支终止该流。
 
-该指标 MUST 与 `orinforum_sse_connections` 分开：连接 gauge 的下降同时包含「客户端关标签页」这一正常事件，因而无法承担「投递失败」的语义。只增加连接 gauge 的精度而不新增失败计数，不能满足本要求。
+该指标 MUST 与 `feedchamber_sse_connections` 分开：连接 gauge 的下降同时包含「客户端关标签页」这一正常事件，因而无法承担「投递失败」的语义。只增加连接 gauge 的精度而不新增失败计数，不能满足本要求。
 
 #### Scenario: 写失败被计数
 
 - WHEN 底层 `ResponseWriter` 的写操作返回错误
-- THEN 对应 channel 的 `orinforum_sse_write_failures_total` MUST +1
+- THEN 对应 channel 的 `feedchamber_sse_write_failures_total` MUST +1
 - AND 连接 gauge MUST 按既有 `defer` 语义正常回落，两个数字 MUST NOT 相互推导
 
 #### Scenario: 静默实例不误报
@@ -205,7 +205,7 @@ KV Store 与 EventBus 各自持有一条 NATS 连接，两者都以无限重试�
 
 ### Requirement: 积压 gauge 反映真实深度
 
-`orinforum_webhook_pending_deliveries` MUST 取真实的待投递总数（`COUNT(*)`），MUST NOT 取 worker 单批查询结果的长度。
+`feedchamber_webhook_pending_deliveries` MUST 取真实的待投递总数（`COUNT(*)`），MUST NOT 取 worker 单批查询结果的长度。
 
 worker 每 tick 用固定批大小取待投递行（当前 20），该长度是**吞吐参数**，与积压深度无关。用批大小充当积压会使 gauge 在深度超过批大小时饱和，使基于它的告警结构性不可触发。
 
@@ -214,7 +214,7 @@ worker 每 tick 用固定批大小取待投递行（当前 20），该长度是*
 #### Scenario: 积压超过批大小
 
 - WHEN 待投递行数为 35、worker 批大小为 20
-- THEN `orinforum_webhook_pending_deliveries` MUST 为 35，MUST NOT 为 20
+- THEN `feedchamber_webhook_pending_deliveries` MUST 为 35，MUST NOT 为 20
 - AND `ListPendingDeliveries` MUST 仍只返回 20 行
 
 ### Requirement: 指标端口暴露面由自动化检查强制
@@ -262,18 +262,18 @@ nginx 本地应答的 `/health`（不经过上游）MUST 在响应头回写 `X-R
 
 GORM 的默认 logger 把错误直接写标准库 stdout，绕过 `LOG_LEVEL`/`LOG_FORMAT`。因此 MUST 使用自定义 GORM logger，它：
 
-- 对每个执行的语句递增 `orinforum_db_queries_total`；
-- 对超过阈值（200ms）的语句额外递增 `orinforum_db_slow_queries_total` 并写一条带 `latency_ms`/`rows`/`sql` 的 warn 日志；
+- 对每个执行的语句递增 `feedchamber_db_queries_total`；
+- 对超过阈值（200ms）的语句额外递增 `feedchamber_db_slow_queries_total` 并写一条带 `latency_ms`/`rows`/`sql` 的 warn 日志；
 - MUST NOT 把 SQL 文本放进指标标签（无界文本，违反基数护栏）。
 
 `metrics` 已 import `db`（连接池 collector），故该 logger MUST 经 `db.SetQueryObserver` 钩子注入，MUST NOT 让 `db` 反向 import `metrics`（会形成 import cycle）。
 
-备份任务 MUST 以 `orinforum_backup_jobs_total{kind,outcome}` 与 `orinforum_backup_job_duration_seconds{kind}` 记录，`kind` ∈ `create`/`restore`/`cleanup`。outcome MUST 由 `err` 推导，MUST NOT 由调用方传入——否则「忘记把失败报成失败」无法被发现。
+备份任务 MUST 以 `feedchamber_backup_jobs_total{kind,outcome}` 与 `feedchamber_backup_job_duration_seconds{kind}` 记录，`kind` ∈ `create`/`restore`/`cleanup`。outcome MUST 由 `err` 推导，MUST NOT 由调用方传入——否则「忘记把失败报成失败」无法被发现。
 
 #### Scenario: 慢查询被计数但不进标签
 
 - WHEN 一条查询耗时超过阈值
-- THEN `orinforum_db_slow_queries_total` MUST +1，且 `orinforum_db_queries_total` 同样 +1
+- THEN `feedchamber_db_slow_queries_total` MUST +1，且 `feedchamber_db_queries_total` 同样 +1
 - AND 该 SQL 文本 MUST 只出现在日志中
 
 #### Scenario: 备份失败可告警
@@ -283,14 +283,14 @@ GORM 的默认 logger 把错误直接写标准库 stdout，绕过 `LOG_LEVEL`/`L
 
 ### Requirement: 权限缓存规模可观测
 
-三个权限缓存（role / space / group）MUST 以 `orinforum_permission_cache_entries{cache}` 报告条目数，`cache` ∈ `role`/`space`/`group`。取值 MUST 在缓存重建完成时设置（`LoadCache` 持有写锁期间），MUST NOT 在部分填充的中间态设置。
+三个权限缓存（role / space / group）MUST 以 `feedchamber_permission_cache_entries{cache}` 报告条目数，`cache` ∈ `role`/`space`/`group`。取值 MUST 在缓存重建完成时设置（`LoadCache` 持有写锁期间），MUST NOT 在部分填充的中间态设置。
 
 该 gauge 是**当前规模**，MUST NOT 作为高水位：缓存收缩时 gauge MUST 随之下降。
 
 #### Scenario: 缓存重建后反映真实规模
 
 - WHEN `LoadCache` 重建 role 缓存为 3 条
-- THEN `orinforum_permission_cache_entries{cache="role"}` MUST 为 3
+- THEN `feedchamber_permission_cache_entries{cache="role"}` MUST 为 3
 - AND 再次重建为 7 条时 MUST 变为 7（不累积）
 
 ### Requirement: 告警阈值不得只用绝对常量

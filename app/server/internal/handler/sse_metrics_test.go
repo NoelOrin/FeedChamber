@@ -1,6 +1,6 @@
 package handler
 
-// Handler-level tests for the orinforum_sse_connections{channel} gauge
+// Handler-level tests for the feedchamber_sse_connections{channel} gauge
 // (openspec change 2026-10-13-build-observability, task 9.5).
 //
 // Both Stream implementations increment the gauge right before entering their
@@ -23,12 +23,12 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/mock"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/testnats"
-	"orinforum/internal/service"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/mock"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/testnats"
+	"feedchamber/internal/service"
 
 	"github.com/kataras/iris/v12"
 	dto "github.com/prometheus/client_model/go"

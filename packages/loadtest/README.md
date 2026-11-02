@@ -1,6 +1,6 @@
 # 压测（k6 · 匿名只读）
 
-对已部署的 OrinForum 实例做**只读**负载压测：端点目录、可用性自检、固定并发基线、千级阶梯加压，产出 Markdown + JSON 报告。
+对已部署的 Feed Chamber 实例做**只读**负载压测：端点目录、可用性自检、固定并发基线、千级阶梯加压，产出 Markdown + JSON 报告。
 
 - 目标默认 `https://dev-forum.noelorin.top`，可用 `-e BASE_URL=` 指向任意实例（含本地）。
 - 全部场景**不写入任何数据**：只发匿名读请求（列表 / 详情 / 首页 SSR / sitemap / RSS）。
@@ -22,13 +22,13 @@ docker run --rm -i -v "$PWD:/lt" -w /lt grafana/k6 run k6/stress.js
 ## 三条命令
 
 ```bash
-pnpm --filter @orinforum/loadtest smoke      # ① 自检：1 VU 打全端点，必须 100% 通过
-pnpm --filter @orinforum/loadtest baseline   # ② 基线：50 VU × 60s 稳态指标
-pnpm --filter @orinforum/loadtest stress     # ③ 阶梯：10%→30%→50%→75%→100% × 1000 VU
+pnpm --filter @feedchamber/loadtest smoke      # ① 自检：1 VU 打全端点，必须 100% 通过
+pnpm --filter @feedchamber/loadtest baseline   # ② 基线：50 VU × 60s 稳态指标
+pnpm --filter @feedchamber/loadtest stress     # ③ 阶梯：10%→30%→50%→75%→100% × 1000 VU
 ```
 
 报告写在 `reports/<时间戳>-<档位>.md`（同目录还有同名 `.json`，含原始指标）。
-`pnpm --filter @orinforum/loadtest latest` 打印最近一份报告路径。
+`pnpm --filter @feedchamber/loadtest latest` 打印最近一份报告路径。
 
 > **先跑 smoke。** 端点 404 / 信封 code≠0 属于"脚本或环境错了"，不是性能问题；smoke 不过就别跑压力场景。
 
@@ -42,7 +42,7 @@ pnpm --filter @orinforum/loadtest stress     # ③ 阶梯：10%→30%→50%→75
 | `HOLD_SECONDS` | `120s` | 顶点保持时长 |
 | `VUS` / `DURATION` | `50` / `60s` | 仅 `baseline` 用的固定并发与时长 |
 | `HTTP_TIMEOUT` | `15s` | 单请求超时 |
-| `USER_AGENT` | `OrinForum-LoadTest/0.1 (k6)` | 服务端日志里可辨识压测流量 |
+| `USER_AGENT` | `Feed Chamber-LoadTest/0.1 (k6)` | 服务端日志里可辨识压测流量 |
 | `KINDS` | （空=全量） | 只压某类端点：`json`（API）/ `html`（SSR+静态）/ `redirect`，逗号分隔 |
 
 例：先小规模验脚本（50 VU × 60s），再放开千级：

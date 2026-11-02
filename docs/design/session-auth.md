@@ -1,6 +1,6 @@
 # 设计：用户凭证从 JWT 迁移到服务端 Session
 
-> 状态：已实施（2026-10-13 起，随 vinext 迁移一并落地；用真后端 + `orinforum_test.sh` 验收）
+> 状态：已实施（2026-10-13 起，随 vinext 迁移一并落地；用真后端 + `feedchamber_test.sh` 验收）
 > 前置：前端 cookie-only 刷新已实现（迁移计划 §4b 的「请求层统一」部分，现已合入主干）
 
 ## 1. 现状与真实问题
@@ -18,7 +18,7 @@
 
 ## 2. 关键约束（实测得出，决定了设计形状）
 
-1. **`orinforum_test.sh` 的 31 个鉴权调用全部走 `Authorization: Bearer <access_token>`，零 cookie**，且从登录响应体取 `access_token`。
+1. **`feedchamber_test.sh` 的 31 个鉴权调用全部走 `Authorization: Bearer <access_token>`，零 cookie**，且从登录响应体取 `access_token`。
 2. **`pkg/jwt` 被 15 个文件引用，承担三种职责**，不能整体删除：
    - 用户会话 `GenerateToken`/`GenerateRefreshToken` → 本次替换
    - OAuth 客户端凭证 `GenerateOAuthClientToken` → 当时判定**保留**（见下方 2026-10-18 补记：现已改 opaque，不再是 JWT）
@@ -66,14 +66,14 @@
 
 - **迁移期**：老用户手里的 JWT 会全部失效 → 需重新登录一次。`user_sessions` 表里已有的历史行（JTI 型 sid）不是合法 sid（格式不同），`LookupSession` 直接 miss，无需清理。
 - **回滚**：`git revert` 单个提交即可；无数据迁移（新增两列可空，删行操作等价于原来的黑名单）。
-- **验收**：`go build ./...` + `go vet ./...` + `go test ./...`（14 包）+ 真后端 sqlite + `bash orinforum_test.sh -all`，基线为 **112 通过 / 1 已知失败**。
+- **验收**：`go build ./...` + `go vet ./...` + `go test ./...`（14 包）+ 真后端 sqlite + `bash feedchamber_test.sh -all`，基线为 **112 通过 / 1 已知失败**。
 
 ## 7. 基线与当前进度（2026-10-13 实测）
 
 ```
 DB_TYPE=sqlite DB_DSN=/tmp/of_base.db PORT=8080 \
   ADMIN_PASSWORD=admin123 go run main.go
-bash orinforum_test.sh -all
+bash feedchamber_test.sh -all
 ```
 
 | 时点 | 结果 |
@@ -86,7 +86,7 @@ bash orinforum_test.sh -all
 | 失败项 | 根因 | 处置 |
 |---|---|---|
 | 健康检查 503 | `{"storage":"storage dir stat: stat uploads: no such file or directory"}`，db/kvstore 均 ok —— 启动环境缺 `uploads/` 目录 | 建目录后转 200 |
-| 登出 401 | **测试脚本自身 bug**：`改密还原` 用 `$nt` 调用 `change_password`，而改密会吊销发起方 token；随后 `登出` 复用同一个已失效的 `$nt` 必然 401。更糟的是 `撤销token验证` 之所以"通过"，测到的是**改密**造成的吊销，而不是登出的——这个断言一直是空的 | 已修 `orinforum_test.sh`：登出前重新 `login` 取新 token `$lt`，登出用 `$lt`、撤销验证也用 `$lt`，两个断言各自成立 |
+| 登出 401 | **测试脚本自身 bug**：`改密还原` 用 `$nt` 调用 `change_password`，而改密会吊销发起方 token；随后 `登出` 复用同一个已失效的 `$nt` 必然 401。更糟的是 `撤销token验证` 之所以"通过"，测到的是**改密**造成的吊销，而不是登出的——这个断言一直是空的 | 已修 `feedchamber_test.sh`：登出前重新 `login` 取新 token `$lt`，登出用 `$lt`、撤销验证也用 `$lt`，两个断言各自成立 |
 
 ## 9. 实施进度（截至本文件最后更新）
 
@@ -111,7 +111,7 @@ bash orinforum_test.sh -all
 - `mfaService.verifyLogin` 返回类型去掉 `refresh_token`（后端只回 `access_token` = sid）
 - 文件头文档改写为 session 模型
 
-验证：`pnpm --filter @orinforum/api-client build` 通过、20 个单测全绿、全仓 grep 无悬空引用。
+验证：`pnpm --filter @feedchamber/api-client build` 通过、20 个单测全绿、全仓 grep 无悬空引用。
 
 **刻意未改的三处 `refresh_token`**（当时经核实均合法）：`oauth_provider.go` 给第三方 OAuth 客户端签发的 refresh token、`settings.go` 的 `jwt_refresh_token_ttl`（服务于前者）、`services/oauth.ts` 里可选字段的 callback 类型。2026-10-18 更新：前两项已不存在——provider 没有 refresh grant，refresh token 已停止签发，`jwt_refresh_token_ttl` 随之删除（`jwt_access_token_ttl` 改名为 `oauth_access_token_ttl`，另新增 `sso_id_token_ttl`）；第三项是前端可选字段，不受影响。
 
@@ -128,7 +128,7 @@ GET /user/profile  Authorization: Bearer <新 sid>  -> 200
 
 浏览器无感（`Set-Cookie` 自动替换），但**任何 Bearer 客户端必须采纳响应里的新 `access_token`**，否则下一次请求即 401。原设计只写了"轮换 sid"，未记这条契约后果，是本次迁移中我遗漏的一点。
 
-`orinforum_test.sh` 的 `test_auth_flow` 正是因此失败：它在 `刷新token` 之后继续复用 `$token`，导致 `修改密码`/`改密还原` 连带 401。已修——接住轮换出的新 token 再往下走。修完全量 **113 通过 / 0 失败**（全新 DB + 全新进程单次运行，排除限流串扰）。
+`feedchamber_test.sh` 的 `test_auth_flow` 正是因此失败：它在 `刷新token` 之后继续复用 `$token`，导致 `修改密码`/`改密还原` 连带 401。已修——接住轮换出的新 token 再往下走。修完全量 **113 通过 / 0 失败**（全新 DB + 全新进程单次运行，排除限流串扰）。
 
 > 若希望更宽容，可给旧 sid 一个短暂宽限期（双活窗口）。代价是"即时吊销"被削弱，且并发刷新会产生多个有效凭证。当前选择严格轮换。
 
@@ -139,14 +139,14 @@ GET /user/profile  Authorization: Bearer <新 sid>  -> 200
 | `go build ./...` | 曾通过；当前被 `internal/pkg/tracing` 阻断（并行会话 40 秒前正在改写该文件，与迁移无关） |
 | `go vet ./internal/gateway/` | ✅ 由红转绿：修掉 `resp.RawCookies()`（该 API 不存在，正确写法 `resp.Raw().Cookies()`，2 处）与两处 `store` 声明未使用 |
 | `go test ./...` | **14/15 包 ok**，含 `internal/gateway`（本设计的 9 个 session store 用例全通过）；唯一 FAIL 是上述 `tracing` |
-| `bash orinforum_test.sh -all` | ✅ **113 / 0** |
-| `pnpm --filter @orinforum/web build`（vinext） | ✅ EXIT=0，产出 `dist/{client,server}` |
+| `bash feedchamber_test.sh -all` | ✅ **113 / 0** |
+| `pnpm --filter @feedchamber/web build`（vinext） | ✅ EXIT=0，产出 `dist/{client,server}` |
 | `tsc --noEmit` | ✅ exit 0 |
 | `biome check app/web` | ✅ 79 文件 0 error（1 个 a11y warning） |
 | `pnpm test:e2e` | ✅ **36 / 36**（真后端 + React 应用，无需任何临时 shim） |
 | 生产产物可启动 | ✅ `node node_modules/vinext/dist/cli.js start` 起来并按 `proxy.ts` 正确重定向 |
 
-**本轮为跑通上述门而做的改动**：`lib/icons.ts` 补 2 个缺失导出（曾使构建失败）；根 `package.json` 声明 `playwright`、`pnpm-workspace.yaml` 加 `onlyBuiltDependencies: [playwright]`（当时浏览器验收脚本依赖一个仓库从未声明的包，该验收门在 CI 里根本执行不了；该脚本其后已删除，`playwright` 现由 `scripts/axe-audit.mjs` 使用）；两个 Dockerfile 脱离 nitro 产物路径；`orinforum_test.sh` 适配轮换契约。
+**本轮为跑通上述门而做的改动**：`lib/icons.ts` 补 2 个缺失导出（曾使构建失败）；根 `package.json` 声明 `playwright`、`pnpm-workspace.yaml` 加 `onlyBuiltDependencies: [playwright]`（当时浏览器验收脚本依赖一个仓库从未声明的包，该验收门在 CI 里根本执行不了；该脚本其后已删除，`playwright` 现由 `scripts/axe-audit.mjs` 使用）；两个 Dockerfile 脱离 nitro 产物路径；`feedchamber_test.sh` 适配轮换契约。
 
 **仍未完成**：`internal/pkg/tracing` 编译（并行会话在做）、删除 `.solid-legacy`（P6 收尾）、Docker 镜像实际构建验证（daemon 未运行）、P4 交互级 e2e（现有断言只覆盖"路由渲染出内容"，不含发帖/评论等写操作）。
 

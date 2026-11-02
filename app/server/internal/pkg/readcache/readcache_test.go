@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/pkg/testnats"
+	"feedchamber/internal/pkg/testnats"
 )
 
 type entry struct {

@@ -1,4 +1,4 @@
-import type { Notification } from '@orinforum/api-client';
+import type { Notification } from '@feedchamber/api-client';
 
 import { Pager } from '~/components/pagination/pager';
 import { EmptyState } from '~/components/ui/empty-state';

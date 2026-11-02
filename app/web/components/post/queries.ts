@@ -1,5 +1,5 @@
-import type { PostListItem } from '@orinforum/api-client';
-import { postService, settingService } from '@orinforum/api-client';
+import type { PostListItem } from '@feedchamber/api-client';
+import { postService, settingService } from '@feedchamber/api-client';
 import {
 	type DehydratedState,
 	dehydrate,

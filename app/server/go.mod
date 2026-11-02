@@ -1,4 +1,4 @@
-module orinforum
+module feedchamber
 
 go 1.25.0
 

@@ -32,7 +32,7 @@
 
 - [x] `go build ./...` / `go vet ./internal/service/ ./internal/container/ ./internal/model/`
 - [x] `internal/service`：四模式初态、external 结论与回退、异步命中转待审、旧开关兼容
-- [x] `pnpm --filter @orinforum/api-client build` + `app/web` 的 `tsc -p tsconfig.check.json`
+- [x] `pnpm --filter @feedchamber/api-client build` + `app/web` 的 `tsc -p tsconfig.check.json`
 
 ## 6. 文档
 

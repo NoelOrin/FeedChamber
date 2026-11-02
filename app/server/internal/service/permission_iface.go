@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 
-	"orinforum/internal/model"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/repository"
 )
 
 // PermissionChecker 轻量查询接口——只读权限检查，供其他 Service 注入。

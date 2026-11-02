@@ -1,8 +1,8 @@
 {
-	"name": "@orinforum/loadtest",
+	"name": "@feedchamber/loadtest",
 	"private": true,
 	"version": "0.1.0",
-	"description": "OrinForum 匿名只读压测（k6）：端点目录、smoke 自检、千级阶梯场景与报告",
+	"description": "Feed Chamber 匿名只读压测（k6）：端点目录、smoke 自检、千级阶梯场景与报告",
 	"type": "module",
 	"scripts": {
 		"smoke": "mkdir -p reports && k6 run -e PROFILE=smoke k6/smoke.js",

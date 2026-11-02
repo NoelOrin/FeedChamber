@@ -1,7 +1,7 @@
 'use client';
 
-import type { Content } from '@orinforum/api-client';
-import { contentService } from '@orinforum/api-client';
+import type { Content } from '@feedchamber/api-client';
+import { contentService } from '@feedchamber/api-client';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 

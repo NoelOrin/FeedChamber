@@ -3,14 +3,14 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/repository"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/repository"
 	"strings"
 	"time"
 )

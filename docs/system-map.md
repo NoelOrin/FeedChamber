@@ -1,4 +1,4 @@
-# OrinForum 系统地图
+# Feed Chamber 系统地图
 
 > 状态：2026-10-27 · 范围：整个 monorepo（后端 + Web + Dashboard + 共享包 + 部署）
 > 依据：源码实测。本文只描述「代码现在长什么样」，不评价优劣、不提案改法。
@@ -24,9 +24,9 @@
         └───────────┬──────────────┘   └───────────┬──────────────┘
                     │                              │
         ┌───────────┴──────────────────────────────┴──────────────┐
-        │  @orinforum/api-client  (唯一请求层, 40 个 service 模块) │
-        │  @orinforum/sse-client  ·  @orinforum/shared-utils       │
-        │  @orinforum/tokens      (仅 Dashboard 用)                │
+        │  @feedchamber/api-client  (唯一请求层, 40 个 service 模块) │
+        │  @feedchamber/sse-client  ·  @feedchamber/shared-utils       │
+        │  @feedchamber/tokens      (仅 Dashboard 用)                │
         └─────────────────────────────────────────────────────────┘
 ```
 
@@ -34,10 +34,10 @@
 
 | 包 | 依赖 | 被谁依赖 |
 |---|---|---|
-| `@orinforum/api-client` | 无内部依赖 | web、dashboard、sse-client |
-| `@orinforum/sse-client` | `api-client` | web |
-| `@orinforum/shared-utils` | 无内部依赖 | web、dashboard |
-| `@orinforum/tokens` | 无内部依赖 | **仅 dashboard**（Web 已不依赖，自带 shadcn token） |
+| `@feedchamber/api-client` | 无内部依赖 | web、dashboard、sse-client |
+| `@feedchamber/sse-client` | `api-client` | web |
+| `@feedchamber/shared-utils` | 无内部依赖 | web、dashboard |
+| `@feedchamber/tokens` | 无内部依赖 | **仅 dashboard**（Web 已不依赖，自带 shadcn token） |
 
 `api-client` 是唯一请求层：`authFetch` 封装 Bearer、401 单飞刷新重试、默认 3s 超时。Web 通过 `lib/api/adapter.ts` 注入 `readRequestCookie`（把 SSR 请求的 cookie 转发给后端）并在服务端 `setApiBaseUrl`。
 
@@ -48,7 +48,7 @@
 | 语言/框架 | Go 1.25 + Iris v12 | React 19 + vinext 1.1（Next App Router 的 Vite 实现） | React 19 + Vite |
 | 路由 | 自建 `internal/router`（RPC 风格） | 文件系统路由 `app/` | TanStack Router（33 条 `createRoute`） |
 | 取数 | — | TanStack Query 5 + RSC `cache()` | TanStack Query |
-| UI | — | shadcn 基准原语 + Tailwind v4 | Ant Design 6 + `@orinforum/tokens` |
+| UI | — | shadcn 基准原语 + Tailwind v4 | Ant Design 6 + `@feedchamber/tokens` |
 | ORM | GORM（sqlite/mysql/postgres） | — | — |
 | 消息/KV | NATS（JetStream KV + core Pub/Sub），可内嵌 | — | — |
 

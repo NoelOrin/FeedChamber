@@ -10,12 +10,12 @@ import (
 	"sync"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/pkg/logger"
-	"orinforum/internal/pkg/ratelimit"
-	"orinforum/internal/repository"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/pkg/logger"
+	"feedchamber/internal/pkg/ratelimit"
+	"feedchamber/internal/repository"
 )
 
 const gateSyncChannel = "gate:sync"

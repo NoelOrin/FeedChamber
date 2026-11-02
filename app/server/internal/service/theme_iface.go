@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 
-	"orinforum/internal/model"
+	"feedchamber/internal/model"
 )
 
 type ThemeService interface {

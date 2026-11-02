@@ -1,0 +1,40 @@
+---
+title: 配置字段
+description: settings 表全部 126 个键与默认值，标注哪些会出现在公开设置接口里
+---
+
+import SettingsReference from '../../../components/reference/SettingsReference.astro';
+
+系统设置是运行时配置的**唯一可信来源**。首次启动把 `DefaultSettings` 里的键写入
+`settings` 表，之后以库里的值为准；环境变量只作为二级回退，硬编码默认值是兜底。
+
+这一页从 `internal/model/setting.go` 生成，**126 个键**一次列全。改代码里的默认值，
+这里会跟着变；改了配置但没改默认值，也不影响这一页——它描述的是种子，不是你的站点。
+
+## 怎么读这张表
+
+| 列 | 含义 |
+|----|------|
+| **键** | `settings` 表主键，也是 `/api/v1/settings/*` 里的字段名 |
+| **默认值** | 首次启动写入的值；空字符串表示必须由管理员填写 |
+| **公开** | 勾选表示会出现在 `GET /api/v1/settings/public`，未登录也能读到 |
+
+:::caution[改了不生效的两个例外]
+存储（`storage_*` / `s3_*`）与 OAuth access token TTL、OIDC id_token TTL 在**启动时**
+读取一次，改完必须重启服务。其余键走 KV 缓存，保存后即时生效。
+:::
+
+<SettingsReference locale="zh" />
+
+## 后台入口
+
+| 分组 | 后台路径 |
+|------|----------|
+| 站点 / SEO / 注册 / 审核模式 | `/admin/settings?tab=site` |
+| 用户、认证、邮件与内容 | `/admin/settings?tab=user`、`?tab=content` |
+| 第三方登录（OAuth / OIDC） | `/admin/settings?tab=oauth` |
+| 存储（本地 / S3） | `/admin/settings?tab=storage` |
+| 门控规则 | `/admin/gates` |
+| 成长体系 | `/admin/levels`、`/admin/xp-rules` |
+
+环境变量的完整清单见 [环境变量](/reference/environment/)。

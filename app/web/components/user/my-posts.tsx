@@ -1,4 +1,4 @@
-import type { PostListItem } from '@orinforum/api-client';
+import type { PostListItem } from '@feedchamber/api-client';
 
 import { PostList } from '~/components/user/post-list';
 import { cn } from '~/lib/utils';

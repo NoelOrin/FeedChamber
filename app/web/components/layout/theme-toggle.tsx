@@ -1,6 +1,6 @@
 'use client';
 
-import { themeService } from '@orinforum/api-client';
+import { themeService } from '@feedchamber/api-client';
 import type * as React from 'react';
 
 import { authSession } from '~/lib/auth';

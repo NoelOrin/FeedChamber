@@ -3,9 +3,9 @@ package testnats
 import (
 	"testing"
 
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/pkg/kvstore"
-	"orinforum/internal/pkg/natsembedded"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/pkg/natsembedded"
 )
 
 // Start 启动一个嵌入式 NATS 测试服务并返回客户端 URL。

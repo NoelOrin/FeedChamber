@@ -1,8 +1,8 @@
 package server
 
 import (
-	"orinforum/internal/container"
-	"orinforum/internal/handler"
+	"feedchamber/internal/container"
+	"feedchamber/internal/handler"
 )
 
 // newHandler maps the assembled container onto the HTTP layer's dependency
@@ -43,6 +43,9 @@ func newHandler(c *container.Container) *handler.Handler {
 		Permission:   c.PermissionSvc,
 		PM:           c.PMSvc,
 		Plugin:       c.PluginSvc,
+		Customize:    c.CustomizeSvc,
+		MCPServer:    c.MCPServerSvc,
+		MCP:          c.MCP.Handler,
 		Post:         c.PostSvc,
 		Report:       c.ReportSvc,
 		Revision:     c.RevisionSvc,

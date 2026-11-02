@@ -1,7 +1,7 @@
 package metrics
 
 import (
-	"orinforum/internal/db"
+	"feedchamber/internal/db"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -17,7 +17,7 @@ var (
 	// counter only answers "is the database slow right now".
 	DBSlowQueriesTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "orinforum_db_slow_queries_total",
+			Name: "feedchamber_db_slow_queries_total",
 			Help: "Queries slower than the configured slow-query threshold.",
 		},
 	)
@@ -27,7 +27,7 @@ var (
 	// apart from rising traffic.
 	DBQueriesTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "orinforum_db_queries_total",
+			Name: "feedchamber_db_queries_total",
 			Help: "Queries executed through GORM.",
 		},
 	)

@@ -1,6 +1,6 @@
 ## Purpose
 
-定义 OrinForum 后端 HTTP API 的统一 RPC 风格约定，确保所有业务接口（含前端、openapi.json、新增模块）遵循一致的动词后缀 URL、请求体与响应结构。
+定义 Feed Chamber 后端 HTTP API 的统一 RPC 风格约定，确保所有业务接口（含前端、openapi.json、新增模块）遵循一致的动词后缀 URL、请求体与响应结构。
 
 ## ADDED Requirements
 

@@ -5,7 +5,7 @@ import (
 	"io"
 	"os"
 
-	"orinforum/internal/pkg/tracing"
+	"feedchamber/internal/pkg/tracing"
 
 	"github.com/sirupsen/logrus"
 )

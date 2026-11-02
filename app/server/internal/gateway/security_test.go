@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/model"
-	"orinforum/internal/pkg/kvstore"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg/kvstore"
 
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/httptest"

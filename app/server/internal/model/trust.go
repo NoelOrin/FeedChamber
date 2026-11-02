@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"orinforum/internal/pkg"
+	"feedchamber/internal/pkg"
 )
 
 // 指标注册表（XP 规则与保级条件共用同一批固定枚举）。

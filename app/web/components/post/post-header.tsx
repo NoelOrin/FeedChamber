@@ -1,6 +1,6 @@
 'use client';
 
-import { favoriteService, watchService } from '@orinforum/api-client';
+import { favoriteService, watchService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 

@@ -3,9 +3,9 @@ package middleware
 import (
 	"runtime/debug"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/logger"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/logger"
 
 	"github.com/kataras/iris/v12"
 )

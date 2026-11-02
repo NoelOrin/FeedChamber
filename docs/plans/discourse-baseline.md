@@ -1,9 +1,9 @@
-# Discourse 能力基线文档（OrinForum 对齐版）
+# Discourse 能力基线文档（Feed Chamber 对齐版）
 
-> 基准：Discourse 3.3/3.4 开源版核心能力（以官方 docs、meta.discourse.org 与源码插件能力为基线，排除 Enterprise/AI 付费插件）。用途：作为 OrinForum“基本能力对齐”的唯一权威基线，明确哪些能力必须对齐、哪些为可选增强。
+> 基准：Discourse 3.3/3.4 开源版核心能力（以官方 docs、meta.discourse.org 与源码插件能力为基线，排除 Enterprise/AI 付费插件）。用途：作为 Feed Chamber“基本能力对齐”的唯一权威基线，明确哪些能力必须对齐、哪些为可选增强。
 
 日期：2026-08-21  
-维护者：OrinForum  
+维护者：Feed Chamber  
 前置审查：历轮对齐审查整合（48+ agent 任务，结论已沉淀进本基线文档与 `reviews/phase4-discourse-alignment-retro.md`）
 
 ## 1. 判定口径
@@ -11,13 +11,13 @@
 - **必须对齐（MUST）**：Discourse 单站开箱即用的核心论坛能力；缺失则不能称为“论坛基本能力对齐”。
 - **建议对齐（SHOULD）**：Discourse 通过官方插件/主题组件或配置实现的高频能力；按优先级逐步对齐。
 - **可选（MAY）**：Discourse 生态扩展或重型能力（如独立全文检索引擎、Onebox 全量、Polls 全特性），不阻断基本对齐验收。
-- **不对齐**：与 OrinForum 定位无关或需重架构的能力，明确不纳入本基线。
+- **不对齐**：与 Feed Chamber 定位无关或需重架构的能力，明确不纳入本基线。
 
 ## 2. 能力基线总览（按域）
 
 ### A. 内容与结构
 
-| 能力 | Discourse 基线 | OrinForum 现状 | 结论 |
+| 能力 | Discourse 基线 | Feed Chamber 现状 | 结论 |
 |---|---|---|---|
 | Topic/Post 二级模型 | Topic（标题+分类+标签+状态）+ Post 流（分页/小窗）| Post（标题/slug/space_id/状态机）+ Content（楼层流，支持 parentId 嵌套） | MUST 已对齐（术语不同：Post≈Topic，Content≈Post） |
 | 分类（Category） | 树形分类、权限、排序、颜色/图标、子分类 | Space 版面（树形 `tree`、`slug`、排序、启禁）+ Category 兼容层 | MUST 已对齐（以 Space 为主） |
@@ -31,7 +31,7 @@
 
 ### B. 浏览与发现
 
-| 能力 | Discourse 基线 | OrinForum 现状 | 结论 |
+| 能力 | Discourse 基线 | Feed Chamber 现状 | 结论 |
 |---|---|---|---|
 | 列表视图 | Latest / New / Unread / Top / Categories | `/posts/list` 支持 `list_view`（latest/new/unread/read/posted）+ `last_active_at` 排序 | MUST 已对齐（语义：posted=我发布，参与话题为增强） |
 | 已读追踪 | TopicUser/TopicView + PostTiming 精确到楼层 | `topic_read_states`（`LastReadAt` + `LastContentID`）+ `MarkRead` 携带 `last_content_id`，列表返回 `unread_content_count` | MUST 已对齐（分页跳转仍需加固） |
@@ -41,7 +41,7 @@
 
 ### C. 身份与社交
 
-| 能力 | Discourse 基线 | OrinForum 现状 | 结论 |
+| 能力 | Discourse 基线 | Feed Chamber 现状 | 结论 |
 |---|---|---|---|
 | 用户体系 | 注册/登录、邮件验证、用户卡片、公开资料 | User（ULID）、`TrustLevel`（basic/member/regular/leader）、公开资料 `PublicUser`、个人中心统计 | MUST 已对齐 |
 | 信任等级 | TL0~TL4 自动晋升、权限联动 | 信任等级基于积分显示（`total_points`），权限联动为 SHOULD | MUST 部分对齐（展示已对齐，规则联动后续） |
@@ -53,7 +53,7 @@
 
 ### D. 治理与审核
 
-| 能力 | Discourse 基线 | OrinForum 现状 | 结论 |
+| 能力 | Discourse 基线 | Feed Chamber 现状 | 结论 |
 |---|---|---|---|
 | Review Queue | 统一审核队列（待审内容、举报、用户） | `content_moderations` + `/admin/moderation/*` | MUST 已对齐 |
 | 举报（Flag） | 结构化举报类型、去重、处置 | `reports`（`flag_type`/快照/聚合计数/分页/处置审计） | MUST 已对齐 |
@@ -64,7 +64,7 @@
 
 ### E. 平台与开放
 
-| 能力 | Discourse 基线 | OrinForum 现状 | 结论 |
+| 能力 | Discourse 基线 | Feed Chamber 现状 | 结论 |
 |---|---|---|---|
 | 认证 | 本地、邮件验证、MFA | JWT（access 24h/refresh 7d）、JTI 黑名单、MFA TOTP/备份码、邮件验证 | MUST 已对齐 |
 | OAuth/SSO | 多 OAuth 提供商、OAuth2 Provider、OIDC SSO | OAuth（6 提供商）+ OAuth Provider（`token/revoke/authorize/clients`）+ SSO OIDC（`/.well-known/*`、JWKS RS256） | MUST 已对齐 |
@@ -77,7 +77,7 @@
 
 ### F. 实时与可靠性
 
-| 能力 | Discourse 基线 | OrinForum 现状 | 结论 |
+| 能力 | Discourse 基线 | Feed Chamber 现状 | 结论 |
 |---|---|---|---|
 | 实时 | MessageBus 长轮询/SSE、通知/帖子实时 | SSE `/notifications/stream` + 通用 `/realtime/stream`（channel/envelope/心跳/断线恢复）+ NATS 事件总线 | MUST 已对齐 |
 | 性能 | 索引、分页、缓存 | 高频复合索引（posts/contents/notifications/topic_reads 等）、KV 缓存（未读数/限流/JTI） | MUST 已对齐（全文索引持续加固） |
@@ -119,16 +119,16 @@ Poll、Onebox、wiki、慢速模式细化、archived/unlisted、OG/JSON-LD、GIN
 cd app/server
 go test ./internal/service ./internal/model ./internal/repository ./pkg/gateway -count=1
 # Dashboard/Web 类型与构建（若涉及前端改动）
-pnpm --filter @orinforum/dashboard-vite exec tsc -p tsconfig.app.json --noEmit
+pnpm --filter @feedchamber/dashboard-vite exec tsc -p tsconfig.app.json --noEmit
 pnpm build:web
 ```
 
 接口与浏览器：
 - 全路由权限测试覆盖 Webhook、API Key、Sessions、实时通道
-- `orinforum_test.sh` 覆盖搜索/审核/禁言/草稿/版本
+- `feedchamber_test.sh` 覆盖搜索/审核/禁言/草稿/版本
 - Mongo 双后端覆盖版面过滤、列表可见性、私信
 
 ## 7. 结论
 
-按本基线度量，OrinForum 已完成 Discourse 基本能力（MUST）的结构性对齐：内容结构、浏览发现、身份社交、治理审核、平台开放、实时可靠性六大域的开箱能力均已具备真实实现与双后端覆盖。剩余工作为 P1 加固与 SHOULD 增强，不影响“基本能力对齐”验收。下阶段以 P0 回归 + P1 闭环为唯一优先级，按 Batch 顺序推进。
+按本基线度量，Feed Chamber 已完成 Discourse 基本能力（MUST）的结构性对齐：内容结构、浏览发现、身份社交、治理审核、平台开放、实时可靠性六大域的开箱能力均已具备真实实现与双后端覆盖。剩余工作为 P1 加固与 SHOULD 增强，不影响“基本能力对齐”验收。下阶段以 P0 回归 + P1 闭环为唯一优先级，按 Batch 顺序推进。
 

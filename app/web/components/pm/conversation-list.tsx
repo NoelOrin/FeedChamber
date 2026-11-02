@@ -1,6 +1,6 @@
 'use client';
 
-import type { ConversationListItem } from '@orinforum/api-client';
+import type { ConversationListItem } from '@feedchamber/api-client';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
 import Link from 'next/link';

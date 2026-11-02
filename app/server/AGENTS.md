@@ -32,3 +32,5 @@
 - 权限 seed 幂等：`alreadySeeded` 元标记 + `roleMappingsEmpty` 双重门控（R-04 修复）
 - 存储 Provider 在启动时通过 `pkg.BuildStorageConfig()` 按 settings 表 → env → 默认构建（H-04 修复）
 - 启动 KV Store Pub/Sub subscriber 用于多实例权限缓存同步（R-07）
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

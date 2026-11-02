@@ -3,8 +3,8 @@ package server
 import (
 	"time"
 
-	"orinforum/internal/db"
-	"orinforum/internal/model"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 
 	"github.com/sirupsen/logrus"
 	"gorm.io/gorm"

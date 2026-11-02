@@ -3,8 +3,8 @@ package service
 import (
 	"context"
 	"errors"
-	"orinforum/internal/pkg"
-	"orinforum/internal/repository"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/repository"
 
 	"github.com/sirupsen/logrus"
 )

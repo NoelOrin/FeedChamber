@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"orinforum/internal/config"
+	"feedchamber/internal/config"
 
 	"github.com/spf13/cobra"
 )
@@ -99,7 +99,7 @@ var backupCmd = &cobra.Command{
 			"db_type":        dbType,
 			"db_file":        filepath.Base(dbPath),
 			"go_version":     runtime.Version(),
-			"app":            "orinforum",
+			"app":            "feedchamber",
 			"backup_version": 1,
 			"uploads_dir":    uploadsDir,
 			"uploads_count":  len(manifest),

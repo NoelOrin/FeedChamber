@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	"orinforum/internal/pkg/logger"
-	"orinforum/internal/storage"
+	"feedchamber/internal/pkg/logger"
+	"feedchamber/internal/storage"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -28,7 +28,7 @@ type Config struct {
 
 type KVConfig struct {
 	NATSURL    string // 环境变量 NATS_URL（必填）：外部 NATS，需启用 JetStream
-	NATSBucket string // 环境变量 NATS_BUCKET，默认 "orin_kv"
+	NATSBucket string // 环境变量 NATS_BUCKET，默认 "feedchamber_kv"
 }
 
 type DBConfig struct {
@@ -54,7 +54,7 @@ func Load() Config {
 		// Storage 留空：启动时由 pkg.BuildStorageConfig 从 settings 表（回退环境变量）解析。
 		KV: KVConfig{
 			NATSURL:    os.Getenv("NATS_URL"),
-			NATSBucket: getEnv("NATS_BUCKET", "orin_kv"),
+			NATSBucket: getEnv("NATS_BUCKET", "feedchamber_kv"),
 		},
 		Log: logger.Config{
 			Level:  getEnv("LOG_LEVEL", "info"),

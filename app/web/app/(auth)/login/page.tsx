@@ -6,7 +6,7 @@ import { loadPublicSettings } from '~/lib/queries/server';
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ redirect?: string | string[] }> }) {
 	const settings = await loadPublicSettings();
-	const siteName = settings.site_name || 'OrinForum';
+	const siteName = settings.site_name || 'Feed Chamber';
 	const raw = (await searchParams)?.redirect;
 	const redirect = typeof raw === 'string' ? raw : undefined;
 

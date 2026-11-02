@@ -42,7 +42,7 @@ export async function generateMetadata({ params }: RouteProps): Promise<Metadata
 	const { userId } = await params;
 	const { indexable } = await readProfileFlags();
 	const settings = await loadPublicSettings();
-	const siteName = settings.site_name || 'OrinForum';
+	const siteName = settings.site_name || 'Feed Chamber';
 	const base = (settings.site_url || '').replace(/\/$/, '');
 
 	return {

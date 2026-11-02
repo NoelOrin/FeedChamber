@@ -15,6 +15,9 @@ func (Meta) TableName() string { return "meta" }
 
 // Meta keys.
 const (
+	// MetaSeededRolePermissionCodes 记录「已应用过的默认权限码」，
+	// 让升级补齐只补新码，不复活管理员撤销过的权限。
+	MetaSeededRolePermissionCodes = "seeded_role_permission_codes"
 	// MetaSeeded marks that the one-time seed has completed. Once set, later
 	// restarts skip the destructive seed steps (default role-permission sync
 	// and post/content reseed) so an administrator's customizations survive

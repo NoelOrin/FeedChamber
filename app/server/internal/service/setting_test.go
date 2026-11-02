@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"testing"
 
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/testnats"
-	"orinforum/internal/repository"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/testnats"
+	"feedchamber/internal/repository"
 
 	"github.com/stretchr/testify/require"
 )
@@ -98,7 +98,7 @@ func TestSettingGet_ReadsSeededValue(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	require.NoError(t, store.AutoMigrate(&model.Setting{}))
-	require.NoError(t, store.SQL().DB().Create(&model.Setting{Key: "site_name", Value: "OrinForum"}).Error)
+	require.NoError(t, store.SQL().DB().Create(&model.Setting{Key: "site_name", Value: "Feed Chamber"}).Error)
 
 	counting := &countingSettingRepo{SettingRepository: repository.NewSettingRepository(store)}
 	svc := NewSettingService(counting, testnats.NewKVStore(t, "setting_test_hit"))
@@ -106,11 +106,11 @@ func TestSettingGet_ReadsSeededValue(t *testing.T) {
 
 	got, err := svc.Get(ctx, "site_name")
 	require.NoError(t, err)
-	require.Equal(t, "OrinForum", got)
+	require.Equal(t, "Feed Chamber", got)
 
 	got, err = svc.Get(ctx, "site_name")
 	require.NoError(t, err)
-	require.Equal(t, "OrinForum", got)
+	require.Equal(t, "Feed Chamber", got)
 	require.Equal(t, 1, counting.gets, "second read must be served from KV")
 }
 
@@ -124,8 +124,8 @@ func TestSettingGet_DeleteInvalidatesNegativeCache(t *testing.T) {
 	_, err := svc.Get(ctx, "site_name")
 	require.Error(t, err, "key starts absent")
 
-	require.NoError(t, svc.Set(ctx, "site_name", "OrinForum"))
+	require.NoError(t, svc.Set(ctx, "site_name", "Feed Chamber"))
 	got, err := svc.Get(ctx, "site_name")
 	require.NoError(t, err, "Set must invalidate the cached miss")
-	require.Equal(t, "OrinForum", got)
+	require.Equal(t, "Feed Chamber", got)
 }

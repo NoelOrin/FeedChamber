@@ -1,5 +1,5 @@
-import type { SpaceNode, Tag, User } from '@orinforum/api-client';
-import { settingService, spaceService, tagService, userService } from '@orinforum/api-client';
+import type { SpaceNode, Tag, User } from '@feedchamber/api-client';
+import { settingService, spaceService, tagService, userService } from '@feedchamber/api-client';
 import { cache } from 'react';
 
 import '~/lib/api/adapter';

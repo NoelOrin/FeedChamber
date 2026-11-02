@@ -2,9 +2,9 @@ package repository
 
 import (
 	"context"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 	"fmt"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
 	"strings"
 
 	"github.com/sirupsen/logrus"

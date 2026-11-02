@@ -2,6 +2,7 @@
 
 import { parseAsString, useQueryState } from 'nuqs';
 import { useCallback, useMemo } from 'react';
+import { HomeModules } from '~/components/home/home-modules';
 import { PostListPage } from '~/components/post/post-list-page';
 import {
 	feedParamsOf,
@@ -50,16 +51,20 @@ export function TimelineList({ initialPage, initialPageKey }: TimelineListProps)
 	const changeListView = useCallback((next: ListView | null) => void setListView(next ?? ''), [setListView]);
 
 	return (
-		<PostListPage
-			params={params}
-			sortBy={sortBy}
-			onSortByChange={changeSortBy}
-			listView={listView}
-			/* 视图胶囊：旧版按 userStore.isLoggedIn 决定显隐，(app) 组已在服务端 requireAuth，这里直接给出 */
-			onListViewChange={changeListView}
-			createLink="/timeline/create"
-			initialPage={initialPage}
-			initialPageKey={initialPageKey}
-		/>
+		<>
+			{/* 首页自定义模块（P1）：无配置时组件返回 null，首页保持既有布局。 */}
+			<HomeModules />
+			<PostListPage
+				params={params}
+				sortBy={sortBy}
+				onSortByChange={changeSortBy}
+				listView={listView}
+				/* 视图胶囊：旧版按 userStore.isLoggedIn 决定显隐，(app) 组已在服务端 requireAuth，这里直接给出 */
+				onListViewChange={changeListView}
+				createLink="/timeline/create"
+				initialPage={initialPage}
+				initialPageKey={initialPageKey}
+			/>
+		</>
 	);
 }

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"orinforum/internal/config"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
+	"feedchamber/internal/config"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
 
 	"github.com/stretchr/testify/require"
 )

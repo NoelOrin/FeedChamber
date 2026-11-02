@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	"orinforum/internal/db"
+	"feedchamber/internal/db"
 
 	"gorm.io/gorm"
 )
 
-const backupSchemaV2 = "orinforum-backup-v2"
+const backupSchemaV2 = "feedchamber-backup-v2"
 
 type backupSnapshot struct {
 	Schema    string         `json:"schema"`

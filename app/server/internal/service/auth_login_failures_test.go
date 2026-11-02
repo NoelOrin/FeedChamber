@@ -5,9 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"orinforum/internal/metrics"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
+	"feedchamber/internal/metrics"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -16,7 +16,7 @@ import (
 
 // Login failure metric coverage (openspec 2026-10-13-build-observability §9.6).
 //
-// orinforum_login_failures_total{reason} is bounded to exactly three reasons,
+// feedchamber_login_failures_total{reason} is bounded to exactly three reasons,
 // each fed by one distinct branch of authService.Login. These tests pin that
 // contract by driving the real Login path instead of inspecting the埋点 lines:
 //
@@ -35,7 +35,7 @@ const (
 	loginFailureTestPassword = "correct-horse-123"
 	loginFailureTestWrong    = "wrong-horse-456"
 
-	loginFailureMetricFamily = "orinforum_login_failures_total"
+	loginFailureMetricFamily = "feedchamber_login_failures_total"
 	loginFailureMetricLabel  = "reason"
 )
 

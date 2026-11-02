@@ -1,6 +1,6 @@
 'use client';
 
-import type { ContentListItem, PostDetail } from '@orinforum/api-client';
+import type { ContentListItem, PostDetail } from '@feedchamber/api-client';
 
 import { ContentItem } from '~/components/content/content-item';
 import { MarkdownRenderer } from '~/components/content/markdown-renderer';

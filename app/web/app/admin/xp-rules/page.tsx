@@ -1,6 +1,6 @@
 'use client';
 
-import { trustService, type XPRule, type XPStreakBonus } from '@orinforum/api-client';
+import { trustService, type XPRule, type XPStreakBonus } from '@feedchamber/api-client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
 import { useCallback, useMemo, useState } from 'react';

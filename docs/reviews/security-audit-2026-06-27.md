@@ -1,4 +1,4 @@
-# 安全审计报告 — OrinForum 全面代码审查
+# 安全审计报告 — Feed Chamber 全面代码审查
 
 > 审计日期：2026-06-27
 > 审查范围：Go 后端 (app/server)、Dashboard 前端 (app/dashboard)、Web 前端 (app/web)、共享包 (packages)、基础设施配置

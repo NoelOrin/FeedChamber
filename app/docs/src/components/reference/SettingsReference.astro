@@ -1,0 +1,222 @@
+---
+import reference from '../../data/reference.json';
+
+interface Props {
+	locale?: 'zh' | 'en';
+}
+
+const { locale = 'zh' } = Astro.props;
+const isEn = locale === 'en';
+const groups = reference.settings.groups.map((group) => ({
+	key: group.key,
+	title: isEn ? group.titleEn : group.title,
+	items: group.items,
+}));
+
+const t = isEn
+	? {
+			filter: 'Filter by key or default value…',
+			total: 'keys',
+			key: 'Key',
+			value: 'Default',
+			public: 'Public',
+			empty: '(empty)',
+			noMatch: 'No key matches that filter.',
+		}
+	: {
+			filter: '按键名或默认值筛选…',
+			total: '个键',
+			key: '键',
+			value: '默认值',
+			public: '公开',
+			empty: '（空）',
+			noMatch: '没有匹配的键。',
+		};
+---
+
+<div class="settings-reference" data-settings-reference>
+	<div class="toolbar">
+		<input
+			type="search"
+			class="filter"
+			placeholder={t.filter}
+			aria-label={t.filter}
+			data-settings-filter
+		/>
+		<p class="counts"><strong>{reference.settings.total}</strong>{t.total}</p>
+	</div>
+
+	{
+		groups.map((group) => (
+			<section class="group" data-group>
+				<h3>
+					<span>{group.title}</span>
+					<span class="count">{group.items.length}</span>
+				</h3>
+				<table>
+					<thead>
+						<tr>
+							<th>{t.key}</th>
+							<th>{t.value}</th>
+							<th class="col-public">{t.public}</th>
+						</tr>
+					</thead>
+					<tbody>
+						{group.items.map((item) => (
+							<tr data-row>
+								<td>
+									<code>{item.key}</code>
+								</td>
+								<td class={item.value === '' ? 'muted' : undefined}>
+									{item.value === '' ? t.empty : <code>{item.value}</code>}
+								</td>
+								<td class="col-public">{item.public ? '✓' : ''}</td>
+							</tr>
+						))}
+					</tbody>
+				</table>
+				<p class="empty" data-empty hidden>
+					{t.noMatch}
+				</p>
+			</section>
+		))
+	}
+</div>
+
+<script>
+	const root = document.querySelector('[data-settings-reference]');
+	if (root) {
+		const filter = root.querySelector('[data-settings-filter]');
+		const groups = [...root.querySelectorAll('[data-group]')];
+		const apply = () => {
+			const term = (filter?.value ?? '').trim().toLowerCase();
+			for (const group of groups) {
+				let visible = 0;
+				for (const row of group.querySelectorAll('[data-row]')) {
+					const match = !term || row.textContent.toLowerCase().includes(term);
+					row.hidden = !match;
+					if (match) visible += 1;
+				}
+				group.hidden = visible === 0;
+				const empty = group.querySelector('[data-empty]');
+				if (empty) empty.hidden = visible !== 0;
+			}
+		};
+		filter?.addEventListener('input', apply);
+	}
+</script>
+
+<style>
+	.settings-reference .toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem;
+		margin: 1.25rem 0 1rem;
+		padding: 0.65rem;
+		border: 1px solid var(--fc-hairline);
+		border-radius: 9px;
+		background: var(--fc-bg-soft);
+	}
+
+	.settings-reference .filter {
+		flex: 1 1 18rem;
+		min-width: 0;
+		padding: 0.45rem 0.7rem;
+		border: 1px solid var(--fc-hairline-strong);
+		border-radius: 6px;
+		background: var(--fc-bg);
+		color: var(--fc-text-strong);
+		font-size: 0.85rem;
+	}
+
+	.settings-reference .filter:focus {
+		outline: 2px solid var(--fc-accent);
+		outline-offset: 1px;
+	}
+
+	.settings-reference .counts {
+		margin: 0;
+		font-size: 0.78rem;
+		color: var(--fc-text-muted);
+		white-space: nowrap;
+	}
+
+	.settings-reference .counts strong {
+		margin-right: 0.15rem;
+		color: var(--fc-text-strong);
+		font-family: var(--sl-font-mono);
+	}
+
+	.settings-reference .group {
+		margin: 0 0 1.5rem;
+	}
+
+	.settings-reference .group h3 {
+		display: flex;
+		align-items: center;
+		gap: 0.45rem;
+		margin: 0 0 0.4rem;
+		font-size: 0.9rem;
+		color: var(--fc-text-strong);
+	}
+
+	.settings-reference .count {
+		font-family: var(--sl-font-mono);
+		font-size: 0.7rem;
+		color: var(--fc-text-muted);
+	}
+
+	.settings-reference table {
+		display: table;
+		width: 100%;
+		margin: 0;
+		border: 1px solid var(--fc-hairline);
+		border-radius: 8px;
+		font-size: 0.82rem;
+		overflow: hidden;
+	}
+
+	.settings-reference thead th {
+		background: var(--fc-bg-soft);
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--fc-text-muted);
+	}
+
+	.settings-reference tbody tr {
+		background: none;
+	}
+
+	.settings-reference td,
+	.settings-reference th {
+		border-color: var(--fc-hairline);
+		padding: 0.4rem 0.75rem;
+	}
+
+	.settings-reference .col-public {
+		width: 4.5rem;
+		text-align: center;
+		color: var(--fc-accent);
+	}
+
+	.settings-reference .muted {
+		color: var(--fc-text-muted);
+		font-style: italic;
+	}
+
+	.settings-reference .empty {
+		margin: 0.4rem 0 0;
+		font-size: 0.8rem;
+		color: var(--fc-text-muted);
+	}
+
+	@media (max-width: 52rem) {
+		.settings-reference table {
+			display: block;
+			overflow-x: auto;
+			white-space: nowrap;
+		}
+	}
+</style>

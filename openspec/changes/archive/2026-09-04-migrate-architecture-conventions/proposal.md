@@ -1,6 +1,6 @@
 ## Why
 
-OrinForum 的架构与编码规范散落在根目录 `AGENTS.md`、各层子 `AGENTS.md`（`handler/service/repository`）、`docs/ARCHITECTURE.md`、`docs/adr/`、`docs/plans/` 等多处，缺乏单一可校验的规范真相源。团队与 AI 协作时难以快速确认"什么是已采纳的规范、什么是进行中的变更"。
+Feed Chamber 的架构与编码规范散落在根目录 `AGENTS.md`、各层子 `AGENTS.md`（`handler/service/repository`）、`docs/ARCHITECTURE.md`、`docs/adr/`、`docs/plans/` 等多处，缺乏单一可校验的规范真相源。团队与 AI 协作时难以快速确认"什么是已采纳的规范、什么是进行中的变更"。
 
 本变更把现有稳定规范迁移进 OpenSpec，使其成为 spec-driven 的单一可信来源：规范以 `specs/<capability>/spec.md` 表达，后续变更经 change 提案流演进，而非直接改散文文档。
 

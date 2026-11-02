@@ -3,11 +3,11 @@ package service
 import (
 	"context"
 	"errors"
-	"orinforum/internal/db"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/pkg/eventbus"
-	"orinforum/internal/repository"
+	"feedchamber/internal/db"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/pkg/eventbus"
+	"feedchamber/internal/repository"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -280,6 +280,9 @@ func (s *contentService) Create(ctx context.Context, postID, authorID, body, par
 	}
 
 	// 发通知（通过事件总线）
+	// notified 在同一条评论的几个扇出步骤间共享：作者、@提及、关注话题可能命中
+	// 同一个人，共享之后一条评论只产生一条通知（按 作者 > 提及 > 关注 的优先级）。
+	notified := map[string]struct{}{}
 	sender, ue := s.userRepo.FindByID(ctx, authorID)
 	senderName := ""
 	if ue == nil {
@@ -287,6 +290,7 @@ func (s *contentService) Create(ctx context.Context, postID, authorID, body, par
 		if parentID != "" {
 			parent, pe := s.repo.FindByID(ctx, parentID)
 			if pe == nil && parent.AuthorID != authorID && s.bus != nil {
+				notified[parent.AuthorID] = struct{}{}
 				s.bus.Publish(eventbus.Event{
 					Type: eventbus.EventContentReplied,
 					Ctx:  ctx,
@@ -301,6 +305,7 @@ func (s *contentService) Create(ctx context.Context, postID, authorID, body, par
 				})
 			}
 		} else if post.AuthorID != authorID && s.bus != nil {
+			notified[post.AuthorID] = struct{}{}
 			s.bus.Publish(eventbus.Event{
 				Type: eventbus.EventContentReplied,
 				Ctx:  ctx,
@@ -322,11 +327,11 @@ func (s *contentService) Create(ctx context.Context, postID, authorID, body, par
 	}
 
 	// @提及通知
-	publishUserMentions(s.bus, s.userRepo, ctx, authorID, postID, body, senderName)
+	publishUserMentions(s.bus, s.userRepo, ctx, authorID, postID, body, senderName, notified)
 
 	// Watch 扇出通知
 	if s.watchSvc != nil {
-		s.watchSvc.NotifyWatchers(ctx, postID, authorID, senderName, post.Title)
+		s.watchSvc.NotifyWatchers(ctx, postID, authorID, senderName, post.Title, notified)
 	}
 
 	return c, nil

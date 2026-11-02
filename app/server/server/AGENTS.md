@@ -33,3 +33,13 @@
 | seed.go | 种子数据（角色、权限、管理员、设置、内容） |
 | seed_spaces.go | 基础版面定义与幂等补齐（`ensureSeedSpaces`） |
 | seed_tags.go | 基础标签定义与幂等补齐（`ensureSeedTags`） |
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
+
+## MCP 装配（2026-10-30）
+
+`buildMCP` 的 settings 参数类型是 `service.SettingService`（不只是 `pkg.SettingReader`）：工具启停要落库到 `mcp_disabled_tools`，读写必须走同一个服务。`mcpToolStateStore` 是 `mcp.ToolStateStore` 的适配器，注入给 `mcp.Handler.SetToolStateStore`。
+
+## 权限补齐的持久化（2026-10-30）
+
+`seedPermissions` 不再「每次启动把默认映射里缺的都补回」——那会让管理员撤销的默认权限在重启后静默复活。改为：meta key `seeded_role_permission_codes` 记录已应用过的权限码，只补首次出现的新码；首启把默认码全部写入该标记。纯函数在 `service.RolePermissionTopUp` / `MergeAppliedCodes` / `ParseAppliedCodes`，测试钉住「撤销不复活」。

@@ -44,6 +44,6 @@
 ## 7. 验证
 
 - [x] 7.1 后端：`go build ./...` 通过；新增 `motion` 相关单测（service 结算、票权加权、反猎巫阈值、暗区路由）。
-- [x] 7.2 用 `orinforum_test.sh` 扩展或手工 curl 走通：发起→投票达法定人数→passed→执行结果；rejected→标记滥诉→限权；exile→暗区路由。
+- [x] 7.2 用 `feedchamber_test.sh` 扩展或手工 curl 走通：发起→投票达法定人数→passed→执行结果；rejected→标记滥诉→限权；exile→暗区路由。
 - [x] 7.3 确认 `Report` 既有行为未被改动（回归不破坏现有举报测试）。
 - [x] 7.4 `openspec validate add-community-motion` 通过；`make swag` 更新 openapi.json。

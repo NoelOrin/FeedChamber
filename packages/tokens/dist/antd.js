@@ -1,5 +1,5 @@
-/* @orinforum/tokens - AntD ThemeConfig — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
-   Run: pnpm --filter @orinforum/tokens tokens:build */
+/* @feedchamber/tokens - AntD ThemeConfig — AUTO-GENERATED from w3c-tokens.json, do not edit manually.
+   Run: pnpm --filter @feedchamber/tokens tokens:build */
 
 import { theme as antdTheme } from 'antd';
 

@@ -25,3 +25,5 @@ class SSEClient {
 ## Web 端集成
 
 通过 `packages/web/src/hooks/useNotificationSSE.ts` SolidJS adapter hook 调用。
+
+> 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。

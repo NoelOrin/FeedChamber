@@ -5,7 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/collectors"
 )
 
-// Registry is the default Prometheus registry used by OrinForum.
+// Registry is the default Prometheus registry used by Feed Chamber.
 var Registry = prometheus.NewRegistry()
 
 func init() {
@@ -19,7 +19,7 @@ var (
 	// RequestDuration records HTTP request latency in seconds.
 	RequestDuration = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "orinforum_http_request_duration_seconds",
+			Name:    "feedchamber_http_request_duration_seconds",
 			Help:    "HTTP request latency in seconds.",
 			Buckets: prometheus.DefBuckets,
 		},
@@ -29,7 +29,7 @@ var (
 	// RequestsTotal counts HTTP requests by method, path, and status.
 	RequestsTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "orinforum_http_requests_total",
+			Name: "feedchamber_http_requests_total",
 			Help: "Total count of HTTP requests.",
 		},
 		[]string{"method", "path", "status"},
@@ -38,7 +38,7 @@ var (
 	// RequestSizeBytes records request body sizes.
 	RequestSizeBytes = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:    "orinforum_http_request_size_bytes",
+			Name:    "feedchamber_http_request_size_bytes",
 			Help:    "HTTP request body size in bytes.",
 			Buckets: prometheus.ExponentialBuckets(64, 2, 12), // 64B to 128KB
 		},
@@ -47,7 +47,7 @@ var (
 	// ResponseSizeBytes records response body sizes.
 	ResponseSizeBytes = prometheus.NewHistogram(
 		prometheus.HistogramOpts{
-			Name:    "orinforum_http_response_size_bytes",
+			Name:    "feedchamber_http_response_size_bytes",
 			Help:    "HTTP response body size in bytes.",
 			Buckets: prometheus.ExponentialBuckets(64, 2, 12),
 		},
@@ -58,7 +58,7 @@ var (
 	// belong in the log, not in a metric label.
 	PanicsTotal = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "orinforum_http_panics_total",
+			Name: "feedchamber_http_panics_total",
 			Help: "Total count of panics recovered while serving HTTP requests.",
 		},
 	)

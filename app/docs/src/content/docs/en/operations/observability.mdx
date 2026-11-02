@@ -1,0 +1,111 @@
+---
+title: Observability and Metrics
+description: Where metrics are exposed, what the logs carry, how traces join, and reasonable alert thresholds
+---
+
+Three questions decide whether you can locate a fault in ten minutes: can you scrape
+metrics, can you join logs to one request, and does a broken dependency say so.
+
+import MetricsReference from '../../../../components/reference/MetricsReference.astro';
+
+## Where metrics are exposed
+
+| Variable | Default | Meaning |
+|----------|---------|---------|
+| `METRICS_ENABLED` | `true` | Off disables both instrumentation and the listener |
+| `METRICS_PORT` | `9091` | Dedicated listener, path `/metrics` |
+
+This endpoint has **no authentication**, because Prometheus must scrape it anonymously, so
+it must only exist on the container network: compose publishes it with `expose`, not
+`ports`, and nginx never references 9091. No business route serves metrics — the old
+`/api/v1/metrics` required an admin session, so scrapers never got data.
+
+A port conflict does not stop the process: the listener logs
+`metrics listener on :9091 unavailable` and the site keeps serving. "Site is fine, no
+metrics" means read that WARN line first.
+
+`deploy/prometheus.yml` defines the jobs already: `feedchamber` scrapes `backend:9091`,
+`feedchamber-health` probes `backend:8080/api/v1/health` through blackbox exporter, and
+`nats` scrapes `nats-exporter:7777`. `deploy/grafana/` holds a dashboard and datasource
+provisioning you can mount as-is.
+
+## Reading the metrics
+
+| Area | Key families | What it tells you |
+|------|--------------|-------------------|
+| HTTP | `feedchamber_http_requests_total`, `_duration_seconds`, `_panics_total` | `path` is the collapsed route template (`/api/v1/posts/:id`), safe to panel |
+| Database | `feedchamber_db_queries_total`, `_db_slow_queries_total` | slow queries are the numerator, threshold 200 ms; without the denominator "slower" and "busier" look alike |
+| NATS | `feedchamber_nats_connected{client}`, `_disconnects_total`, `_reconnects_total` | clients are only `kv` and `eventbus`; both counters climbing means flapping |
+| KV | `feedchamber_kv_operation_duration_seconds{op,outcome}`, `_kv_cas_exhausted_total` | CAS exhaustion means hot keys fighting over one counter |
+| Event bus | `feedchamber_eventbus_publish_total{event,result}`, `_dropped_total` | a rising `dropped_total` means notifications or XP are **permanently** missing |
+| SSE | `feedchamber_sse_connections{channel}`, `_sse_write_failures_total{channel}` | the gauge also drops on a normal tab close, so it cannot replace the failure counter |
+| Webhooks | `feedchamber_webhook_deliveries_total{outcome}`, `_pending_deliveries` | pending is a true `COUNT(*)` backlog |
+| Auth | `feedchamber_login_failures_total{reason}`, `_permission_decisions_total{scope,result}` | three bounded reasons: `unknown_user`, `no_credential`, `bad_password` |
+| Rate limits | `feedchamber_ratelimit_rejections_total{name}`, `_failopen_total{name}` | non-zero fail-open means protection was **absent** (KV failed, traffic allowed) |
+| Read cache | `feedchamber_readcache_hits_total{name}`, `_misses_total{name}` | fixed names: `post_list`, `tag_list`, `space_tree`, `space_flat` |
+
+Connection-pool metrics come from a custom collector and are **not** in the generated list
+at the end of the page: `feedchamber_db_pool_max_open_connections`, `_open_connections`,
+`_in_use`, `_idle`, `_wait_count_total`, `_wait_duration_seconds_total`.
+
+Label values must stay bounded. Trace ids, user ids, raw path segments and error text are
+never labels, or the series count explodes.
+
+## Logs
+
+Request logs are JSON (`LOG_FORMAT=json`), one line per request: `trace_id`, `span_id`,
+`method`, `path`, `route` (the template, written back after routing), `status`,
+`latency_ms`, `user_uuid` (empty when anonymous) and `ip` (trusts `X-Forwarded-For` and
+`X-Real-IP`). `LOG_LEVEL` accepts `debug` / `info` / `warn` / `error` and also governs
+legacy direct `logrus` calls; `LOG_OUTPUT` takes `stdout`, `stderr` or a file path.
+
+To follow one request, grep its `trace_id`: services log through
+`logger.FromContext(ctx)`, which already carries it.
+
+## Traces
+
+`middleware.Trace` creates the trace and **must run before `Logger`**, or request logs have
+no trace id. Precedence is inbound `traceparent` > inbound `X-Request-ID` (32 lowercase
+hex) > fresh. `X-Request-ID` is always echoed; `traceparent` is echoed while
+`TRACING_ENABLED=true` — disabling it only stops parsing and echoing, logs still carry a
+trace. Events carry `traceparent` in the NATS header, so a notification's log lines join
+the request that produced it.
+
+## Health check
+
+`GET /api/v1/health` performs three real probes. `db` runs `Ping` within 3 s, `kvstore`
+writes, reads and deletes an `_health_check` key, `storage` stats the local directory or
+checks that the S3 bucket is configured. Any failure returns **503** while still listing all
+three results; a healthy DB also reports `db_pool_max_open`, `db_pool_open`,
+`db_pool_in_use`, `db_pool_idle` and `db_pool_wait_count`. Compose health checks hit this
+path, so a red probe also blocks `depends_on` startup ordering.
+
+## Alerting
+
+The thresholds in `deploy/prometheus/rules/feedchamber.yml` are starting points for a small
+self-hosted forum, not SLAs.
+
+| Alert | Condition | For | Severity |
+|-------|-----------|-----|----------|
+| `High5xxErrorRate` | 5xx share > 5% | 5m | page |
+| `HighP99Latency` | P99 > 1s | 10m | ticket |
+| `BackendMetricsEndpointDown` | `up{job="feedchamber"} == 0` | 2m | page |
+| `HealthEndpointDown` | blackbox probe fails | 2m | page |
+| `DBPoolSaturation` | `in_use / max_open > 0.9` or > 10 waits in 5m | 5m | ticket |
+| `NATSDisconnected` | `feedchamber_nats_connected == 0` | 2m | page |
+| `EventBusDrops` | `increase(dropped_total[5m]) > 0` | immediate | page |
+| `RateLimiterFailOpen` | any increase over 5m | immediate | ticket |
+
+Three rules learned the hard way: histograms can only be probed via `_count` (`absent()` on
+the base name is always true), backlog gauges need a real `COUNT(*)` rather than the batch
+size, and login-failure alerts need a relative threshold — 5× the instance's own 7-day
+mean with a floor of 10. A NATS partition never exits the process (reconnects are
+unlimited), which is exactly why it needs an alert: sessions, rate limits, events and
+permission sync all degrade silently.
+
+## All metrics
+
+Generated from the `Name` / `Help` declarations in the source and refreshed with the code.
+The connection pool and Go runtime collectors are not part of it.
+
+<MetricsReference locale="en" />

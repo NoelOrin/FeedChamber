@@ -6,10 +6,10 @@ import (
 	"errors"
 	"testing"
 
-	"orinforum/internal/mock"
-	"orinforum/internal/model"
-	"orinforum/internal/pkg"
-	"orinforum/internal/repository"
+	"feedchamber/internal/mock"
+	"feedchamber/internal/model"
+	"feedchamber/internal/pkg"
+	"feedchamber/internal/repository"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

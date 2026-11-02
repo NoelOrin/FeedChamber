@@ -1,6 +1,6 @@
 package service
 
-import "orinforum/internal/model"
+import "feedchamber/internal/model"
 
 // SpaceVisibility 是版面可见性的**有效值**（已沿祖先链继承）。
 type SpaceVisibility struct {

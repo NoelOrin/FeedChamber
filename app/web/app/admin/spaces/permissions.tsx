@@ -1,6 +1,6 @@
 'use client';
 
-import { type Permission, permissionService, type Role, roleService, spaceService } from '@orinforum/api-client';
+import { type Permission, permissionService, type Role, roleService, spaceService } from '@feedchamber/api-client';
 import { useEffect, useState } from 'react';
 
 import { Badge } from '~/components/ui/badge';
