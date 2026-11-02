@@ -1,0 +1,66 @@
+name: Bug report
+description: 报告一个可以复现的问题
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        提交前请先搜索已有 issue。安全问题不要走这里，见
+        [SECURITY.md](https://github.com/NoelOrin/FeedChamber/blob/main/SECURITY.md)。
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / 提交
+      description: release 版本、镜像 tag，或 `git rev-parse --short HEAD` 的输出
+      placeholder: e.g. v1.0.0 / 93b98fa
+    validations:
+      required: true
+
+  - type: dropdown
+    id: deploy
+    attributes:
+      label: 部署方式
+      options:
+        - Docker Compose（deploy/docker-compose.yml）
+        - 本地开发（go run + pnpm dev:web）
+        - 自建编排 / Kubernetes
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: 现象
+      description: 实际发生了什么？有报错就贴出完整响应或日志行。
+      placeholder: 期望 X，实际 Y。
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 越具体越好，curl 优先。
+      placeholder: |
+        1. POST /api/v1/auth/login
+        2. ...
+        3. 看到 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 相关日志
+      description: 保留 trace_id，删除密钥与个人信息。
+      render: shell
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 环境
+      description: 操作系统、浏览器、数据库类型、是否启用 MCP / OAuth / 外部审核。
+      placeholder: macOS 15 / Chrome 140 / PostgreSQL 16 / 未启用 MCP

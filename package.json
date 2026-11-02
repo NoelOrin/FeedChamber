@@ -1,7 +1,26 @@
 {
 	"name": "feedchamber",
+	"description": "Self-hosted community forum: Go + Iris backend, React 19 frontend, MCP-capable.",
 	"private": true,
+	"license": "MIT",
 	"packageManager": "pnpm@10.26.2",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/NoelOrin/FeedChamber.git"
+	},
+	"homepage": "https://noelorin.github.io/FeedChamber/",
+	"bugs": {
+		"url": "https://github.com/NoelOrin/FeedChamber/issues"
+	},
+	"keywords": [
+		"forum",
+		"community",
+		"go",
+		"iris",
+		"react",
+		"nats",
+		"mcp"
+	],
 	"scripts": {
 		"build": "turbo run build --filter='./packages/*' --filter='./app/*' --filter='!@feedchamber/server'",
 		"build:server": "pnpm --filter @feedchamber/server build",

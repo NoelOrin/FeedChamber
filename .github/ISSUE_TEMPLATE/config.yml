@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全问题
+    url: https://github.com/NoelOrin/FeedChamber/security/advisories/new
+    about: 漏洞请走私密渠道，不要开公开 issue
+  - name: 使用文档
+    url: https://noelorin.github.io/FeedChamber/
+    about: 安装、配置、API、MCP 与排障文档
+  - name: 讨论
+    url: https://github.com/NoelOrin/FeedChamber/discussions
+    about: 用法提问与想法交流
