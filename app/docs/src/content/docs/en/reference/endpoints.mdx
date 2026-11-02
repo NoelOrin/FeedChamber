@@ -1,0 +1,41 @@
+---
+title: Endpoint Index
+description: The complete endpoint list generated from openapi.json — 313 paths, 314 operations, grouped by domain
+---
+
+import EndpointIndex from '../../../../components/reference/EndpointIndex.astro';
+
+This page is generated from the repository's `openapi.json` during the build, not maintained by
+hand. If routes change and `make swag` is not re-run, the swag check in CI fails first, so this
+page cannot silently drift.
+
+## Path rules
+
+| Case | Actual path |
+|------|-------------|
+| Application API | `/api/v1` plus the path below (e.g. `/auth/login` → `/api/v1/auth/login`) |
+| Crawlers and feeds | Application root: `/sitemap.xml`, `/sitemap-posts.xml`, `/sitemap-spaces.xml`, `/sitemap-tags.xml`, `/robots.txt`, `/latest.rss` |
+| Protocol endpoints | `/.well-known/*` at the application root; OAuth / OIDC `token` and `userinfo` stay under `/api/v1` |
+
+`/mcp` speaks JSON-RPC, does not use the envelope, and is not in the OpenAPI document — see
+[MCP integration](/en/api/mcp/).
+
+The full health path is `/api/v1/health`; nginx also serves a local `/health` that returns
+`healthy` without touching the backend.
+
+## Reading the tables
+
+- **Writes** are always `POST` with an action suffix (`/create`, `/{id}/update`, `/{id}/delete`);
+  only reads may use `GET`.
+- List endpoints are named `/list` and take their parameters in the body (`page` / `pageSize`).
+- Every response except protocol endpoints is `{ code, msg, data }` — see
+  [API conventions](/en/api/conventions/).
+- Permission codes are not listed here; route-level gating is covered in
+  [Authentication and permissions](/en/api/authentication/).
+
+<EndpointIndex locale="en" />
+
+:::tip[Download the raw specification]
+Request bodies, response schemas, and enums live in the OpenAPI document:
+[OpenAPI](/en/api/openapi/).
+:::

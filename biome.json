@@ -18,6 +18,7 @@
 			"!!**/next-env.d.ts",
 			"!!**/node_modules",
 			"!!**/*.log",
+			"!!**/*.astro",
 			"!!**/.env",
 			"!!**/.env.local",
 			"!!**/.env.*.local",

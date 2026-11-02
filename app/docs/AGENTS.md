@@ -1,136 +1,133 @@
 # 文档站（`app/docs/`）
 
-对外文档站：Astro + [Starlight](https://starlight.astro.build/)，静态输出。
-面向**使用者**（项目介绍 / 快速开始 / API / MCP / 架构 / 部署 / 二开 / FAQ），
-不是内部工程材料。
+对外文档站：Astro 7 + [Starlight](https://starlight.astro.build/)，静态输出，中英双语。
+面向**使用者**：怎么装、怎么配、怎么管、怎么接、怎么改。
 
 > 上级：[根 AGENTS.md](../../AGENTS.md) · 相邻：[Web](../web/AGENTS.md)
 
-## 内容边界（最重要的一条）
+## 内容边界
 
-| 写进本站 | 留在仓库 `docs/`（不进站） |
-|----------|---------------------------|
-| 项目介绍、功能总览、快速开始 | plans / reviews / ADR / superpowers 计划 |
-| 架构与分层（对外可读的版本） | 内部代号（P1/P2/P3、R-04、H-04） |
-| API 约定、错误码、按域端点、openapi 下载 | 未实现能力的「预告」 |
-| MCP 双向能力 | 任何密钥、示例密码、内网地址 |
-| 部署安装、环境变量、常见故障 | 性能调优细节（无实测数据） |
-| 二开 checklist 与扩展点 | 内部评审结论与争议过程 |
+| 写进本站 | 留在仓库 `docs/` |
+|----------|------------------|
+| 安装部署、配置、后台操作、API、MCP、运维、贡献指南 | plans / reviews / ADR / superpowers |
+| 对外可读的架构与取舍 | 内部代号（R-04、H-04、P2/P3、M-xx） |
+| 生成的端点索引、配置字段、指标目录 | 未实现能力的预告 |
+| 排障与常见失败 | 密钥、示例密码、内网地址 |
 
-**对外内容必须能自证**：写进站的每个端点、错误码、环境变量都要能在源码里找到。
+**对外内容必须能自证**：端点、错误码、设置键、环境变量都要能在源码里找到。
 不写「据说」「大约」「未来会」。
 
 ## 结构
 
 ```
 app/docs/
-├── astro.config.mjs          站点标题、侧栏（8 组，手工排）、locale
-├── src/content.config.ts     collection = docs，loader 用 Starlight 的 docsLoader
-├── src/content/docs/         全部内容（本包内部，与仓库 docs/ 隔离）
-│   ├── index.mdx             首页（splash 模板 + 入口卡片）
-│   ├── getting-started.md    快速开始
-│   ├── capabilities.md       功能总览
-│   ├── glossary.md           术语表
-│   ├── faq.md                常见问题
-│   ├── roadmap.md            路线图与状态
-│   ├── architecture/         架构总览 / 分层 / 可见性 / 事件
-│   ├── api/                  约定 / 错误码 / 按域端点 / 下载
-│   ├── mcp/                  概览 / Server / Client
-│   ├── deploy/               compose / 本地 / 环境变量
-│   └── extend/               新增模块 / 扩展点
-├── scripts/sync-openapi.mjs  从仓库根同步 openapi.json 到 public/
-└── public/openapi.json       构建产物（gitignore，不提交）
+├── astro.config.mjs            标题（按 locale）、logo、i18n、侧栏（7 组，手工排）
+├── src/content.config.ts       collection = docs，Starlight docsLoader
+├── src/content/docs/           中文（根 locale）
+│   ├── index.mdx               首页（普通页 + LinkGroups / FeatureGrid）
+│   ├── getting-started.md
+│   ├── install/                choose-path / docker-compose / local / production
+│   ├── configuration/          site / authentication / infrastructure / content / growth / customization
+│   ├── administration/         overview / users / content / system
+│   ├── operations/             architecture / data-and-events / observability / troubleshooting / upgrades
+│   ├── api/                    conventions / authentication / examples / realtime / mcp / openapi
+│   ├── reference/              endpoints / configuration / environment / errors / cli
+│   └── faq.md roadmap.md contributing.md license.md glossary.md
+├── src/content/docs/en/        英文，路径与中文一一对应（含 en/index.mdx）
+├── src/components/home/        HomeLead / LinkGroups / FeatureGrid
+├── src/components/reference/   EndpointIndex / SettingsReference / MetricsReference
+├── src/data/reference.json     生成物（提交进仓库，--check 校验新鲜度）
+├── src/styles/custom.css       品牌 token + Shell 覆写；组件样式写在各 .astro 内
+├── scripts/sync-openapi.mjs    仓库根 openapi.json → public/
+├── scripts/gen-reference.mjs   源码 → src/data/reference.json（端点/设置/指标）
+├── scripts/rehype-base-links.mjs  正文站内绝对链接补 base
+└── scripts/check-base-links.mjs   产物里的链接前缀与可达性检查
 ```
 
-## 三条约定
+## 四条约定
 
-1. **内容放本包内**。不要改成指向 `../docs` 的 glob loader：内部文档的改写节奏与
-   对外导航无关，混在一起必然互相拖累。需要引用内部材料时，从站内链回仓库 URL。
-2. **openapi.json 只同步不手放**。`prebuild`/`predev` 跑 `scripts/sync-openapi.mjs`，
-   从仓库根复制（那份由 `make swag` 生成）。手放一份副本必然与真相源漂移。
-3. **侧栏手工排**。`astro.config.mjs` 的 `sidebar` 显式列出全部条目——顺序、中文标题
-   都受控。新增页面必须同时在这里登记，否则页面存在但不可导航（只有搜索能找到）。
+1. **内容放本包内**：不要用 glob loader 指到 `../docs`。内部材料的节奏与对外导航无关。
+2. **openapi.json 只同步不手放**：`prebuild`/`predev` 从仓库根复制。
+3. **参考页是生成物**：端点索引、配置字段、指标目录读 `src/data/reference.json`，
+   由 `scripts/gen-reference.mjs` 从 `openapi.json`、`model/setting.go`、`internal/metrics/*.go`
+   生成。改了路由/设置/指标就重跑；JSON 已提交，CI 用 `--check` 拦漂移。
+4. **侧栏手工排**：`astro.config.mjs` 显式列出全部条目，每个条目带 `translations.en`。
+   新增页面必须同时登记中文与英文标题，否则页面存在但不可导航。
+
+## 双语
+
+- 中文在 `src/content/docs/`，英文在 `src/content/docs/en/`，**slug 必须一一对应**。
+- 首页也必须两套：`index.mdx` 与 `en/index.mdx`。
+- 英文不是逐字翻译：短句、主动语态，术语保留英文原名。
+- 组件通过 `locale` prop 取文案（`EndpointIndex locale="en"`），不依赖页面语言。
+
+## 设计层
+
+- 品牌 token 在 `src/styles/custom.css`（`:root[data-theme='light']` 与默认深色两套），
+  包括 `--fc-*` 与 Starlight 的 `--sl-color-*` 覆写。
+- 组件样式写在 `.astro` 的 scoped `<style>` 里；需要压过 Markdown 全局样式时用
+  `.组件根类 选择器` 提高特异性（见 `EndpointIndex.astro`）。
+- 首页是普通文档页（`tableOfContents: false`），不是 splash：保留侧栏，靠
+  `body:has(.fc-home)` 放宽正文宽度。
+- `src/components/Head.astro` 只覆盖首页 `<title>`（避免「Feed Chamber · Feed Chamber 文档」），
+  其余 head 条目原样透传；新增首页时同步这里与 `astro.config.mjs` 的 `components.Head`。
+- biome 忽略 `**/*.astro`（它只解析 frontmatter，会误报未使用变量）；Astro 文件由
+  `tsc --noEmit` 与构建负责。
 
 ## 写作约定
 
-- 每页 frontmatter 至少给 `title` 与 `description`（`description` 进搜索结果与 SEO）
-- 侧栏顺序用 `sidebar.order`（同目录内）
-- 用 Starlight 的 aside 语法表达重点：`:::note` / `:::tip` / `:::caution` / `:::danger`
-- 代码块标语言；命令给可直接粘贴的完整形式
-- 中文正文与代码、英文术语之间加空格
+- 每页 frontmatter 必须给 `title` 与 `description`（进搜索与 SEO）。
+- 页面骨架：一段话说明解决什么问题 → `## 前置条件` → `## 操作步骤` → `## 验证` → `## 常见失败`。
+- 参考型内容用表格；列名具体，不超过 6 列。
+- 代码块标语言；命令给完整可粘贴形式；中文与英文/代码之间加空格。
+- 提示块用 `:::note` / `:::tip` / `:::caution` / `:::danger`，一页不超过 3 个。
+- 站内链接以 `/` 开头、结尾带 `/`；正文链接由 rehype 插件补 base。
+- MDX 里手写的 JSX 属性（组件 props 里的 `href`）**不走** rehype，必须用
+  `import.meta.env.BASE_URL` 插值——组件里已经用 `withBase` 统一处理。
 
 ## 命令
 
 ```bash
-pnpm dev:docs      # 开发，默认 http://localhost:4321
-pnpm build:docs    # 构建，产物在 app/docs/dist
-pnpm --filter @feedchamber/docs check   # tsc --noEmit + biome check
+pnpm dev:docs                                   # http://localhost:4321
+pnpm build:docs                                 # 产物在 app/docs/dist
+pnpm --filter @feedchamber/docs sync:reference  # 重新生成 reference.json
+pnpm --filter @feedchamber/docs sync:reference:check  # CI：与源码是否一致
+pnpm --filter @feedchamber/docs check           # astro sync + tsc + biome
 ```
 
-> **搜索只在构建产物里有**：Pagefind 的索引是构建期生成的，`dist/pagefind/` 下有
-> `pagefind.js` 与索引分片。dev 模式下 `/pagefind/*` 返回 404 是正常的，不是配置错误。
+> **搜索只在构建产物里有**：Pagefind 索引构建期生成，dev 下 `/pagefind/*` 404 属正常。
 
 `check` 用 `tsc --noEmit` 而不是 `astro check`：后者在当前 pnpm 布局下解析
-`@astrojs/check` 的传递依赖会失败（`@emnapi/runtime` 缺失）。tsc 已能覆盖类型错误。
+`@astrojs/check` 的传递依赖会失败（`@emnapi/runtime` 缺失）。
 
 ## GitHub Pages 部署（`.github/workflows/docs-pages.yml`）
 
-推 `main` / `develop` 且改动命中 `app/docs/**`、`openapi.json`、该 workflow 自身时自动发布；
-也可手动触发。
+推 `main` / `develop` 且改动命中 `app/docs/**`、`openapi.json`、该 workflow 时自动发布。
 
-**为什么单独一个 workflow**：Astro 7 的 `engines` 要求 Node >= 22.23.4，而 `quality.yml`
-用的是 Node 20（给 web/biome 用）。两套 Node 版本各自独立，不要为了省一个文件去抬
-`quality.yml` 的版本——那会牵动整个前端依赖树。
+- **Node 版本独立**：Astro 7 要求 Node >= 22.23.4，`quality.yml` 用 Node 20（给 web/biome），
+  不要为了省文件去抬它。
+- **`site` / `base` 由 `DOCS_SITE` / `DOCS_BASE` 注入**：项目页挂在
+  `https://<owner>.github.io/<repo>/`，缺 base 前缀会让站内跳转与 `_astro` 资源 404。
+- 首次部署：仓库 Settings → Pages → Source 选 GitHub Actions；`github-pages` environment
+  的分支策略要包含 `develop`。
 
-**`site` / `base` 由环境变量注入**（`DOCS_SITE` / `DOCS_BASE`）。项目页挂在
-`https://<owner>.github.io/<repo>/`，缺 `base` 前缀会让站内跳转与 `_astro` 静态资源
-全部 404。换自定义域名时只改 workflow 里那两行，并把 `base` 设回 `/`。
+### 三道护栏（都在 workflow 里，别删）
 
-### 首次部署要做的两件事
+| 步骤 | 抓什么 |
+|------|--------|
+| `gen-reference.mjs --check` | 生成的参考数据是否与源码漂移 |
+| `dist/openapi.json` 断言 | prebuild 的同步脚本是否漏跑 |
+| `check-base-links.mjs` | 产物里站内绝对链接是否带 base、是否指向真实文件 |
 
-1. 仓库 Settings → Pages → Source 选 **GitHub Actions**。
-2. `github-pages` environment 的**允许分支**要包含 `develop`（默认只有 `main`）。
-   否则 Build 会绿、Deploy 直接失败在保护规则上。加分支：
+### 正文链接为什么走 rehype
 
-```bash
-gh api -X POST repos/<owner>/<repo>/environments/github-pages/deployment-branch-policies \
-  -f name=develop -f type=branch
-```
-
-线上地址：`https://<owner>.github.io/<repo>/`。
-
-### 两道产物护栏（都在 workflow 里，别删）
-
-| 脚本 | 抓什么 | 为什么必须 |
-|------|--------|-----------|
-| `scripts/check-base-links.mjs` | ① 站内绝对链接是否带 base 前缀 ② 带前缀的链接是否指向真实产物 | GitHub Pages 上这类错误**构建期不报、CI 不报，只在线上 404** |
-| workflow 内联断言 | `dist/openapi.json` 是否存在 | prebuild 的 sync 脚本漏跑会让「下载」页变成 404 |
-
-`check-base-links.mjs` 需要 `DOCS_BASE` 环境变量；`DOCS_BASE=/` 时直接跳过。
-
-### 正文链接为什么要走 rehype 插件
-
-Starlight 会给侧栏与分页加 base，但**正文里手写的 `[x](/foo/)` 原样保留**。
-所以 `scripts/rehype-base-links.mjs` 在渲染管线里统一补前缀——修在管线而不是逐篇改，
-新页面自动覆盖。
-
-例外：**MDX 里手写的 JSX 属性不走 Markdown 管线**。首页那两个入口按钮因此用
-`import.meta.env.BASE_URL` 插值；同理，`hero.actions` 的 `link` 是 frontmatter、
-拿不到 base，所以首页刻意不用 hero actions。
-
-## 多版本（预留，未启用）
-
-现在是单版本（当前分支即唯一版本）。需要并行版本时：
-
-1. 装 `starlight-versions` 插件
-2. 把当前内容移入版本目录（如 `src/content/docs/v1/`）
-3. 在 `astro.config.mjs` 的 integrations 里加插件配置
-
-**本配置的侧栏结构不需要改**——这是当初把侧栏写成显式条目的原因之一。
+Starlight 只给侧栏与分页加 base，正文里手写的 `[x](/foo/)` 会原样保留。
+`rehype-base-links.mjs` 在渲染管线统一补前缀；MDX 的 JSX 属性不经过管线，
+所以组件内部用 `withBase()`。
 
 ## 本文件何时更新
 
-- 新增/删除一级内容分组（即侧栏的 8 组之一）
-- 内容边界规则变化
-- openapi 同步方式变化（比如改成构建期渲染）
-- 启用多版本
+- 新增/删除一级内容分组，或新增 `src/components/**` 下的类别
+- 生成数据的来源或 `--check` 方式变化
+- 部署方式（Pages / 自定义域名 / 多版本）变化
+- 双语策略变化

@@ -27,11 +27,12 @@ GitHub Actions。五个 workflow，分工明确：**质量门（几分钟）与�
 
 仓库此前**没有任何 lint / 格式化 / 测试门禁**，于是 54 个 gofmt 漂移文件与 207 个 biome 错误一路提交进主干（2026-10-28 一次性清理）。`quality.yml` 就是那道门——不要因为「这次改动很小」就跳过它。
 
-## docs-pages.yml 的两道护栏
+## docs-pages.yml 的三道护栏
 
 | 检查 | 抓什么 | 为什么不能删 |
 |------|--------|-------------|
 | `scripts/check-base-links.mjs`（在 `app/docs` 里） | 站内绝对链接是否带 base 前缀；带前缀的链接是否指向真实产物 | 项目页挂在 `/<repo>/` 下，漏前缀或死链**构建期不报、CI 不报，只在线上 404** |
+| `app/docs/scripts/gen-reference.mjs --check` | 端点索引 / 配置字段 / 指标目录的生成物是否与 `openapi.json` 和 Go 源码一致 | 参考页是生成物；不校验的话，路由或设置改了而页面没重生成，线上会长期显示旧数据 |
 | 内联断言 `dist/openapi.json` | prebuild 的 sync 脚本是否真的把规格复制进产物 | 漏了会让「下载 openapi.json」页变成 404 |
 
 `DOCS_SITE` / `DOCS_BASE` 由 workflow 注入。换自定义域名时改那两行，并把 `base` 设回 `/`。

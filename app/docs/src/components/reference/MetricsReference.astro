@@ -1,0 +1,160 @@
+---
+import reference from '../../data/reference.json';
+
+interface Props {
+	locale?: 'zh' | 'en';
+}
+
+const { locale = 'zh' } = Astro.props;
+const isEn = locale === 'en';
+const metrics = reference.metrics;
+const t = isEn
+	? {
+			filter: 'Filter metrics…',
+			name: 'Metric',
+			type: 'Type',
+			help: 'Description',
+			total: 'metrics',
+			noMatch: 'No metric matches.',
+		}
+	: { filter: '按指标名筛选…', name: '指标', type: '类型', help: '说明', total: '个指标', noMatch: '没有匹配的指标。' };
+---
+
+<div class="metrics-reference" data-metrics-reference>
+	<div class="toolbar">
+		<input type="search" class="filter" placeholder={t.filter} aria-label={t.filter} data-metrics-filter />
+		<p class="counts"><strong>{metrics.length}</strong>{t.total}</p>
+	</div>
+
+	<table>
+		<thead>
+			<tr>
+				<th>{t.name}</th>
+				<th class="col-type">{t.type}</th>
+				<th>{t.help}</th>
+			</tr>
+		</thead>
+		<tbody>
+			{metrics.map((metric) => (
+				<tr data-row>
+					<td><code>{metric.name}</code></td>
+					<td class="col-type"><span class="type">{metric.type}</span></td>
+					<td>{metric.help}</td>
+				</tr>
+			))}
+		</tbody>
+	</table>
+	<p class="empty" data-empty hidden>{t.noMatch}</p>
+</div>
+
+<script>
+	const root = document.querySelector('[data-metrics-reference]');
+	if (root) {
+		const filter = root.querySelector('[data-metrics-filter]');
+		const rows = [...root.querySelectorAll('[data-row]')];
+		const empty = root.querySelector('[data-empty]');
+		filter?.addEventListener('input', () => {
+			const term = (filter.value ?? '').trim().toLowerCase();
+			let visible = 0;
+			for (const row of rows) {
+				const match = !term || row.textContent.toLowerCase().includes(term);
+				row.hidden = !match;
+				if (match) visible += 1;
+			}
+			if (empty) empty.hidden = visible !== 0;
+		});
+	}
+</script>
+
+<style>
+	.metrics-reference .toolbar {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 0.75rem;
+		margin: 1.25rem 0 1rem;
+		padding: 0.65rem;
+		border: 1px solid var(--fc-hairline);
+		border-radius: 9px;
+		background: var(--fc-bg-soft);
+	}
+
+	.metrics-reference .filter {
+		flex: 1 1 18rem;
+		min-width: 0;
+		padding: 0.45rem 0.7rem;
+		border: 1px solid var(--fc-hairline-strong);
+		border-radius: 6px;
+		background: var(--fc-bg);
+		color: var(--fc-text-strong);
+		font-size: 0.85rem;
+	}
+
+	.metrics-reference .filter:focus {
+		outline: 2px solid var(--fc-accent);
+		outline-offset: 1px;
+	}
+
+	.metrics-reference .counts {
+		margin: 0;
+		font-size: 0.78rem;
+		color: var(--fc-text-muted);
+	}
+
+	.metrics-reference .counts strong {
+		margin-right: 0.15rem;
+		color: var(--fc-text-strong);
+		font-family: var(--sl-font-mono);
+	}
+
+	.metrics-reference table {
+		display: table;
+		width: 100%;
+		border: 1px solid var(--fc-hairline);
+		border-radius: 8px;
+		font-size: 0.82rem;
+		overflow: hidden;
+	}
+
+	.metrics-reference thead th {
+		background: var(--fc-bg-soft);
+		font-size: 0.72rem;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--fc-text-muted);
+	}
+
+	.metrics-reference tbody tr {
+		background: none;
+	}
+
+	.metrics-reference td,
+	.metrics-reference th {
+		border-color: var(--fc-hairline);
+		padding: 0.42rem 0.75rem;
+	}
+
+	.metrics-reference .col-type {
+		width: 7rem;
+	}
+
+	.metrics-reference .type {
+		font-family: var(--sl-font-mono);
+		font-size: 0.7rem;
+		color: var(--fc-accent);
+	}
+
+	.metrics-reference .empty {
+		margin: 0.4rem 0 0;
+		font-size: 0.8rem;
+		color: var(--fc-text-muted);
+	}
+
+	@media (max-width: 52rem) {
+		.metrics-reference table {
+			display: block;
+			overflow-x: auto;
+			white-space: nowrap;
+		}
+	}
+</style>

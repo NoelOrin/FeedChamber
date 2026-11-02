@@ -1,0 +1,241 @@
+---
+import { Icon } from '@astrojs/starlight/components';
+
+interface Cta {
+	label: string;
+	href: string;
+	variant?: 'primary' | 'ghost';
+	icon?: string;
+}
+
+interface Stat {
+	value: string;
+	label: string;
+}
+
+interface Props {
+	version: string;
+	selfHosted?: string;
+	lead: string;
+	ctas: Cta[];
+	shot: { src: string; alt: string; caption?: string };
+	stats?: Stat[];
+}
+
+const { version, lead, ctas, shot, stats = [], selfHosted = '自托管' } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const withBase = (href: string) => (href.startsWith('/') ? `${base}${href.slice(1)}` : href);
+const shotSrc = `${base}${shot.src.replace(/^\/+/, '')}`;
+---
+
+<div class="lead">
+	<p class="meta">
+		<span class="fc-version"><span class="fc-dot"></span>{version}</span>
+		<span class="sep">·</span>
+		<span class="fc-muted">{selfHosted}</span>
+		<span class="sep">·</span>
+		<span class="fc-muted">MIT</span>
+	</p>
+	<p class="summary">{lead}</p>
+	<p class="actions">
+		{
+			ctas.map((cta) => (
+				<a class:list={['cta', cta.variant === 'primary' ? 'primary' : 'ghost']} href={withBase(cta.href)}>
+					{cta.icon && <Icon name={cta.icon} size="1rem" />}
+					<span>{cta.label}</span>
+				</a>
+			))
+		}
+	</p>
+</div>
+
+<figure class="shot">
+	<div class="chrome" aria-hidden="true">
+		<span class="dots"><i></i><i></i><i></i></span>
+		<span class="url">localhost:8080/timeline</span>
+	</div>
+	<img src={shotSrc} alt={shot.alt} width="1440" height="900" loading="eager" />
+	{shot.caption && <figcaption>{shot.caption}</figcaption>}
+</figure>
+
+{
+	stats.length > 0 && (
+		<dl class="stats">
+			{stats.map((stat) => (
+				<div>
+					<dt>{stat.value}</dt>
+					<dd>{stat.label}</dd>
+				</div>
+			))}
+		</dl>
+	)
+}
+
+<style>
+	.lead {
+		margin-top: 1.25rem;
+	}
+
+	.meta {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		margin: 0 0 1.1rem;
+		font-size: 0.8125rem;
+	}
+
+	.sep {
+		color: var(--fc-hairline-strong);
+	}
+
+	.summary {
+		max-width: 44rem;
+		margin: 0;
+		font-size: 1.0625rem;
+		line-height: 1.7;
+		color: var(--fc-text);
+	}
+
+	.actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.6rem;
+		margin: 1.6rem 0 0;
+	}
+
+	.cta {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+		padding: 0.55rem 0.95rem;
+		border-radius: 7px;
+		border: 1px solid var(--fc-hairline-strong);
+		font-size: 0.875rem;
+		font-weight: 550;
+		color: var(--fc-text-strong);
+		text-decoration: none;
+		transition:
+			border-color 120ms ease,
+			background 120ms ease,
+			transform 120ms ease;
+	}
+
+	.cta:hover {
+		border-color: var(--fc-accent);
+		background: var(--fc-bg-soft);
+		text-decoration: none;
+	}
+
+	.cta.primary {
+		border-color: transparent;
+		background: var(--sl-color-accent);
+		color: #fff;
+	}
+
+	.cta.primary:hover {
+		background: var(--fc-accent-strong);
+		color: #17131f;
+	}
+
+	:global([data-theme='light']) .cta.primary:hover {
+		color: #fff;
+		background: var(--fc-accent-strong);
+	}
+
+	.shot {
+		margin: 2.25rem 0 0;
+	}
+
+	.chrome {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--fc-hairline);
+		border-bottom: none;
+		border-radius: 10px 10px 0 0;
+		background: var(--fc-bg-soft);
+	}
+
+	.dots {
+		display: inline-flex;
+		gap: 0.3rem;
+	}
+
+	.dots i {
+		width: 0.5rem;
+		height: 0.5rem;
+		border-radius: 999px;
+		background: var(--fc-hairline-strong);
+	}
+
+	.url {
+		flex: 1;
+		padding: 0.1rem 0.55rem;
+		border-radius: 5px;
+		background: var(--fc-bg);
+		border: 1px solid var(--fc-hairline);
+		font-family: var(--sl-font-mono);
+		font-size: 0.7rem;
+		color: var(--fc-text-muted);
+		text-align: center;
+	}
+
+	img {
+		display: block;
+		width: 100%;
+		height: auto;
+		border: 1px solid var(--fc-hairline);
+		border-radius: 0 0 10px 10px;
+		background: #fff;
+	}
+
+	figcaption {
+		margin-top: 0.6rem;
+		font-size: 0.8rem;
+		color: var(--fc-text-muted);
+		text-align: center;
+	}
+
+	.stats {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 1px;
+		margin: 2.5rem 0 0;
+		padding: 1px;
+		background: var(--fc-hairline);
+		border-radius: 10px;
+		overflow: hidden;
+	}
+
+	.stats > div {
+		padding: 1rem 0.75rem;
+		background: var(--fc-bg);
+		text-align: center;
+	}
+
+	.stats dt {
+		font-size: 1.35rem;
+		font-weight: 650;
+		letter-spacing: -0.02em;
+		color: var(--fc-text-strong);
+		font-family: var(--sl-font-mono);
+	}
+
+	.stats dd {
+		margin: 0.2rem 0 0;
+		font-size: 0.75rem;
+		color: var(--fc-text-muted);
+	}
+
+	@media (max-width: 40rem) {
+		.stats {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.cta {
+			flex: 1 1 auto;
+			justify-content: center;
+		}
+	}
+</style>

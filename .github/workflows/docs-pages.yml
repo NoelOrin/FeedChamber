@@ -69,6 +69,12 @@ jobs:
         working-directory: app/docs
         run: pnpm exec biome check ./src ./astro.config.mjs ./scripts
 
+      # 端点索引 / 配置字段 / 指标目录是生成物（scripts/gen-reference.mjs），
+      # 提交的 JSON 必须与源码一致。忘了重新生成时在 CI 拦下，而不是让页面悄悄过期。
+      - name: Assert reference data is in sync
+        working-directory: app/docs
+        run: node scripts/gen-reference.mjs --check
+
       # site/base 由环境变量注入。项目页挂在 https://<owner>.github.io/<repo>/，
       # 少了 base 前缀，站内跳转与 _astro 静态资源会全部 404。
       # 换成自定义域名时只改这两行（并把 base 改成 '/'）。

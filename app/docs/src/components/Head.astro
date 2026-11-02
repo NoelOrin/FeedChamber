@@ -1,0 +1,26 @@
+---
+/**
+ * 只做一件事：首页的 <title> 不要拼成「Feed Chamber · Feed Chamber 文档」。
+ *
+ * Starlight 的标题固定是 `${page.title} ${delimiter} ${siteTitle}`，没有首页特例；
+ * 与其改 siteTitle 让全站顶栏变成「文档」，不如覆盖首页那一条 title。
+ * 其余 head 条目原样透传。
+ */
+const { head } = Astro.locals.starlightRoute;
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const raw = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const path = base && raw.startsWith(base) ? raw.slice(base.length) || '/' : raw;
+
+const HOME_TITLES: Record<string, string> = {
+	'/': 'Feed Chamber · 可自托管的社区论坛',
+	'/en': 'Feed Chamber · A self-hosted community forum',
+};
+const override = HOME_TITLES[path];
+
+const items = head.map((item) =>
+	override && item.tag === 'title' ? { ...item, content: override } : item,
+);
+---
+
+{items.map(({ tag: Tag, attrs, content }) => <Tag {...attrs} set:html={content} />)}

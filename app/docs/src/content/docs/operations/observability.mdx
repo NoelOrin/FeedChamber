@@ -1,0 +1,160 @@
+---
+title: 观测与指标
+description: 指标暴露在哪、日志带哪些字段、trace 怎么串起来、健康检查与告警建议
+---
+
+import MetricsReference from '../../../components/reference/MetricsReference.astro';
+
+三个问题决定你能否在十分钟内定位故障：指标抓得到吗、日志能不能按一次请求串起来、
+依赖挂了有没有直说。这页按这三条组织，最后一节是全部指标族的清单。
+
+## 指标暴露面
+
+指标走**独立监听端口**，不在业务端口上：
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `METRICS_ENABLED` | `true` | 关闭后既不埋点也不开 listener |
+| `METRICS_PORT` | `9091` | 独立 listener，路径 `/metrics` |
+
+这个端点**没有鉴权**，因为它必须能被 Prometheus 匿名抓取。所以它只应该出现在容器网络
+里：`deploy/docker-compose.yml` 用 `expose` 而不是 `ports` 发布，`deploy/nginx/nginx.conf`
+不引用 9091。业务路由上没有指标端点——曾经的 `/api/v1/metrics` 需要管理员身份，抓取端
+永远拿不到数据。
+
+端口冲突不会让进程退出：listener 起不来只打一行 `metrics listener on :9091 unavailable`
+的 WARN，站点照常服务。所以「指标抓不到但站点正常」要先看这行日志。
+
+现成的抓取配置在 `deploy/prometheus.yml`：
+
+| job | 目标 | 说明 |
+|-----|------|------|
+| `feedchamber` | `backend:9091` | 应用指标 |
+| `feedchamber-health` | `backend:8080/api/v1/health` | 经 blackbox exporter 探测 |
+| `nats` | `nats-exporter:7777` | NATS 与 JetStream 自身指标 |
+
+`deploy/grafana/` 下有可直接挂载的 dashboard 与数据源 provisioning。
+
+## 指标怎么读
+
+按「谁在出问题」分组，比按名字背更实用：
+
+- **HTTP**：`feedchamber_http_requests_total`、`_duration_seconds`、
+  `_request_size_bytes`、`_response_size_bytes`、`_panics_total`。`path` 标签是
+  **折叠过的路由模板**（`/api/v1/posts/01J...` → `/api/v1/posts/:id`），
+  所以它可以直接用来做 per-endpoint 面板。
+- **数据库**：`feedchamber_db_queries_total` 是分母，`feedchamber_db_slow_queries_total`
+  是分子（阈值 200ms）。没有分母时「慢查询变多」和「流量变大」分不开。
+- **连接池**：见下表。它由自定义 collector 提供，**不在页面末尾的指标表里**
+  （那张表按源码里的 `Name` / `Help` 声明生成，collector 用的是 `NewDesc`）。
+- **NATS**：`feedchamber_nats_connected{client}` 为 0 表示那条连接不可用；
+  `disconnects_total` 与 `reconnects_total` 一起看，两个都在涨是链路抖动。客户端只有
+  `kv` 与 `eventbus`，一方断开不代表另一方也断。
+- **KV**：`feedchamber_kv_operation_duration_seconds{op,outcome}` 按操作看延迟，
+  `feedchamber_kv_cas_exhausted_total` 涨说明有热 key 在抢同一计数器。
+- **事件总线**：`publish_total{event,result}`、`dispatch_duration_seconds`、
+  `dispatch_errors_total`（handler panic）、`queue_depth`、`dropped_total`。
+  `dropped_total` 涨等于通知或积分**永久**缺失。
+- **SSE**：`feedchamber_sse_connections{channel}` 是连接数，
+  `feedchamber_sse_write_failures_total{channel}` 才是投递失败。连接数下降包含正常
+  关标签页，不能代替投递失败信号。
+- **Webhook**：`feedchamber_webhook_deliveries_total{outcome}`、
+  `_delivery_duration_seconds`、`_pending_deliveries`（真实 `COUNT(*)` 积压）。
+- **认证与授权**：`feedchamber_login_failures_total{reason}`（`unknown_user` /
+  `no_credential` / `bad_password` 三值）、
+  `feedchamber_permission_decisions_total{scope,result}`、
+  `feedchamber_permission_cache_entries{cache}`。
+- **限流**：`feedchamber_ratelimit_rejections_total{name}` 与
+  `feedchamber_ratelimit_failopen_total{name}`；后者大于 0 意味着**此刻限流实际不存在**
+  （KV 故障时放行）。
+- **读缓存**：`feedchamber_readcache_hits_total{name}` /
+  `_misses_total{name}`，name 是固定枚举（`post_list` / `tag_list` /
+  `space_tree` / `space_flat`）。
+- **备份**：`feedchamber_backup_jobs_total{kind,outcome}`、
+  `feedchamber_backup_job_duration_seconds{kind}`。
+
+连接池指标：
+
+| 指标 | 类型 | 说明 |
+|------|------|------|
+| `feedchamber_db_pool_max_open_connections` | Gauge | 池上限 |
+| `feedchamber_db_pool_open_connections` | Gauge | 当前已开连接 |
+| `feedchamber_db_pool_in_use` | Gauge | 正在使用 |
+| `feedchamber_db_pool_idle` | Gauge | 空闲 |
+| `feedchamber_db_pool_wait_count_total` | Counter | 累计等待次数 |
+| `feedchamber_db_pool_wait_duration_seconds_total` | Counter | 累计等待时长 |
+
+标签取值必须有界：trace id、用户 id、原始路径段、错误文本一律不做标签。新增指标时
+守这条，否则 Prometheus 的 series 数会被打爆。
+
+## 日志
+
+请求日志是 JSON（`LOG_FORMAT=json`），一行一次请求，字段固定：
+
+| 字段 | 含义 |
+|------|------|
+| `trace_id` / `span_id` | 与 W3C trace 一致；`X-Request-ID` 头取的就是 `trace_id` |
+| `method` / `path` | 原始方法与原始路径 |
+| `route` | 路由模板，路由匹配后才写回 |
+| `status` / `latency_ms` | 状态码与耗时 |
+| `user_uuid` | 已认证用户 ID，匿名请求为空 |
+| `ip` | 客户端地址（信任 `X-Forwarded-For` / `X-Real-IP`） |
+
+`LOG_LEVEL` 取 `debug` / `info` / `warn` / `error`，同时管住存量直接调 `logrus` 的代码；
+`LOG_OUTPUT` 可以是 `stdout`、`stderr` 或文件路径（打不开时回退 `stderr`）。
+
+定位一次请求：拿 `trace_id` 去 grep，业务层的日志带同一个字段——
+`logger.FromContext(ctx)` 取到的就是这条请求的 logger。
+
+## Trace
+
+- 入口由 `middleware.Trace` 建立，**必须排在 `Logger` 之前**，否则请求日志没有 trace。
+- 优先级：入站 `traceparent` > 入站 `X-Request-ID`（32 位小写十六进制）> 新生成。
+- 响应头始终回写 `X-Request-ID`；`TRACING_ENABLED=true` 时另外回写 `traceparent`。
+  关掉它只是不解析入站、不回写，日志里仍有 trace 供关联。
+- 事件跨 NATS 时把 `traceparent` 写进消息头，消费侧重建同一 trace，所以一条通知的
+  日志能追回触发它的那次请求。
+
+## 健康检查
+
+`GET /api/v1/health` 是三项依赖的实测，不是常量：
+
+| 检查 | 怎么验 | 失败文案示例 |
+|------|--------|--------------|
+| `db` | 3 秒超时内 `Ping` | `db ping: ...` |
+| `kvstore` | 写、读、删一个 `_health_check` 键 | `kv set: ...` |
+| `storage` | local 看目录能否 `stat`；s3 看 bucket 是否配置 | `storage dir stat: ...` |
+
+任一失败返回 **503**，响应体仍带三项明细；DB 正常时另附 `db_pool_max_open` /
+`db_pool_open` / `db_pool_in_use` / `db_pool_idle` / `db_pool_wait_count` 五个字段。
+容器编排用的就是它（backend 与 blackbox 都打这个路径），所以变红会连带 `depends_on`
+的启动顺序。
+
+## 告警建议
+
+`deploy/prometheus/rules/feedchamber.yml` 里的阈值是给小站起步用的，不是 SLA：
+
+| 告警 | 条件 | 持续 | 级别 |
+|------|------|------|------|
+| `High5xxErrorRate` | 5xx 占比 > 5% | 5m | page |
+| `HighP99Latency` | P99 > 1s | 10m | ticket |
+| `BackendMetricsEndpointDown` | `up{job="feedchamber"} == 0` | 2m | page |
+| `HealthEndpointDown` | blackbox 探测失败 | 2m | page |
+| `DBPoolSaturation` | `in_use / max_open > 0.9` 或 5 分钟内等待 > 10 次 | 5m | ticket |
+| `NATSDisconnected` | `feedchamber_nats_connected == 0` | 2m | page |
+| `EventBusDrops` | `increase(dropped_total[5m]) > 0` | 立即 | page |
+| `RateLimiterFailOpen` | `increase(...failopen_total[5m]) > 0` | 立即 | ticket |
+
+几个曾经踩过的坑，写规则时直接照抄结论：
+
+- **histogram 只能探 `_count`**：`absent(<histogram>)` 恒为真，会永久触发。
+- **积压类 gauge 不能取批查询长度**，要真实 `COUNT(*)`，否则永远停在批大小。
+- **登录失败不要用绝对阈值**（小站到不了、大站一直超），规则用「7 天均值的 5 倍且不低于 10 次」。
+- **NATS 断连不会让进程退出**（无限重试），所以必须告警：它只表现为能力一起降级。
+
+## 指标全集
+
+下表由源码生成（`feedchamber_*` 的 `Name` / `Help` 声明），随代码变更刷新；数据库连接池
+与 Go runtime collector 不在其中。
+
+<MetricsReference locale="zh" />

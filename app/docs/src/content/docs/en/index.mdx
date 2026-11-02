@@ -1,0 +1,221 @@
+---
+title: Feed Chamber
+description: A self-hosted community forum built with Go and React 19 — growth levels, visibility and gates, moderation, site customization, and two-way MCP.
+tableOfContents: false
+pagefind: false
+---
+
+import HomeLead from '../../../components/home/HomeLead.astro';
+import FeatureGrid from '../../../components/home/FeatureGrid.astro';
+import LinkGroups from '../../../components/home/LinkGroups.astro';
+
+<div class="fc-home">
+
+<HomeLead
+	version="v1.0.0"
+	selfHosted="Self-hosted"
+	lead="A self-hosted community forum: an Iris backend and a React 19 frontend, with built-in growth levels, visibility and gate rules, content moderation, and two-way MCP. One docker compose command gets you running; changing the look or adding features does not require touching the frontend build."
+	ctas={[
+		{ label: 'Quick start', href: '/en/getting-started/', variant: 'primary', icon: 'rocket' },
+		{ label: 'Install with Docker', href: '/en/install/docker-compose/', icon: 'download' },
+		{ label: 'GitHub', href: 'https://github.com/NoelOrin/FeedChamber', icon: 'github' },
+	]}
+	shot={{
+		src: 'screenshots/timeline-light.png',
+		alt: 'The Feed Chamber timeline: spaces and tags on the left, post list and filters on the right',
+		caption: 'Timeline · space and tag filters, four sort orders, unread and participation views',
+	}}
+	stats={[
+		{ value: '314', label: 'API operations' },
+		{ value: '61', label: 'permission codes' },
+		{ value: '15', label: 'MCP tools' },
+		{ value: '4', label: 'moderation modes' },
+	]}
+/>
+
+## Why Feed Chamber
+
+<FeatureGrid
+	items={[
+		{
+			title: 'Sessions, not token blacklists',
+			description: 'A login issues a server-side session. Logout, password change, role change, and bans delete the row — no revocation list.',
+			icon: 'approve-check',
+		},
+		{
+			title: 'XP is derived, not accumulated',
+			description: 'total_xp = Σ(metric × current rule) + streak bonuses + manual adjustments. Deleting a post reclaims its XP.',
+			icon: 'star',
+		},
+		{
+			title: 'Visibility and gates',
+			description: 'Spaces are public, login-only, or level-gated, with the strictest policy inherited. Gate rules allow, deny, require review, or rate limit.',
+			icon: 'padlock',
+		},
+		{
+			title: 'Four moderation modes',
+			description: 'off / async / external / manual. Machine credentials writing high-risk content are forced into drafts for human approval.',
+			icon: 'comment-alt',
+		},
+		{
+			title: 'Two-way MCP',
+			description: 'Expose 15 tools to AI clients, and delegate moderation to an external MCP server when you have one.',
+			icon: 'puzzle',
+		},
+		{
+			title: 'Customize without a rebuild',
+			description: 'Theme tokens, custom CSS/JS/HTML, navigation, home modules, and custom pages — all managed from the admin panel.',
+			icon: 'setting',
+		},
+	]}
+/>
+
+## Start here
+
+<LinkGroups
+	groups={[
+		{
+			title: 'Deploy',
+			icon: 'rocket',
+			items: [
+				{
+					title: 'Docker Compose',
+					description: 'Run the full stack on a server, NAS, or VM',
+					href: '/en/install/docker-compose/',
+				},
+				{
+					title: 'Local development',
+					description: 'Go, Node, and an external NATS',
+					href: '/en/install/local/',
+				},
+				{
+					title: 'Production checklist',
+					description: 'TLS, secrets, backups, and monitoring',
+					href: '/en/install/production/',
+				},
+			],
+		},
+		{
+			title: 'Configure',
+			icon: 'setting',
+			items: [
+				{
+					title: 'Site settings',
+					description: 'Site identity, registration, SEO, and paging',
+					href: '/en/configuration/site/',
+				},
+				{
+					title: 'Authentication',
+					description: 'Sessions, MFA, OAuth, OIDC, and API keys',
+					href: '/en/configuration/authentication/',
+				},
+				{
+					title: 'Content pipeline',
+					description: 'Moderation modes, visibility, and gate rules',
+					href: '/en/configuration/content/',
+				},
+			],
+		},
+		{
+			title: 'Administer',
+			icon: 'server',
+			items: [
+				{
+					title: 'Admin overview',
+					description: 'Navigation groups, access control, first password change',
+					href: '/en/administration/overview/',
+				},
+				{
+					title: 'Users and permissions',
+					description: 'Roles, permission codes, groups, and bans',
+					href: '/en/administration/users/',
+				},
+				{
+					title: 'Content and moderation',
+					description: 'Spaces, posts, comments, reports, and trash',
+					href: '/en/administration/content/',
+				},
+			],
+		},
+		{
+			title: 'Operate',
+			icon: 'laptop',
+			items: [
+				{
+					title: 'Architecture',
+					description: 'Request path, layers, and design trade-offs',
+					href: '/en/operations/architecture/',
+				},
+				{
+					title: 'Observability',
+					description: 'Prometheus, structured logs, and traces',
+					href: '/en/operations/observability/',
+				},
+				{
+					title: 'Troubleshooting',
+					description: 'Diagnose by error, status code, and runtime signal',
+					href: '/en/operations/troubleshooting/',
+				},
+			],
+		},
+		{
+			title: 'API and integrations',
+			icon: 'puzzle',
+			items: [
+				{
+					title: 'API conventions',
+					description: 'RPC style, response envelope, and error codes',
+					href: '/en/api/conventions/',
+				},
+				{
+					title: 'API examples',
+					description: 'Login, post, comment, and pagination requests',
+					href: '/en/api/examples/',
+				},
+				{
+					title: 'MCP integration',
+					description: 'Serve tools, or consume an external server',
+					href: '/en/api/mcp/',
+				},
+			],
+		},
+		{
+			title: 'Reference',
+			icon: 'open-book',
+			items: [
+				{
+					title: 'Endpoint index',
+					description: '313 paths and 314 operations, grouped by domain',
+					href: '/en/reference/endpoints/',
+				},
+				{
+					title: 'Configuration fields',
+					description: 'Every settings key and its default',
+					href: '/en/reference/configuration/',
+				},
+				{
+					title: 'Error codes',
+					description: 'Business codes and their HTTP status mapping',
+					href: '/en/reference/errors/',
+				},
+			],
+		},
+	]}
+/>
+
+## Stack
+
+| Layer | Choice |
+|-------|--------|
+| Backend | Go 1.25 + [Iris v12](https://www.iris-go.com/), handler / service / repository layers, GORM for SQL |
+| Frontend | React 19 + vinext (App Router), TanStack Query, shadcn-style primitives, Tailwind v4 |
+| Storage | SQLite locally, PostgreSQL or MySQL in production; uploads on local disk or S3 |
+| Infrastructure | External NATS (JetStream): KV, rate-limit windows, session cache, and the event bus |
+| Observability | Prometheus on a dedicated 9091 listener, structured JSON logs, W3C traceparent |
+
+:::note[Scope of these docs]
+These docs are for **users**: how to run it, configure it, integrate with it, and extend it.
+Internal plans, reviews, and ADRs stay in the repository's `docs/` directory.
+:::
+
+</div>

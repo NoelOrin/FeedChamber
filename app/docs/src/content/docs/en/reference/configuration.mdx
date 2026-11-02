@@ -1,0 +1,41 @@
+---
+title: Configuration Fields
+description: All 126 settings keys and their defaults, including which are exposed publicly
+---
+
+import SettingsReference from '../../../../components/reference/SettingsReference.astro';
+
+System settings are the **single source of truth** for runtime configuration. The first boot
+writes every key from `DefaultSettings` into the `settings` table; from then on the stored value
+wins, environment variables are a second fallback, and hardcoded defaults are the last resort.
+
+This page is generated from `internal/model/setting.go` and lists all **126 keys**. It describes
+the seed defaults, not your site's current values.
+
+## Reading the table
+
+| Column | Meaning |
+|--------|---------|
+| **Key** | Primary key in `settings`, and the field name used by `/api/v1/settings/*` |
+| **Default** | Value written on first boot; an empty value must be supplied by an admin |
+| **Public** | Included in `GET /api/v1/settings/public`, readable without signing in |
+
+:::caution[Two exceptions that need a restart]
+Storage (`storage_*` / `s3_*`), the OAuth access-token TTL, and the OIDC `id_token` TTL are read
+**once at startup**. Everything else is cached in KV and takes effect immediately after saving.
+:::
+
+<SettingsReference locale="en" />
+
+## Admin locations
+
+| Group | Path |
+|-------|------|
+| Site, SEO, registration, moderation mode | `/admin/settings?tab=site` |
+| Users, authentication, email, content | `/admin/settings?tab=user`, `?tab=content` |
+| Third-party login (OAuth / OIDC) | `/admin/settings?tab=oauth` |
+| Storage (local / S3) | `/admin/settings?tab=storage` |
+| Gate rules | `/admin/gates` |
+| Growth and XP | `/admin/levels`, `/admin/xp-rules` |
+
+The full environment-variable list is in [Environment variables](/en/reference/environment/).
