@@ -238,6 +238,19 @@ func (c *Conn) readLoop() {
 	_ = c.Close()
 }
 
+// callHandlerSafely 调用 handler 并把 panic 转成 error。
+//
+// 这是宿主进程的存活边界，不是「防御性代码」：handler 在 dispatch
+// goroutine 里同步执行，任何未捕获的 panic 都会终结进程。
+func callHandlerSafely(fn Handler, params json.RawMessage) (res any, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("handler panic: %v", r)
+		}
+	}()
+	return fn(context.Background(), params)
+}
+
 func (c *Conn) dispatch(f Frame) {
 	c.mu.Lock()
 	fn, ok := c.handlers[f.Method]
@@ -250,7 +263,11 @@ func (c *Conn) dispatch(f Frame) {
 		return
 	}
 	// 锁已在上面释放：handler 内回调对端不会死锁。
-	res, err := fn(context.Background(), f.Params)
+	//
+	// handler 必须带 panic 边界：它在 ipc 的 dispatch goroutine 里跑，
+	// 未捕获的 panic 会直接终止整个宿主进程——一个插件的畸形参数就能
+	// 打挂站点。这里 recover 后回错误帧，对端只会看到一次失败调用。
+	res, err := callHandlerSafely(fn, f.Params)
 	if err != nil {
 		_ = c.write(Frame{ID: f.ID, Error: &FrameError{Message: err.Error()}})
 		return

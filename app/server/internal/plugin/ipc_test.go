@@ -322,3 +322,42 @@ func TestConnWritesAreSerialized(t *testing.T) {
 		require.Equal(t, "evt", f.Method)
 	}
 }
+
+// TestConnHandlerPanicDoesNotKillConnection 钉住宿主进程的存活边界。
+//
+// handler 在 dispatch goroutine 里同步执行，未捕获的 panic 会直接终止
+// 整个后端进程——一个插件传畸形参数就能打挂站点。这里断言 panic 被转成
+// 错误帧，且连接仍可用。
+func TestConnHandlerPanicDoesNotKillConnection(t *testing.T) {
+	// 两个独立 Conn 对接：client 发请求，server 注册会 panic 的 handler。
+	// 不能用同一个 Conn 自调自——那会把请求投给自己，测不出 panic 边界。
+	c1, c2 := net.Pipe()
+	client := plugin.NewConn(c1, c1)
+	server := plugin.NewConn(c2, c2)
+	require.NoError(t, client.Start())
+	require.NoError(t, server.Start())
+	t.Cleanup(func() {
+		_ = client.Close()
+		_ = server.Close()
+	})
+
+	server.Handle("boom", func(ctx context.Context, params json.RawMessage) (any, error) {
+		panic("handler exploded")
+	})
+	server.Handle("ok", func(ctx context.Context, params json.RawMessage) (any, error) {
+		return map[string]bool{"fine": true}, nil
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// 第一次调用触发 panic，必须拿到错误而不是让进程挂掉。
+	_, err := client.Call(ctx, "boom", nil)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "panic")
+
+	// 连接必须仍然可用。
+	raw, err := client.Call(ctx, "ok", nil)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), "fine")
+}
