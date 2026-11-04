@@ -18,7 +18,7 @@
 | `plans/` | 计划与基线（`discourse-baseline.md` 等） |
 | `reviews/` | 评审与复盘（`code-review-*`、`security-audit-*`、`observability-findings-*`、`phase4-discourse-alignment-retro.md`） |
 | `02-设计/` | 中文设计稿（权限体系、版面级禁言、shadowban 开发计划） |
-| `superpowers/` | **不进版本控制**（`.gitignore` 覆盖），仅本地工作区 |
+| `superpowers/` | 设计稿（`specs/`）与实施计划（`plans/`），**纳入版本控制**；仅 `.tmp/` 被忽略 |
 
 ## 写作约定
 
@@ -34,6 +34,7 @@
 - **`api-reference.md` 不是权威**：改端点后重跑 `make swag`，`openapi.json` 才是事实来源。
 - **`backend-overview.md` 的发现项编号（G/R/H）被代码注释与 change 提案引用**，不要重排编号。
 - 删文档前先确认没有引用（`grep -rn "<文件名>" --include="*.md"`），并同步 `docs/AGENTS.md` 与本文件。
+- `superpowers/specs/` 存设计稿、`superpowers/plans/` 存实施计划，两者入库；不要把它们当成本地草稿。
 
 ## 本文件何时更新
 

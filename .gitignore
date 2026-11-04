@@ -48,8 +48,10 @@ uploads/
 .claude/
 
 # Superpowers
-docs/superpowers/
-        
+# specs/ 与 plans/ 纳入版本控制（团队共享设计与实施计划）；
+# 只忽略本地临时产物，不忽略目录本身。
+docs/superpowers/.tmp/
+
 app/web/.tanstack/
 
 # Turborepo
