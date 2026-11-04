@@ -515,7 +515,7 @@ open http://localhost:8080/swagger/
 
 <!-- 由 `node scripts/check-agents-docs.mjs --write-index` 生成，请勿手改。 -->
 
-共 43 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
+共 44 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
 
 | 模块目录 | 文档 | 标题 |
 |----------|------|------|
@@ -548,6 +548,7 @@ open http://localhost:8080/swagger/
 | `app/web/components/` | [AGENTS.md](app/web/components/AGENTS.md) | Web Components（`components/`） |
 | `app/web/components/admin/` | [AGENTS.md](app/web/components/admin/AGENTS.md) | 后台壳层与准入组件（`components/admin/`） |
 | `app/web/components/markdown-editor/` | [AGENTS.md](app/web/components/markdown-editor/AGENTS.md) | Markdown 编辑器（`components/markdown-editor/`） |
+| `app/web/components/slot/` | [AGENTS.md](app/web/components/slot/AGENTS.md) | 壳层插槽（`components/slot/`） |
 | `app/web/components/ui/` | [AGENTS.md](app/web/components/ui/AGENTS.md) | UI 原语（`components/ui/`） |
 | `app/web/lib/` | [AGENTS.md](app/web/lib/AGENTS.md) | Web Lib（`lib/`） |
 | `app/web/lib/auth/` | [AGENTS.md](app/web/lib/auth/AGENTS.md) | Web Auth（`lib/auth/`） |
