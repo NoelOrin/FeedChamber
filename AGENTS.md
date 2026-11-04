@@ -515,7 +515,7 @@ open http://localhost:8080/swagger/
 
 <!-- 由 `node scripts/check-agents-docs.mjs --write-index` 生成，请勿手改。 -->
 
-共 42 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
+共 43 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
 
 | 模块目录 | 文档 | 标题 |
 |----------|------|------|
@@ -536,6 +536,7 @@ open http://localhost:8080/swagger/
 | `app/server/internal/mock/` | [AGENTS.md](app/server/internal/mock/AGENTS.md) | Mock 测试替身 |
 | `app/server/internal/model/` | [AGENTS.md](app/server/internal/model/AGENTS.md) | Model 层 |
 | `app/server/internal/pkg/` | [AGENTS.md](app/server/internal/pkg/AGENTS.md) | Pkg 通用工具包 |
+| `app/server/internal/plugin/` | [AGENTS.md](app/server/internal/plugin/AGENTS.md) | Plugin 子进程插件（`internal/plugin/`） |
 | `app/server/internal/repository/` | [AGENTS.md](app/server/internal/repository/AGENTS.md) | Repository 层 |
 | `app/server/internal/router/` | [AGENTS.md](app/server/internal/router/AGENTS.md) | Router 层 |
 | `app/server/internal/service/` | [AGENTS.md](app/server/internal/service/AGENTS.md) | Service 层 |
