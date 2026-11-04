@@ -397,15 +397,47 @@ const ProtocolVersion1 = "1"
 // 钩子名常量。插件只能实现这里列出的钩子；未知名在解析时被丢弃。
 const (
 	HookPostCreated      = "post.created"
-	HookPostUpdated      = "post.updated"
 	HookPostClosed       = "post.closed"
+	// HookCommentCreated 对插件作者比 content.created 直观，但事件总线里叫 content.created，
+	// 因此靠 hookEvents 表绑定，而不是同名恒等映射。
 	HookCommentCreated   = "comment.created"
 	HookUserRegistered   = "user.registered"
 	HookUserFollowed     = "user.followed"
 	HookReportCreated    = "report.created"
 	HookModerationDecided = "moderation.decided"
+	// HookCronDaily 由 Host 自己的 ticker 驱动，不来自事件总线，因此不在 hookEvents 里。
 	HookCronDaily        = "cron.daily"
 )
+
+// hookEvents 把钩子绑定到 eventbus 的事件常量。
+//
+// 这张表的存在理由：钩子名是给插件作者看的稳定契约，事件名是内部实现。
+// 两者不总同名（comment.created vs content.created），恒等映射会让插件静默收不到事件。
+// cron.daily 刻意不在此表——它没有事件源，由 ticker 触发。
+var hookEvents = map[string]string{
+	HookPostCreated:       eventbus.EventPostCreated,
+	HookPostClosed:        eventbus.EventPostClosed,
+	HookCommentCreated:    eventbus.EventContentCreated,
+	HookUserRegistered:    eventbus.EventUserRegistered,
+	HookUserFollowed:      eventbus.EventUserFollowed,
+	HookReportCreated:     eventbus.EventReportCreated,
+	HookModerationDecided: eventbus.EventModerationDone,
+}
+
+// HookEvents 返回钩子→事件的映射副本，避免调用方改写全局表。
+func HookEvents() map[string]string {
+	out := make(map[string]string, len(hookEvents))
+	for h, e := range hookEvents {
+		out[h] = e
+	}
+	return out
+}
+
+// HookIsEventDriven 报告该钩子是否由事件总线驱动（cron.daily 为 false）。
+func HookIsEventDriven(hook string) bool {
+	_, ok := hookEvents[hook]
+	return ok
+}
 
 // knownHooks 是核心钩子白名单。
 var knownHooks = map[string]struct{}{
@@ -1445,9 +1477,12 @@ type Broadcaster interface {
 // 事件类型与钩子名刻意保持同名（post.created 既是事件也是钩子），
 // 这样桥接是一张恒等映射，不需要维护对照表。
 func (h *Host) SubscribeEvents(b Broadcaster) {
-	for _, hook := range KnownHooks() {
+	// 必须走 HookEvents() 的映射表，不能遍历 KnownHooks() 做恒等映射：
+	// comment.created 的真实事件叫 content.created，恒等映射会让插件静默收不到。
+	// cron.daily 不在表内——它由 ticker 驱动。
+	for hook, event := range HookEvents() {
 		hook := hook
-		b.SubscribeBroadcast(hook, func(eventType string, payload map[string]any) {
+		b.SubscribeBroadcast(event, func(eventType string, payload map[string]any) {
 			h.DispatchHook(context.Background(), hook, payload)
 		})
 	}
