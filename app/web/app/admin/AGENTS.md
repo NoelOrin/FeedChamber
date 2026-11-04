@@ -67,6 +67,7 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 - 不要在页面里读 `window.location` 拼跳转：用 `lib/admin/navigation.ts` 的 `useNavigate` / `useLocation` / 查询参数 hook。
 - 删除确认用 `components/ui/confirm-dialog.tsx` 的 `useConfirm`，不要 `window.confirm`。
 - 后台页面不允许被搜索引擎索引：`admin/layout.tsx` 的 metadata 已声明 `robots: { index: false, follow: false }`，新增路由段不要覆盖它。
+- **`DataTable` 的分页三处必须同时接线**：`page` 要有 setter（`const [page, setPage] = useState(1)`）、`queryFn` 要真的把 `{ page, page_size }` 传给 service、`pagination.onChange` 要指向 `setPage`。少任一处都会让分页条「显示总数但点不动、永远只有第一页」——`/admin/tags` 曾三处全错（`const [page]` 无 setter + `tagService.list()` 不带参 + `onChange: () => {}`），标签超 20 个后第 2 页永远取不到。**只把 `page` 放进 `queryKey` 不算修好**：key 变了但请求没变，只是白白多缓存一份同样的数据。
 - **状态筛选的「全部状态」哨兵统一取 `@feedchamber/api-client` 的 `STATUS_FILTER_ALL`（`'__all__'`）**，不要在页面里各自定义 `const ALL`（`/admin/posts` 与 `/admin/reports` 共用）。后端只对 `report:manage` 持有者把该值当「不按状态过滤」，所以 **pending 帖只会出现在 `/admin/posts` 的「全部状态」下**——存量待审帖靠该列表操作列的「通过 / 拒绝」（`postService.setStatus` → `POST /posts/{id}/status`）救回，`/admin/posts` 因此是该状态唯一的运营入口。
 
 ## 本文件何时更新

@@ -29,7 +29,8 @@
 			"!!openapi.json",
 			"!!app/server/docs",
 			"!!deploy/grafana/dashboards",
-			"!!patches"
+			"!!patches",
+			"!!.agents/worktrees"
 		]
 	},
 	"formatter": {
