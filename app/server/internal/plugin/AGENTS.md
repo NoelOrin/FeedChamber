@@ -86,16 +86,66 @@ MUST NOT 插进现有审核链中间。
 |------|------|
 | `manifest.go` | `Manifest` 结构、`ParseManifest`、`(*Manifest).Validate`、`ProtocolVersion1`、8 个钩子常量与白名单、`hookEvents` 绑定表、`HookEvents()` / `HookIsEventDriven()`、`entry` 路径校验 |
 | `manifest_test.go` | 解析/校验的契约：合法 manifest、未知协议版本、缺 name/version、未知钩子丢弃、未知能力报错、坏 JSON、钩子→事件映射、`entry` 逃逸拒绝 |
+| `ipc.go` | stdio JSON-RPC 编解码：`Frame`/`FrameError`、`Conn`、`NewConn`/`Start`/`Close`、`Call`/`Notify`/`Handle`、读循环与写串行化 |
+| `ipc_test.go` | IPC 契约（外部测试 `package plugin_test`，用 `net.Pipe()` 对接两条 `Conn`）：结果回传、handler 错误透传、ctx 超时、未知方法报错、通知不等待响应、关闭解除在途调用 |
 
 后续任务追加（同一包，**内部测试用 `package plugin`、外部契约测试用 `package plugin_test`**，两者可共存）：
 
 | 计划文件 | 职责 |
 |----------|------|
-| `ipc.go` | stdio JSON-RPC 编解码（请求/响应/通知三种帧） |
 | `supervisor.go` | `os/exec` 拉起 `node`、进程组管理、退避重启（1s→2s→4s→8s→16s，上限 5 次） |
 | `hooks.go` | 钩子注册与分发（按事件类型 fan-out 到各插件） |
 | `api.go` | 宿主 API 注册与 capability 校验 |
 | `host.go` | 生命周期状态机（`installed`/`starting`/`running`/`crashed`/`stopped`） |
+
+## IPC：帧格式与请求/响应关联
+
+子进程的 stdin/stdout 就是通道，**没有长度前缀、没有分隔符协商**：每个帧是
+**一行紧凑 JSON**，以 `\n` 结尾（NDJSON）。读侧用 `bufio.Scanner` 按行切
+（单行上限 8MB，超长帧会让读循环结束并关闭连接），写侧 `json.Marshal` 后补 `\n`。
+
+```json
+{"id":7,"method":"hook.post.created","params":{"id":"p1"}}
+{"id":7,"result":{"seen":"p1"}}
+{"id":7,"error":{"message":"unknown method: boom"}}
+{"method":"event","params":{"k":"v"}}
+```
+
+| 字段 | 出现于 | 说明 |
+|------|--------|------|
+| `id` | 请求、响应 | 关联键。`Call` 用单调递增计数器分配，**只有 `Call` 分配 id**；`Notify` 不分配 |
+| `method` | 请求 | **方向判定只看它**：有 `method` 是请求，无 `method` 是响应 |
+| `params` | 请求 | 任意 JSON，原样交给 handler |
+| `result` | 响应 | handler 返回值的 `json.Marshal` 结果（`nil` 会变成字面量 `null`） |
+| `error` | 响应 | `{"message": "..."}`，非空时 `Call` 返回它并丢弃 `result` |
+
+**关联规则：响应靠 `id` 回到等待者，方向靠 `method` 是否为空区分。**
+`Call` 在发出请求**之前**把 `id → chan Frame` 注册进 `pending`，读循环收到无
+`method` 的帧就按 `id` 查表投递；`Call` 在 defer 里注销。因此：
+
+- 响应**先于**注册到达是不可能发生的（同一 goroutine 里先注册后写）。
+- `id` 对不上任何在途调用（超时后迟到的响应、对端乱填的 id）被**静默丢弃**，
+  不报错、不重试——超时已经让调用方拿到了 `ctx.Err()`。
+- 请求**不按 `id` 去重**，同一个 `id` 收到两次就是两个独立的请求。
+
+三条实现红线，改动时别弄反：
+
+1. **写必须串行**（`writeMu`）。两个 goroutine 各写半行会让对端读到一行拼接的
+   坏 JSON；坏行在读侧被跳过，症状是「帧凭空消失」而不是报错。
+2. **坏帧跳过，不致命**。单行 `json.Unmarshal` 失败只 `continue`——插件打印的
+   调试日志（`console.log` 走同一个 stdout）不该拆掉整条连接。
+3. **读循环绝不持锁调用 handler**。`dispatch` 先取表、**释放 `c.mu`**、再执行
+   handler；每个入站请求还各自起一个 goroutine。handler 里回调对端（插件问宿主、
+   宿主再问插件）是合法用法，一旦读循环阻塞或持锁，这类回调就永远等不到自己的
+   响应——表现为双向死锁而不是错误。
+
+`Call` 的两段 `select`（先等 write 完成，再等响应）都是必需的：对端不读 stdin
+时 `Write` 会无限阻塞，写在调用路径上等于让 ctx 取消失效。`Close` 除了关闭
+`closed` 信号，还关闭底层流，用来解开卡在 `Write`/`Scan` 上的 goroutine。
+
+未知方法**必须回错误帧**（`unknown method: <名>`），不能静默丢弃——否则对端的
+`Call` 只能等到自己的 ctx 超时，症状是「钩子调用莫名变慢」，排查时看不到任何线索。
+
 
 ## manifest 的校验分工
 
@@ -150,9 +200,20 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 | `TestHookPostUpdatedIsGone` | `post.updated` 不在白名单、不在映射里 |
 | `TestParseManifestRejectsEscapingEntry` | `entry` 为 `../../../etc/passwd` / `/etc/passwd` / `sub/../ok.js` / 空白时拒绝 |
 | `TestParseManifestAcceptsPlainEntryAndDefaults` | 合法相对路径照常通过；缺省仍是 `index.js` |
+| `TestConnCallReturnsResult` | 请求 `id`/`method`/`params` 落位，响应按 `id` 回到原调用方并解出 `result` |
+| `TestConnCallPropagatesHandlerError` | handler 的 error 变成错误帧，`Call` 侧能读到原文（`unexpected EOF`） |
+| `TestConnCallTimesOut` | 对端 handler 不返回时，`Call` 在 ctx 到期即返回 `context.DeadlineExceeded`（`errors.Is` 成立） |
+| `TestConnUnknownMethodReturnsError` | **未知方法回错误帧而非挂起**，错误里带 `unknown method` |
+| `TestConnNotifyDoesNotWaitForResponse` | `Notify` 立即返回，但请求确实被对端处理 |
+| `TestConnCallReturnsOnClose` | 对端已关闭时在途 `Call` 立即返回错误，不空等到自己的 ctx 到期（`Call` 里 `select` 的 `c.closed` 分支） |
 
 `DropsUnknownHooks` 与 `RejectsUnknownCapabilities` 是**刻意相反**的一对：任何让两个方向趋同的
 改动（「未知的都丢弃」或「未知的都报错」）都会让其中一个变红。
+
+`TestConnCallTimesOut` 与 `TestConnUnknownMethodReturnsError` 是 IPC 侧的对应一对：
+「对端不回」必须落到 ctx 超时，「对端不认识这个方法」必须立刻拿到错误。
+两者的区别只在于对端 handler 是否存在——所以超时测试**不能**用「对端没注册 handler」
+来制造超时（那样会立刻收到 unknown method 错误帧），必须让已注册的 handler 阻塞不返回。
 
 ## 改这里要注意
 
@@ -179,4 +240,5 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 - `entry` 校验规则变化（放行/拒绝哪些路径形态）
 - capability 校验语义变化（哪一半报错、哪一半丢弃）
 - 安全边界表述变化（同用户运行、环境变量白名单）
-- 新增对外导出的类型/函数（`Manifest` 字段、`ParseManifest`/`Validate` 签名、`HookEvents`/`HookIsEventDriven`）
+- **IPC 帧格式或请求/响应关联规则变化**（`Frame` 字段、方向判定依据、`id` 分配与丢弃策略）
+- 新增对外导出的类型/函数（`Manifest` 字段、`ParseManifest`/`Validate` 签名、`HookEvents`/`HookIsEventDriven`、`Conn`/`Frame` 的方法集）
