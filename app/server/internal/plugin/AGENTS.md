@@ -88,12 +88,13 @@ MUST NOT 插进现有审核链中间。
 | `manifest_test.go` | 解析/校验的契约：合法 manifest、未知协议版本、缺 name/version、未知钩子丢弃、未知能力报错、坏 JSON、钩子→事件映射、`entry` 逃逸拒绝 |
 | `ipc.go` | stdio JSON-RPC 编解码：`Frame`/`FrameError`、`Conn`、`NewConn`/`Start`/`Close`、`Call`/`Notify`/`Handle`、读循环与写串行化 |
 | `ipc_test.go` | IPC 契约（外部测试 `package plugin_test`，用 `net.Pipe()` 对接两条 `Conn`）：结果回传、handler 错误透传、ctx 超时、未知方法报错、通知不等待响应、关闭解除在途调用、坏行跳过、写入串行、重复响应不卡死 |
+| `supervisor.go` | `os/exec` 拉起 `node`、`buildPluginEnv` 白名单重建环境、退避重启（1s→2s→4s→8s→16s，`MaxRestarts` 默认 5）、三步关停 |
+| `supervisor_test.go` | 内部测试（`package plugin`）：白名单重建/空值跳过/白名单本身无敏感名、退避阶梯、默认值、拉起握手、**子进程 env 端到端**、退避重启与超限停止、**Stop 解开卡死写** |
 
 后续任务追加（同一包，**内部测试用 `package plugin`、外部契约测试用 `package plugin_test`**，两者可共存）：
 
 | 计划文件 | 职责 |
 |----------|------|
-| `supervisor.go` | `os/exec` 拉起 `node`、进程组管理、退避重启（1s→2s→4s→8s→16s，上限 5 次） |
 | `hooks.go` | 钩子注册与分发（按事件类型 fan-out 到各插件） |
 | `api.go` | 宿主 API 注册与 capability 校验 |
 | `host.go` | 生命周期状态机（`installed`/`starting`/`running`/`crashed`/`stopped`） |
@@ -186,6 +187,51 @@ Task 4 的推荐顺序：`conn.Close()` → 结束子进程（SIGTERM 宽限后 
 未知方法**必须回错误帧**（`unknown method: <名>`），不能静默丢弃——否则对端的
 `Call` 只能等到自己的 ctx 超时，症状是「钩子调用莫名变慢」，排查时看不到任何线索。
 
+## supervisor：管道用 `os.Pipe()`，不用 `StdinPipe`/`StdoutPipe`
+
+上面那条「不要与 `Wait` 抢着关管道」的约束，`supervisor.go` 是**从构造上绕开**的，不是靠
+小心避让：它用 `os.Pipe()` 自己建两条管道，把**子进程端**以 `*os.File` 交给
+`cmd.Stdin`/`cmd.Stdout`。`os/exec` 对 `*os.File` 直接继承 fd——不包装、不起拷贝
+goroutine、也不把父进程端登记进 `parentIOPipes`。于是：
+
+| | `StdinPipe`/`StdoutPipe` | `os.Pipe()` + `*os.File`（本实现） |
+|---|---|---|
+| 父进程端由谁关 | `cmd.Wait` | `Conn.Close`（唯一所有者） |
+| 与 `Wait` 并发关闭 | **会**（Task 3 点名的假 Wait 错误来源） | 不可能重叠 |
+| 「读完才能 Wait」 | 是（文档约束） | 不适用，`Wait` 只管回收进程 |
+| 额外负担 | — | Start 后必须由本文件关掉子进程端的另外两个 fd |
+
+最后一行是这套写法的**唯一陷阱**：父进程若留着 `inR`（子进程的 stdin 读端）或 `outW`
+（子进程的 stdout 写端），「写端拿到 EPIPE」和「读端看到 EOF」都会失灵——插件崩溃会变成
+永久静默，而不是可观测的退出。见 `spawnLocked` 里的 `closeAll(inR, outW)`。
+
+`superviseLoop` 是**唯一**调用 `cmd.Wait()` 的地方（重启循环也在它内部），所以
+「等 `Wait` 返回」＝「等这个 goroutine 结束」，`Stop` 靠 `sync.WaitGroup` 收尾。
+`Conn.Close` 与 `cmd.Wait` 因此永远是**先后**关系，不是并发。
+
+### 进程终止：SIGTERM 宽限后 SIGKILL，且 `cmd.Process.Kill()` 是唯一解药
+
+`Stop` 三步：`conn.Close()` → `SIGTERM`（宽限 `stopGrace`）→ 等 `Wait` 收尾（超时则 SIGKILL）。
+
+单靠 `conn.Close()` **解不开一个已经卡在写上的 `Notify`**：并发写会把 `poll.FD` 的
+refcount 抬起来，`Close` 只置 `closing` 位，真正的 fd 要等那次写返回才释放。这正是
+「超时 → 杀进程」必须存在的原因——**杀进程让对端读端关闭，阻塞的 `write(2)` 立刻拿到
+EPIPE 返回**。`TestSupervisorStopUnblocksWedgedWrite` 钉住它：把 `Stop` 里两处杀进程的
+代码都删掉，该测试会以「停止超时，进程未被回收」变红（只删主路径不会红，因为宽限期兜底
+会接住——这是刻意的双层设计，不是冗余）。
+
+### `Start` 只返回第一代 `Conn`
+
+崩溃重启后新进程有新管道、新 `Conn`，**不经 `Start` 返回**。宿主（Task 7 的 `Host`）
+必须把 `OnCrash` 当作「这个插件这一代结束了」的信号，去标记状态 / 重新 `StartPlugin`；
+继续拿旧 `Conn` 发钩子只会得到 `ErrClosed`。这是「`Start` 返回 `*Conn` 一次」的必然结果，
+不是实现偷懒。
+
+`OnCrash` 在 supervisor 自己的 goroutine 上同步执行、且不持锁（回调里调 `Running()`
+不会死锁），但**同步调用 `Stop()` 会**（`Stop` 要等这个 goroutine 结束）。耗时的回调请自行
+开 goroutine——Task 7 的 `OnStatus` 写库正是这么做的。
+
+`Start` 被重复调用时会先停掉上一代（`replaced` 分支），避免同一插件跑两份。
 
 ## manifest 的校验分工
 
@@ -249,6 +295,24 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 | `TestConnSkipsMalformedLines` | **坏行跳过而不断连**：非 JSON、非对象 JSON、空行之后，合法请求仍被处理并回包 |
 | `TestConnWritesAreSerialized` | **写必须串行**：16×8 个并发 `Notify`，对端读到的每一行都是完整合法 JSON 且条数不差（少 `writeMu` 就会读到拼接坏行） |
 | `TestConnDuplicateResponseDoesNotWedge` | 同一 `id` 的第二条响应被丢弃而非堵死读循环；之后连接仍可正常 `Call`（阻塞式投递会永久卡死读循环） |
+| `TestBuildPluginEnvDoesNotInheritHost` | 宿主设了 `DB_DSN`/`ADMIN_PASSWORD` 时 `buildPluginEnv` 不得带出它们；`extra` 照常追加 |
+| `TestBuildPluginEnvOmitsUnsetWhitelistEntries` | 白名单名字存在但宿主未设置 → 不写 `K=` |
+| `TestBuildPluginEnvDropsHostEmptyValues` | 宿主设成**空值**时同样不下发（空 `PATH` 会让 node 找不到自己） |
+| `TestEnvWhitelistHasNoSensitiveNames` | **白名单本身**不含 `DB_DSN`/`ADMIN_PASSWORD`/`*_SECRET`/`*_KEY`，且必须含 `PATH`（防「把白名单清空当更安全」） |
+| `TestBackoffSequence` | 退避阶梯恰为 1s→2s→4s→8s→16s，超出封顶 16s，负数不 panic |
+| `TestNewSupervisorDefaults` | `MaxRestarts` 缺省 5（＝五级阶梯）、`Entry` 缺省 `index.js`、`NodePath` 缺省 `node` |
+| `TestSupervisorStartFailsWhenNodeMissing` | 可执行文件不存在时 `Start` 返回错误、不 panic、`Stop` 仍安全（**不需要 node，任何平台都真跑**） |
+| `TestSupervisorStartsAndHandshakes` | 真拉起 node，`conn.Call` 往返成功 |
+| `TestSupervisorChildEnvIsWhitelisted` | **端到端安全防线**：真拉起 node 后读 `process.env` 的键集合，`DB_DSN`/`ADMIN_PASSWORD`/`*_KEY` 不在其中，`PATH` 与 `ExtraEnv` 在。纯函数测试抓不到「spawn 里漏写 `cmd.Env` 赋值」 |
+| `TestSupervisorRestartsWithBackoff` | 崩溃后回调被观测到，超限后 `Running()` 为 false |
+| `TestSupervisorStopsAfterMaxRestarts` | 崩溃回调次数恰为 `MaxRestarts+1`，且超限后不再重启（只看 `Running()` 抓不到 off-by-one） |
+| `TestSupervisorStopUnblocksWedgedWrite` | **kill 是卡死写的唯一解药**：node 不读 stdin 时 `Notify` 永久阻塞，`Stop` 必须能在超时内解开它（删掉 `Stop` 里全部杀进程代码即红） |
+| `TestSupervisorStopIsIdempotent` | `Stop` 可重复调用，之后 `Running()` 为 false |
+
+supervisor 的测试**分两层**，缺一层就有盲区：`buildPluginEnv`/`backoffDelay` 是纯函数，
+断言精确但抓不到装配错误；node 端到端测试抓装配，但依赖 PATH 上有 node，缺失时
+`requireNode` 会 `t.Skip`。**看到 skip 不等于通过**——`TestSupervisorStartFailsWhenNodeMissing`
+是唯一不依赖 node 的 spawn 路径覆盖，因此任何环境都保留一条真实的进程路径回归。
 
 `DropsUnknownHooks` 与 `RejectsUnknownCapabilities` 是**刻意相反**的一对：任何让两个方向趋同的
 改动（「未知的都丢弃」或「未知的都报错」）都会让其中一个变红。
@@ -285,4 +349,7 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 - 安全边界表述变化（同用户运行、环境变量白名单）
 - **IPC 帧格式或请求/响应关联规则变化**（`Frame` 字段、方向判定依据、`id` 分配与丢弃策略）
 - 流的**所有权**或 supervisor 关停顺序变化；写入从同步改成异步（或反之）会改变「谁能解开一个卡死的 `writeMu`」
-- 新增对外导出的类型/函数（`Manifest` 字段、`ParseManifest`/`Validate` 签名、`HookEvents`/`HookIsEventDriven`、`Conn`/`Frame` 的方法集）
+- **`envWhitelist` 增减**（安全边界的变化，且在 `TestEnvWhitelistHasNoSensitiveNames` 的断言里）
+- **退避阶梯或 `MaxRestarts` 语义变化**（阶梯本身、封顶值、`MaxRestarts+1` 的崩溃计数口径）
+- supervisor 的**管道构造方式**变化（换回 `StdinPipe`/`StdoutPipe` 会重新引入与 `Wait` 的关闭竞态）
+- 新增对外导出的类型/函数（`Manifest` 字段、`ParseManifest`/`Validate` 签名、`HookEvents`/`HookIsEventDriven`、`Conn`/`Frame` 的方法集、`Supervisor`/`SupervisorOptions` 的字段）
