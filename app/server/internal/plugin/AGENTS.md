@@ -21,8 +21,15 @@
 2. **stdio JSON-RPC**。没有网络协议栈、没有 WebSocket、没有端口。插件进程的 stdin/stdout 就是通道。
 3. **不引用 `internal/repository`，不持有 `*gorm.DB`**。插件要写数据只能经宿主 API，由宿主在 `service` 层执行，
    与管理员操作走**同一业务入口**（审计、事件等副作用必须一致）。
-   这条有自动化门禁：`go list -deps ./internal/plugin | grep repository` 必须为空
-   （规范见 `openspec/changes/2026-11-04-plugin-hooks/specs/layered-architecture/spec.md`）。
+   规范见 `openspec/changes/2026-11-04-plugin-hooks/specs/layered-architecture/spec.md`。
+
+   **这条目前没有自动化门禁**，CI 不会替你拦。改动本包后请手工验证：
+
+   ```bash
+   cd app/server && go list -deps ./internal/plugin | grep repository   # 必须无输出
+   ```
+
+   忘了跑不会立刻出错——依赖会一路编译通过，直到某个插件路径真的碰到数据库才暴露。
 
 第 3 条是分层要求的直接推论：`internal/plugin` 只消费 composition root 注入的接口，
 它不知道数据存在哪、也不该知道。插件直连数据库在 v1 是**同用户进程的能力**，
@@ -38,8 +45,36 @@
 | `capabilities` | **报错** | capability 决定权限。写错一个字符却静默降级，等于给管理员展示一份与运行时不一致的能力清单 |
 
 钩子名是**核心白名单**（`knownHooks` / `KnownHooks()`），插件 MUST NOT 自造钩子名。
-v1 的 9 个钩子：`post.created` `post.updated` `post.closed` `comment.created`
+v1 的 8 个钩子：`post.created` `post.closed` `comment.created`
 `user.registered` `user.followed` `report.created` `moderation.decided` `cron.daily`。
+
+### 钩子名 ≠ 事件名（`hookEvents`）
+
+钩子名是给插件作者看的**语义名**，eventbus 的事件名是站点**内部传输标识**，两者会分叉。
+`hookEvents` 是唯一的绑定表，**Task 5 必须查表，不得按字符串拼接推导**：
+
+| 钩子 | 事件 | 备注 |
+|------|------|------|
+| `post.created` | `post.created` | 同名 |
+| `post.closed` | `post.closed` | 同名 |
+| `comment.created` | **`content.created`** | 分叉：评论的传输事件叫 content |
+| `user.registered` | `user.registered` | 见下 |
+| `user.followed` | `user.followed` | 同名 |
+| `report.created` | `report.created` | 同名 |
+| `moderation.decided` | `moderation.decided` | 同名 |
+| `cron.daily` | **（无）** | ticker 驱动，不在事件映射里 |
+
+- `post.updated` **已删除**：`internal/pkg/eventbus/events.go` 里没有任何对应事件，
+  留着等于让插件声明一个永远不触发的钩子（能装、能加载、静默收不到调用）。
+- `cron.daily` 由 `TrustService` 的每日 ticker 触发，不经事件总线。
+  `HookIsEventDriven("cron.daily") == false`，Task 5 据此把它排除在事件订阅之外。
+- `user.registered` 绑定**别名事件本身**。Auth 注册成功时同时发布 `user.created` 与
+  `user.registered`（`internal/service/auth.go`，`EventUserRegistered` 是 `EventUserCreated`
+  的历史别名）。绑成 `user.created` 会让 Task 5 按事件反查钩子时两条发布都命中，
+  同一插件对**同一次注册收到两次调用**；绑别名事件则恰好只有一条命中。
+
+`TestHookEventsAllExistInEventbus` 把映射表与 `eventbus.AllEventTypes()` 对照，
+任何指向不存在事件的条目立刻变红——这是 I1 修复的回归网。
 
 v1 **只做异步钩子**，MUST NOT 有 `*.before_*` 形态的写路径前置钩子：钩子在业务动作完成之后触发，
 插件失败/超时/崩溃 MUST NOT 回滚已完成的业务动作。需要前置拦截的场景走新增 `moderation_mode` 档位，
@@ -49,8 +84,8 @@ MUST NOT 插进现有审核链中间。
 
 | 文件 | 职责 |
 |------|------|
-| `manifest.go` | `Manifest` 结构、`ParseManifest`、`(*Manifest).Validate`、`ProtocolVersion1`、9 个钩子常量与白名单 |
-| `manifest_test.go` | 解析/校验的契约：合法 manifest、未知协议版本、缺 name/version、未知钩子丢弃、未知能力报错、坏 JSON |
+| `manifest.go` | `Manifest` 结构、`ParseManifest`、`(*Manifest).Validate`、`ProtocolVersion1`、8 个钩子常量与白名单、`hookEvents` 绑定表、`HookEvents()` / `HookIsEventDriven()`、`entry` 路径校验 |
+| `manifest_test.go` | 解析/校验的契约：合法 manifest、未知协议版本、缺 name/version、未知钩子丢弃、未知能力报错、坏 JSON、钩子→事件映射、`entry` 逃逸拒绝 |
 
 后续任务追加（同一包，**内部测试用 `package plugin`、外部契约测试用 `package plugin_test`**，两者可共存）：
 
@@ -65,7 +100,13 @@ MUST NOT 插进现有审核链中间。
 ## manifest 的校验分工
 
 `ParseManifest` 只做**不需要外部输入**的校验：JSON 合法性、`name`/`version` 非空、
-`protocol_version` 必须等于 `ProtocolVersion1`、`entry` 缺省为 `index.js`、钩子白名单过滤。
+`protocol_version` 必须等于 `ProtocolVersion1`、`entry` 缺省为 `index.js` **且必须是插件目录内的相对路径**、
+钩子白名单过滤。
+
+`entry` 的校验不是形式主义：supervisor 会把它拼成 `<插件目录>/<entry>` 交给 `node` 执行。
+绝对路径（`/etc/passwd`）与含 `..` 段的路径（`../../../etc/passwd`、`sub/../ok.js`）
+都能逃出插件目录，等于把 manifest 变成任意文件执行入口。`validateEntry` 因此拒绝
+绝对路径、任一 `..` 路径段（按 `/` 与 `\` 双分隔符切分），以及 trim 后为空的 entry。
 
 `Validate(knownCaps)` 需要站点已知的能力集，而能力集由 `api.go` 提供——放在 `ParseManifest` 里
 会让 `manifest.go` 反向依赖 `api.go`。因此 capability 校验是**第二道门**，`ParseManifest` 通过
@@ -102,26 +143,40 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 | `TestParseManifestRejectsBadJSON` | 坏 JSON 报错 |
 | `TestManifestValidateRejectsUnknownCapabilities` | **未知 capability 报错**（与钩子相反的半边） |
 | `TestManifestValidateAcceptsKnownCapabilitiesAndRequiresHook` | 能力全已知时通过；钩子被过滤空后拒绝 |
+| `TestHookEventsAllExistInEventbus` | **映射表里每个事件都在 `eventbus.AllEventTypes()` 中**，且钩子都在白名单里 |
+| `TestHookEventsCoversEveryHookExceptCron` | 除 `cron.daily` 外每个钩子都有映射（漏一个＝该钩子静默失效） |
+| `TestHookCommentCreatedBindsToContentCreated` | `comment.created` → `content.created` |
+| `TestHookUserRegisteredBindsToAliasEvent` | `user.registered` → 别名事件本身，不是 `user.created`（防双投递） |
+| `TestHookPostUpdatedIsGone` | `post.updated` 不在白名单、不在映射里 |
+| `TestParseManifestRejectsEscapingEntry` | `entry` 为 `../../../etc/passwd` / `/etc/passwd` / `sub/../ok.js` / 空白时拒绝 |
+| `TestParseManifestAcceptsPlainEntryAndDefaults` | 合法相对路径照常通过；缺省仍是 `index.js` |
 
 `DropsUnknownHooks` 与 `RejectsUnknownCapabilities` 是**刻意相反**的一对：任何让两个方向趋同的
 改动（「未知的都丢弃」或「未知的都报错」）都会让其中一个变红。
 
 ## 改这里要注意
 
-- 新增钩子：`knownHooks` 与钩子常量**同一次改动**补齐，否则新钩子会被 `ParseManifest` 当未知名丢掉，
-  症状是插件静默收不到事件（不报错）。同期更新 `internal/pkg/eventbus/events.go`
-  的对应事件常量与 `docs/design/extension-points.md` 的事件目录。
+- 新增钩子：三处**同一次改动**补齐——`knownHooks`（否则被 `ParseManifest` 当未知名丢掉，
+  症状是插件静默收不到事件、不报错）、`hookEvents`（否则 `TestHookEventsCoversEveryHookExceptCron` 红）、
+  钩子常量。同时确认 `internal/pkg/eventbus/events.go` 里**真的有**对应事件常量；
+  没有就是 I1 的 `post.updated` 场景，别加这个钩子。
+  同期更新 `docs/design/extension-points.md` 的事件目录与 `packages/api-client` 等消费方。
+- 新增钩子时**优先复用现成事件**再考虑新增事件：`comment.created` → `content.created` 就是这么来的。
+  插件侧的语义名可以更自然，传输侧不必跟着改。
 - 新增 capability：在 `api.go` 的 `knownCapabilities` 登记，并在后台的能力清单里展示——插件安装前
   管理员看的就是这份清单。
 - 提升协议版本：`ProtocolVersion1` 是**唯一**可接受值，没有「兼容旧版本」分支。真要加 v2，
   必须同时定义 v1 的兼容策略，否则所有存量插件的 manifest 会在升级瞬间全部被拒。
-- `internal/plugin` 一旦 import 了 `internal/repository`，分层门禁与 spec 同时失效。
-  需要数据时注入接口，不要把仓储拉进来。
+- `internal/plugin` 一旦 import 了 `internal/repository`，分层约束与 spec 同时失效
+  （**无 CI 门禁**，只能靠手工跑上面那条 `go list -deps` 命令）。需要数据时注入接口，不要把仓储拉进来。
+- 改 `validateEntry` 等于改插件的可执行入口约束：放宽任何一条都意味着 manifest 能指定插件目录外的文件。
+  若将来要支持子目录入口（合法需求），放行的是「不带 `..` 的相对路径」，不是「任意路径」。
 
 ## 本文件何时更新
 
 - 新增/删除文件（上方两张文件表各一行）
-- 钩子清单增减、协议版本策略变化
+- 钩子清单增减、**钩子→事件映射变化**、协议版本策略变化
+- `entry` 校验规则变化（放行/拒绝哪些路径形态）
 - capability 校验语义变化（哪一半报错、哪一半丢弃）
 - 安全边界表述变化（同用户运行、环境变量白名单）
-- 新增对外导出的类型/函数（`Manifest` 字段、`ParseManifest`/`Validate` 签名）
+- 新增对外导出的类型/函数（`Manifest` 字段、`ParseManifest`/`Validate` 签名、`HookEvents`/`HookIsEventDriven`）
