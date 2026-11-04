@@ -73,6 +73,8 @@ Pub/Sub 机制：NATS core pub/sub（subject 前缀 `nats.kv.`），跨实例。
 
 广播 handler 单独存 `broadcastHandlers`/`broadcastSubs`：若与队列订阅共用 `handlers`，`handleNATSMessage` 会把队列 handler 再跑一遍，等于改掉「每事件只消费一次」的语义。`broadcast_test.go` 的 `TestSubscribeBroadcastDoesNotDoubleDeliverQueueHandlers` 钉住这一点。
 
+`Shutdown` 之后的广播是**全静默**：`broadcastSubs` 逐条退订、`nc` 置 nil。之后再 `Publish` 只记一条 `publish … after shutdown` 日志，MUST NOT 退回本地 fan-out（那会让「已关闭」变成「只在本机投递」的假象，插件钩子会在关停窗口里被触发）。`eventbus_broadcast_shutdown_test.go` 的 `TestBroadcastHandlerNotInvokedAfterShutdown` 钉住「关停前注册的 handler 关停后不再被调用 + 关停后订阅不 panic」。
+
 ## logger/
 
 结构化请求日志，输出 status/latency_ms/trace_id/span_id/user_uuid/ip/route。请求级实例由 `middleware.Trace` + `middleware.Logger` 写入 `request.Context()`，业务层用 `logger.FromContext(ctx)` 取用；`Config{Level,Format,Output}` 经 `server/iris.go` 的 `logger.SetGlobal(logger.New(cfg.Log))` 生效，`SetGlobal` 同时同步 `logrus.StandardLogger()`，使约 156 处存量裸 `logrus.X()` 调用一并受 `LOG_LEVEL/LOG_FORMAT/LOG_OUTPUT` 管辖（`New` 本身无全局副作用，`NewNop` 不触碰标准 logger）。
