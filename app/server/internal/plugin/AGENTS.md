@@ -27,8 +27,13 @@
 
    ```bash
    cd app/server && go list -deps ./internal/plugin | grep repository   # 必须无输出
+   cd app/server && go list -deps ./internal/plugin | grep -c '^gorm.io'  # 必须是 0
    ```
 
+   第二条不是重复检查。`*gorm.DB` 不从 repository 来，而是从 `internal/db` 来：
+   `eventbus → internal/metrics → internal/db → gorm`。**只要 `internal/plugin` 直接 import
+   `internal/pkg/eventbus`，生产依赖图里就会凭空多出 10 个 gorm 包**（基线 0）。
+   这正是 `pluginevent` 子包存在的原因（见「分层与事件接缝」）。
    忘了跑不会立刻出错——依赖会一路编译通过，直到某个插件路径真的碰到数据库才暴露。
 
 第 3 条是分层要求的直接推论：`internal/plugin` 只消费 composition root 注入的接口，
@@ -90,14 +95,79 @@ MUST NOT 插进现有审核链中间。
 | `ipc_test.go` | IPC 契约（外部测试 `package plugin_test`，用 `net.Pipe()` 对接两条 `Conn`）：结果回传、handler 错误透传、ctx 超时、未知方法报错、通知不等待响应、关闭解除在途调用、坏行跳过、写入串行、重复响应不卡死 |
 | `supervisor.go` | `os/exec` 拉起 `node`、`buildPluginEnv` 白名单重建环境、退避重启（1s→2s→4s→8s→16s，`MaxRestarts` 默认 5）、三步关停、`Running()` / **`Conn()`（取当前代）** |
 | `supervisor_test.go` | 内部测试（`package plugin`）：白名单重建/空值跳过/白名单本身无敏感名、退避阶梯、默认值、拉起握手、**子进程 env 端到端**、退避重启与超限停止、**Stop 解开卡死写** |
+| `hooks.go` | **`dispatcher`**（插件注册表 + 钩子分发）：`PluginCaller`、`newDispatcher`、`RegisterPlugin`（收 `*Supervisor`）/`RegisterPluginWithCaller`/`UnregisterPlugin`、`Dispatch`/`dispatchHooks`、`SubscribeEvents`、`Broadcaster`/`TraceBroadcaster` 接缝、`invertHookEvents`、`supervisorCaller` |
+| `hooks_test.go` | 分发契约（内部测试 `package plugin`）：fan-out 全员收到、非订阅者不调用、失败隔离、重复声明去重、摘除、**Dispatch 不阻塞**、**每调用超时**、**不继承调用方取消**、倒排索引、`content.created→comment.created`、**`user.registered` 双发只投一次**（fake + 真 eventbus 两条）、**换代后走新连接**、真实 IPC 往返、并发注册/分发 |
+| `pluginevent/broadcast.go` | `pluginevent.Broadcaster(*eventbus.EventBus)`：把 eventbus 广播适配成 `plugin.Broadcaster`+`TraceBroadcaster`。**独立成包是为了不让 eventbus 的 gorm 依赖进入 `internal/plugin`**，见「分层与事件接缝」 |
+| `pluginevent/broadcast_test.go` | 适配语义（`package pluginevent_test`）：type/payload 透传、实现 `TraceBroadcaster` 且 ctx 非 nil、nil bus/handler 安全空操作 |
 
 后续任务追加（同一包，**内部测试用 `package plugin`、外部契约测试用 `package plugin_test`**，两者可共存）：
 
 | 计划文件 | 职责 |
 |----------|------|
-| `hooks.go` | 钩子注册与分发（按事件类型 fan-out 到各插件） |
 | `api.go` | 宿主 API 注册与 capability 校验 |
-| `host.go` | 生命周期状态机（`installed`/`starting`/`running`/`crashed`/`stopped`） |
+| `host.go` | 生命周期状态机（`installed`/`starting`/`running`/`crashed`/`stopped`），内嵌 `*dispatcher` |
+
+## 钩子分发：`dispatcher`（`hooks.go`）
+
+`dispatcher` 只做两件事：记住「哪个插件声明了哪些钩子」，把一次钩子调用扇出到所有订阅者。
+它**不**管理生命周期、不碰数据库——那些是 Task 7 的 `Host`（内嵌 `*dispatcher`）。
+
+名字刻意不叫 `Host`：Task 7 另有一个对外的 `Host` / `NewHostWithOptions()`。
+本类型与其构造函数保持**未导出**（`dispatcher` / `newDispatcher`），避免两个 `Host` 打架。
+
+### 分发的四条语义（每条都有测试钉住）
+
+| 语义 | 实现 | 回归网 |
+|------|------|--------|
+| **异步**：不等插件完成 | 每个目标一个 `go func`，`Dispatch` 立即返回 | `TestDispatcherDispatchDoesNotBlockOnSlowPlugin` |
+| **独立超时**：每次调用都有上限 | `context.WithTimeout(ctx, d.timeout)`，默认 `hookTimeout`=5s | `TestDispatcherDispatchAppliesPerCallTimeout` |
+| **不继承调用方取消** | `context.WithoutCancel` 只保留值（trace） | `TestDispatcherDispatchSurvivesDeadCallerContext` |
+| **失败隔离** | 每个目标各自的 goroutine，错误只记日志 | `TestDispatcherDispatchFailureDoesNotBlockOthers` |
+
+三条容易弄反的地方：
+
+1. **超时是必须的，不是防御性代码**。`Conn.Call` 会 honour ctx，但调用方是事件总线的
+   广播 goroutine；一次不返回的钩子会永久占住一个 goroutine，且在 `Dispatch` 改成同步时
+   直接拖住后续所有同类型事件的投递。
+2. **必须 `context.WithoutCancel`**。钩子在业务动作**完成之后**触发，而请求返回时取消 ctx
+   是常态。继承那次取消＝钩子被静默掐断，症状是「插件有时收到、有时收不到」。反过来，
+   `Dispatch` 拿到的 ctx 仍然只用于传值，**不**用于控制生命周期。
+3. **IPC 方法名是 `hook.<钩子名>`**，不是裸钩子名，也不是事件名。插件侧按方法名分派
+   （`hook.post.created`），与 `ipc_test.go` / Task 6 的宿主 API 同一命名空间。
+
+### 事件桥接：必须用倒排表
+
+`SubscribeEvents` 遍历的**不是** `KnownHooks()` 做恒等映射，而是 `invertHookEvents(HookEvents())`
+（事件 → 钩子列表）。三种错法各有明确症状：
+
+| 错法 | 症状 |
+|------|------|
+| 遍历 `KnownHooks()` 恒等映射 | `comment.created` **永远收不到**（真实事件叫 `content.created`）；`cron.daily` 订阅一个不存在的事件 |
+| 把 `user.registered` 绑成 `user.created` | 一次注册**投递两次**（auth 双发两条都命中） |
+| 为每个钩子各建一条订阅 | 一事件多钩子时同一事件被订阅多次，未来加钩子就会重复投递 |
+
+倒排天然幂等：**每个事件只订阅一次**。当前 7 个事件驱动钩子对应 7 个事件，
+`cron.daily` 不在表内（`TestDispatcherSubscribeEventsSubscribesEventDrivenHooksOnly` 断言 `Len==7`）。
+
+### 分层与事件接缝：`pluginevent` 子包为什么存在
+
+`dispatcher` 只认 `Broadcaster` 接口，不 import `eventbus`。真实接线在
+`internal/plugin/pluginevent`：
+
+```go
+// composition root（Task 7）这样接：
+bus := eventbus.New(...)                    // 已存在
+host.SubscribeEvents(pluginevent.Broadcaster(bus))
+```
+
+分成两个包**不是为了好看**，而是因为依赖方向：
+`eventbus → internal/metrics → internal/db → gorm`。把 `eventbus` 引进 `internal/plugin`
+会让本包的生产依赖图凭空多出 **10 个 gorm 包**（基线 0），第 3 条硬约束就只剩文档承诺。
+接缝留在本包、接线放在子包，是本包唯一能同时满足「不碰 gorm」与「能收到真实事件」的形态。
+
+`TraceBroadcaster` 是**可选**增强接缝：eventbus 的广播 handler 拿得到带 traceparent 的
+`Event.Ctx`，只实现二元 `Broadcaster` 会静默丢掉它，插件钩子的日志就没有 trace_id 了。
+`pluginevent.Broadcaster` 同时实现两者，`SubscribeEvents` 用类型断言择优。
 
 ## IPC：帧格式与请求/响应关联
 
@@ -361,6 +431,38 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 | `TestSupervisorStopIsIdempotent` | `Stop` 可重复调用，之后 `Running()` 为 false |
 | `TestSupervisorConnReturnsCurrentGeneration` | **换代语义**：重启后 `Conn()` 指针与上一代不同；旧 Conn 拿到 `ErrClosed`；新 Conn 能完成真实往返（把 `Conn()` 改成永远返回第一代即红） |
 | `TestSupervisorConnNilBeforeStart` | `Conn()` 在 Start 之前与 Stop 之后返回 nil，不 panic |
+| `TestDispatcherDispatchFansOutToAllSubscribers` | 两个插件都收到；IPC 方法名是 `hook.post.created` |
+| `TestDispatcherDispatchIgnoresNonSubscribers` | 未订阅该钩子的插件**不得**被调用（订阅判断按钩子而非「有插件就投」） |
+| `TestDispatcherDispatchFailureDoesNotBlockOthers` | 一个插件返回错误不影响其他插件收到 |
+| `TestDispatcherDispatchDedupesDuplicateHookDeclaration` | manifest 重复声明同一钩子只投一次（按插件为粒度，不按声明条目） |
+| `TestDispatcherUnregisterStopsDispatch` | `UnregisterPlugin` 之后不再收到钩子 |
+| `TestDispatcherToleratesNilManifestAndNilContext` | nil manifest / nil ctx 不 panic（panic 会掐断整条事件订阅） |
+| `TestDispatcherDispatchDoesNotBlockOnSlowPlugin` | **`Dispatch` 在插件完成前返回**（改成同步即红；测试自带 1s 兜底释放，保证是「红」而不是「挂住」） |
+| `TestDispatcherDispatchAppliesPerCallTimeout` | 每次调用都有 deadline，且不超过配置上限；到期取消这次调用 |
+| `TestDispatcherDispatchSurvivesDeadCallerContext` | **不继承调用方已取消的 ctx**（继承即静默丢钩子） |
+| `TestInvertHookEventsGroupsHooksPerEvent` | 一事件多钩子聚合到同一键，且顺序稳定（倒排而非恒等映射） |
+| `TestDispatcherSubscribeEventsSubscribesEventDrivenHooksOnly` | 订阅集合**恰好等于** `HookEvents()` 的事件集（7 条，每事件一次）；不含 `cron.daily`、不含 `user.created` |
+| `TestDispatcherDeliversContentCreatedToCommentHook` | `content.created` → `comment.created` 真的送达（分叉路径的端到端） |
+| `TestDispatcherUserRegisteredFiresOnceOnDoublePublish` | auth 双发 `user.created`+`user.registered` 时，`user.registered` 钩子**恰好一次** |
+| `TestDispatcherUserRegisteredFiresOnceOverRealEventbus` | 同上，但走**真 eventbus + 真 NATS**（钉住装配而非只有 fake 语义） |
+| `TestDispatcherReachesRealPluginConn` | 经真实 `Conn.Call` 完成一次 IPC 往返，方法名与 payload 都落位 |
+| `TestSupervisorCallerFollowsConnectionGeneration` | **`supervisorCaller` 每次重取 `Conn()`**：换代后用新连接（缓存旧指针即红） |
+| `TestSupervisorCallerReportsClosedConnection` | 已关闭的连接立刻失败，不空等到 timeout |
+| `TestSupervisorCallerWithoutRunningSupervisor` | supervisor 为 nil / 未 Start 时立刻返回 `errPluginNotRunning` |
+| `TestDispatcherConcurrentDispatchAndRegistration` | 并发分发与注册/摘除无数据竞争（`-race` 下有效）；分发在锁外调用 |
+
+`TestDispatcherDispatchDoesNotBlockOnSlowPlugin` 有一个刻意的设计：它用 `time.AfterFunc`
+在 1s 后无条件释放插件。**没有这个兜底，把 `go func` 改成同步调用会让测试永久挂住**，
+在 CI 里表现为整包超时而不是一条可读的失败——「挂住 ≠ 变红」，调试成本差一个量级。
+
+`TestDispatcherUserRegisteredFiresOnceOnDoublePublish`（fake）与 `...OverRealEventbus`（真总线）
+是**刻意重复的一对**：fake 版本能精确断言「订阅了哪些事件」，真总线版本能抓住「接缝装错」
+（例如 `SubscribeEvents` 拿到 nil broadcaster 却不报错）。只留 fake 会漏装配，只留真总线
+则在 NATS 抖动时会偶发失败。
+
+`TestSupervisorCallerFollowsConnectionGeneration` 是 Task 4 换代语义在**消费侧**的对应物：
+supervisor 侧的 `TestSupervisorConnReturnsCurrentGeneration` 只证明 `Conn()` 会换代，
+不会发现分发器缓存了 `*Conn`。把 `supervisorCaller` 改成「首次调用时缓存」即红。
 
 supervisor 的测试**分两层**，缺一层就有盲区：`buildPluginEnv`/`backoffDelay` 是纯函数，
 断言精确但抓不到装配错误；node 端到端测试抓装配，但依赖 PATH 上有 node，缺失时
@@ -390,6 +492,16 @@ supervisor 的测试**分两层**，缺一层就有盲区：`buildPluginEnv`/`ba
   必须同时定义 v1 的兼容策略，否则所有存量插件的 manifest 会在升级瞬间全部被拒。
 - `internal/plugin` 一旦 import 了 `internal/repository`，分层约束与 spec 同时失效
   （**无 CI 门禁**，只能靠手工跑上面那条 `go list -deps` 命令）。需要数据时注入接口，不要把仓储拉进来。
+- **别在本包 import `internal/pkg/eventbus`**（或任何间接依赖 `internal/db` 的包）。
+  它会带进 10 个 gorm 包。接线放 `pluginevent` 子包，本包只认 `Broadcaster` 接口。
+- 改分发语义前先想清楚「谁在调用 `Dispatch`」：它是事件总线的广播 goroutine。
+  任何让 `Dispatch` 等插件的改动（同步调用、`wg.Wait()`、无缓冲 channel）都等于
+  让一个卡死的插件拖住后续所有同类型事件——这正是 `Dispatch` 异步 + 每次调用独立超时的理由。
+- `hookTimeout` / `dispatcher.timeout` 是**上限**，不是「等这么久」。插件正常返回时立刻结束。
+  缩短它会让慢插件被频繁掐断（症状：插件侧 handler 跑到一半 ctx 取消）；加长它则会延长
+  goroutine 占用。改默认值前先确认为什么 5s 不够。
+- 分发失败**只记日志、不重试、不入队**。加任何重试都在把「事后通知」变成「至少一次投递」，
+  需要幂等键与去重存储——那是新特性，不是修 bug。
 - 改 `validateEntry` 等于改插件的可执行入口约束：放宽任何一条都意味着 manifest 能指定插件目录外的文件。
   若将来要支持子目录入口（合法需求），放行的是「不带 `..` 的相对路径」，不是「任意路径」。
 
@@ -407,4 +519,8 @@ supervisor 的测试**分两层**，缺一层就有盲区：`buildPluginEnv`/`ba
 - supervisor 的**管道构造方式**变化（换回 `StdinPipe`/`StdoutPipe` 会重新引入与 `Wait` 的关闭竞态）
 - 新增对外导出的类型/函数（`Manifest` 字段、`ParseManifest`/`Validate` 签名、`HookEvents`/`HookIsEventDriven`、`Conn`/`Frame` 的方法集、`Supervisor`/`SupervisorOptions` 的字段）
 - **`Conn()` 的语义变化**（返回哪一代、是否为 nil、是否缓存）——Task 7 的钩子分发直接依赖它
+- **分发语义变化**（异步/同步、超时值与来源、是否继承调用方 ctx、失败是否重试）
+- **事件桥接变化**（用倒排还是恒等映射、订阅哪些事件、`Broadcaster`/`TraceBroadcaster` 接缝形态）
+- **`internal/plugin` 的依赖图里出现 `internal/pkg/eventbus` 或 `gorm`**（分层被破坏，且无 CI 门禁）
+- 新增 `pluginevent` 之类的接线子包，或改变「接口留在本包、接线放子包」的分工
 - 「刻意不做的事」两条取舍（进程组管理、`exit 0` 算崩溃）被改变
