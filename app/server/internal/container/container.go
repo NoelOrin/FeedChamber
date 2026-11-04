@@ -46,29 +46,31 @@ type Container struct {
 	SessionSvc service.SessionStore
 
 	// Repositories (alphabetical)
-	AdminRepo        repository.AdminRepository
-	AnnouncementRepo repository.AnnouncementRepository
-	AuditLogRepo     repository.AuditLogRepository
-	BackupRepo       repository.BackupRepository
-	BadgeRepo        repository.BadgeRepository
-	BannedRepo       repository.BannedRepository
-	CheckInRepo      repository.CheckInRepository
-	ConversationRepo repository.ConversationRepository
-	ContentRepo      repository.ContentRepository
-	CredentialRepo   repository.CredentialRepository
-	DraftRepo        repository.DraftRepository
-	FavoriteRepo     repository.FavoriteRepository
-	FollowRepo       repository.FollowRepository
-	GateRepo         repository.GateRepository
-	GroupRepo        repository.GroupRepository
-	InviteRepo       repository.InviteRepository
-	LikeRepo         repository.LikeRepository
-	MetaRepo         repository.MetaRepository
-	ModerationRepo   repository.ModerationRepository
-	MotionRepo       repository.MotionRepository
-	NotificationRepo repository.NotificationRepository
-	OAuthRepo        repository.OAuthRepository
-	PluginRepo       repository.PluginRepository
+	AdminRepo         repository.AdminRepository
+	AnnouncementRepo  repository.AnnouncementRepository
+	AuditLogRepo      repository.AuditLogRepository
+	BackupRepo        repository.BackupRepository
+	BadgeRepo         repository.BadgeRepository
+	BannedRepo        repository.BannedRepository
+	CheckInRepo       repository.CheckInRepository
+	ConversationRepo  repository.ConversationRepository
+	ContentRepo       repository.ContentRepository
+	CredentialRepo    repository.CredentialRepository
+	DraftRepo         repository.DraftRepository
+	FavoriteRepo      repository.FavoriteRepository
+	FollowRepo        repository.FollowRepository
+	GateRepo          repository.GateRepository
+	GroupRepo         repository.GroupRepository
+	InviteRepo        repository.InviteRepository
+	LikeRepo          repository.LikeRepository
+	MetaRepo          repository.MetaRepository
+	ModerationRepo    repository.ModerationRepository
+	MotionRepo        repository.MotionRepository
+	NotificationRepo  repository.NotificationRepository
+	OAuthRepo         repository.OAuthRepository
+	PluginRepo        repository.PluginRepository
+	PluginSourceRepo  repository.PluginSourceRepository
+	PluginInstallRepo repository.PluginInstallRepository
 	// 站点自定义层（P1）
 	SnippetRepo    repository.SnippetRepository
 	ThemeTokenRepo repository.ThemeTokenRepository
@@ -178,6 +180,8 @@ func New(d Deps) *Container {
 	c.NotificationRepo = repository.NewNotificationRepository(d.Store)
 	c.OAuthRepo = repository.NewOAuthRepository(d.Store)
 	c.PluginRepo = repository.NewPluginRepository(d.Store)
+	c.PluginSourceRepo = repository.NewPluginSourceRepository(d.Store)
+	c.PluginInstallRepo = repository.NewPluginInstallRepository(d.Store)
 	c.SnippetRepo = repository.NewSnippetRepository(d.Store)
 	c.ThemeTokenRepo = repository.NewThemeTokenRepository(d.Store)
 	c.NavItemRepo = repository.NewNavItemRepository(d.Store)
@@ -207,11 +211,11 @@ func New(d Deps) *Container {
 	c.InviteSvc = service.NewInviteService(c.InviteRepo)
 	c.RoleSvc = service.NewRoleService(c.RoleRepo)
 	c.DraftSvc = service.NewDraftService(c.DraftRepo)
-	c.PluginSvc = service.NewPluginService(c.PluginRepo)
 	c.ThemeSvc = service.NewThemeService(c.UserPrefRepo)
 	c.LeaderboardSvc = service.NewLeaderboardService(c.UserRepo)
 	c.BadgeSvc = service.NewBadgeService(c.BadgeRepo, c.UserRepo)
 	c.AuditLogSvc = service.NewAuditLogService(c.AuditLogRepo)
+	c.PluginSvc = service.NewPluginService(c.PluginRepo, c.PluginSourceRepo, c.PluginInstallRepo, c.AuditLogSvc)
 	c.CustomizeSvc = service.NewCustomizeService(
 		c.SnippetRepo, c.ThemeTokenRepo, c.NavItemRepo, c.HomeModuleRepo, c.CustomPageRepo, c.AuditLogSvc, c.Tx)
 	c.MCPServerSvc = service.NewMCPServerService(c.MCPServerRepo, c.AuditLogSvc)

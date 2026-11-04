@@ -208,3 +208,103 @@ func TestAdminCustomizeRoutesHaveGatewayPermission(t *testing.T) {
 		}
 	}
 }
+
+// TestAdminPluginRoutesHaveGatewayPermission 钉住插件后台的读/写权限分离。
+//
+// 插件后台有一个特别容易踩的坑：网关把 /api/v1/admin/plugins/ **整体**
+// 挂在 plugin:manage 这个前缀上。若读接口不做精确映射，一个只想看清单的
+// API Key 会顺带拿到安装/卸载能力——这是权限提升，且症状完全静默。
+//
+// 因此本测试同时断言三件事：
+//  1. 读接口在 gateway/permission.go 里有**精确**映射（前缀覆盖不到它时才能读到）；
+//  2. 这些精确映射指向 plugin:read，而不是 plugin:manage；
+//  3. routes_admin.go 里读接口挂了 RequirePermission(plugin:read)。
+func TestAdminPluginRoutesHaveGatewayPermission(t *testing.T) {
+	routes, err := os.ReadFile("routes_admin.go")
+	if err != nil {
+		t.Fatal(err)
+	}
+	routesSrc := string(routes)
+
+	perms, err := os.ReadFile(filepath.Join("..", "gateway", "permission.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	permSrc := string(perms)
+
+	// 读接口：必须显式映射到 plugin:read。
+	// 从 permSrc 里取出该路径所在的那一行，断言同一行上写的是 plugin:read。
+	readPaths := []string{
+		"/api/v1/admin/plugins/list",
+		"/api/v1/admin/plugins/sources/list",
+	}
+	for _, p := range readPaths {
+		line := lineContaining(permSrc, `"`+p+`"`)
+		if line == "" {
+			t.Errorf("gateway/permission.go 缺少读接口 %s 的映射：它会被 /api/v1/admin/plugins/ 的"+
+				"plugin:manage 前缀捕获，等于让只读凭证拿到安装能力", p)
+			continue
+		}
+		if !strings.Contains(line, "PermPluginRead") {
+			t.Errorf("%s 必须映射到 plugin:read，实际是: %s", p, strings.TrimSpace(line))
+		}
+	}
+
+	// 写入类接口必须落在 plugin:manage 上（正向确认，防止误把写接口降到 read）。
+	managePaths := []string{
+		"/api/v1/admin/plugins/install",
+		"/api/v1/admin/plugins/sources/create",
+	}
+	for _, p := range managePaths {
+		line := lineContaining(permSrc, `"`+p+`"`)
+		if line == "" {
+			t.Errorf("gateway/permission.go 缺少写接口 %s 的显式映射", p)
+			continue
+		}
+		if !strings.Contains(line, "PermPluginManage") {
+			t.Errorf("%s 必须映射到 plugin:manage，实际是: %s", p, strings.TrimSpace(line))
+		}
+	}
+
+	// routes_admin.go 侧：读路由挂 plugin:read，写路由挂 plugin:manage。
+	// 只看 /plugins party 块内，避免误匹配到别处的同名字符串。
+	idx := strings.Index(routesSrc, `PartyFunc("/plugins"`)
+	if idx < 0 {
+		t.Fatal("routes_admin.go 未找到 /plugins 的 party 注册")
+	}
+	window := routesSrc[idx:min(idx+2400, len(routesSrc))]
+
+	for _, want := range []struct {
+		path  string
+		perm  string
+		label string
+	}{
+		{`p.Post("/list"`, "PermPluginRead", "插件列表"},
+		{`p.Post("/sources/list"`, "PermPluginRead", "来源列表"},
+		{`p.Post("/install"`, "PermPluginManage", "安装"},
+		{`p.Post("/sources/create"`, "PermPluginManage", "新增来源"},
+		{`p.Post("/sources/{id}/approve"`, "PermPluginManage", "审批来源"},
+		{`p.Post("/sources/{id}/reject"`, "PermPluginManage", "拒绝来源"},
+		{`p.Post("/{id}/delete"`, "PermPluginManage", "删除"},
+	} {
+		line := lineContaining(window, want.path)
+		if line == "" {
+			t.Errorf("routes_admin.go 的 /plugins party 未注册 %s", want.path)
+			continue
+		}
+		if !strings.Contains(line, want.perm) {
+			t.Errorf("%s（%s）必须挂 RequirePermission(%s)，实际是: %s",
+				want.label, want.path, want.perm, strings.TrimSpace(line))
+		}
+	}
+}
+
+// lineContaining 返回 src 中第一条包含 needle 的整行；没有则返回空串。
+func lineContaining(src, needle string) string {
+	for _, line := range strings.Split(src, "\n") {
+		if strings.Contains(line, needle) {
+			return line
+		}
+	}
+	return ""
+}

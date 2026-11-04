@@ -72,13 +72,25 @@ func (r *reg) adminRoutes() {
 			b.Post("/{id}/delete", h.Backup.Delete)
 		})
 
-		// ── Plugins (declarative metadata only) ─────────────────
+		// ── Plugins ────────────────────────────────────────────
+		//
+		// 读接口挂 plugin:read，写接口挂 plugin:manage。
+		// 网关的 path→permission 映射把 /api/v1/admin/plugins/ 整体挂在
+		// plugin:manage 前缀上，这里的读路由另加 plugin:read 做双保险——
+		// 「只想看看装了哪些插件」的 Key 不该顺手拿到安装/卸载能力。
+		//
+		// 固定段 /sources/* 排在参数段 /{id}/* 之前：Iris 虽按静态段优先
+		// 匹配，但沿本文件既有约定（固定路径必须先注册）以防将来换路由库。
 		a.PartyFunc("/plugins", func(p iris.Party) {
-			p.Post("/list", h.Plugin.List)
-			p.Post("/install", h.Plugin.Install)
-			p.Post("/{id}/update", h.Plugin.Update)
-			p.Post("/{id}/status", h.Plugin.SetEnabled)
-			p.Post("/{id}/delete", h.Plugin.Delete)
+			p.Post("/list", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.List)
+			p.Post("/sources/list", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.ListSources)
+			p.Post("/install", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Install)
+			p.Post("/sources/create", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.CreateSource)
+			p.Post("/sources/{id}/approve", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.ApproveSource)
+			p.Post("/sources/{id}/reject", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.RejectSource)
+			p.Post("/{id}/update", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Update)
+			p.Post("/{id}/status", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.SetEnabled)
+			p.Post("/{id}/delete", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Delete)
 		})
 
 		// ── Trash / Restore ────────────────────────────────────

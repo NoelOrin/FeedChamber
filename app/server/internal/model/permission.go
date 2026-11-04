@@ -83,6 +83,7 @@ const (
 	PermBackupManage     = "backup:manage"
 	PermThemeSelf        = "theme:self"
 	PermPluginManage     = "plugin:manage"
+	PermPluginRead       = "plugin:read"
 	PermLevelManage      = "level:manage"
 	PermGateManage       = "gate:manage"
 
@@ -164,6 +165,7 @@ var DefaultPermissions = []Permission{
 	{Code: PermBackupManage, Name: "备份管理", Description: "创建、下载、恢复和删除系统备份"},
 	{Code: PermThemeSelf, Name: "主题偏好", Description: "查看和保存个人主题偏好"},
 	{Code: PermPluginManage, Name: "插件管理", Description: "注册、启停和删除声明式插件"},
+	{Code: PermPluginRead, Name: "查看插件", Description: "查看插件清单、运行状态与调用日志"},
 	{Code: PermLevelManage, Name: "等级体系管理", Description: "配置 XP 规则、等级定义与人工调整 XP"},
 	{Code: PermGateManage, Name: "门控规则管理", Description: "配置门控规则、能力域默认动作与试算"},
 
@@ -215,6 +217,7 @@ var DefaultRolePermissions = map[string][]string{
 		PermBackupManage,
 		PermThemeSelf,
 		PermPluginManage,
+		PermPluginRead,
 		PermLevelManage,
 		PermGateManage,
 		// 站点自定义层只给 admin：内容本身可注入任意 JS，等于站点级 XSS 权限。
