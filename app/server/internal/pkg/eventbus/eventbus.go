@@ -40,6 +40,11 @@ type EventBus struct {
 	done     chan struct{}
 	once     sync.Once
 	nc       *nats.Conn
+
+	// broadcastHandlers / broadcastSubs 与上面两组分开：
+	// 广播订阅不带 queue group，集群内每个实例都会收到，交给本机 fan-out。
+	broadcastHandlers map[string][]Handler
+	broadcastSubs     map[string]*nats.Subscription
 }
 
 const (
@@ -85,6 +90,9 @@ func New(url string) (*EventBus, error) {
 		ch:       make(chan Event, defaultQueueSize),
 		done:     make(chan struct{}),
 		nc:       nc,
+
+		broadcastHandlers: make(map[string][]Handler),
+		broadcastSubs:     make(map[string]*nats.Subscription),
 	}
 	// Seed every known event type's zero-valued series so the metric families
 	// exist before the first publish. Seeding here (not in the metrics package)
@@ -169,6 +177,30 @@ func consumerContext(header nats.Header) context.Context {
 	return tracing.ContextWithTrace(context.Background(), tc)
 }
 
+// handleBroadcastMessage 把广播消息解包后分发给本机的广播 handler。
+// 与 handleNATSMessage 一样在独立 context 上重建 trace。
+func (eb *EventBus) handleBroadcastMessage(msg *nats.Msg) {
+	var we wireEvent
+	if err := json.Unmarshal(msg.Data, &we); err != nil {
+		logrus.Errorf("eventbus: decode broadcast %q: %v", msg.Subject, err)
+		return
+	}
+	ctx := consumerContext(msg.Header)
+	eb.mu.RLock()
+	hs := append([]Handler(nil), eb.broadcastHandlers[we.Type]...)
+	eb.mu.RUnlock()
+	for _, h := range hs {
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					logrus.Errorf("eventbus: broadcast handler panic for %q: %v", we.Type, r)
+				}
+			}()
+			h(Event{Type: we.Type, Payload: we.Payload, Ctx: ctx})
+		}()
+	}
+}
+
 func (eb *EventBus) enqueue(event Event) {
 	select {
 	case <-eb.done:
@@ -201,6 +233,38 @@ func (eb *EventBus) Subscribe(eventType string, handler Handler) {
 		return
 	}
 	eb.subs[eventType] = sub
+	_ = eb.nc.Flush()
+}
+
+// SubscribeBroadcast 订阅事件并保证广播语义：
+// 同一事件会送达所有订阅方（含集群内其他实例的订阅方）。
+//
+// 与 Subscribe 的区别只有一个：不指定 queue group。NATS 的 core pub/sub 在
+// 没有 queue group 时把消息分发给每个订阅者；有 queue group 时组内只选一个。
+//
+// 广播 handler 单独存一个 map：与队列订阅共用 handlers 会导致
+// handleNATSMessage 把队列 handler 也跑一遍，等于改了现有语义。
+func (eb *EventBus) SubscribeBroadcast(eventType string, handler Handler) {
+	eb.mu.Lock()
+	defer eb.mu.Unlock()
+	if eb.nc == nil {
+		logrus.Errorf("eventbus: broadcast subscribe %q after shutdown", eventType)
+		return
+	}
+	eb.broadcastHandlers[eventType] = append(eb.broadcastHandlers[eventType], handler)
+
+	if len(eb.broadcastHandlers[eventType]) != 1 || eb.broadcastSubs[eventType] != nil {
+		return
+	}
+	subject := eventSubjectPrefix + eventType
+	sub, err := eb.nc.Subscribe(subject, func(msg *nats.Msg) {
+		eb.handleBroadcastMessage(msg)
+	})
+	if err != nil {
+		logrus.Errorf("eventbus: broadcast subscribe %q: %v", subject, err)
+		return
+	}
+	eb.broadcastSubs[eventType] = sub
 	_ = eb.nc.Flush()
 }
 
@@ -250,6 +314,12 @@ func (eb *EventBus) Shutdown() {
 			}
 		}
 		eb.subs = make(map[string]*nats.Subscription)
+		for _, sub := range eb.broadcastSubs {
+			if sub != nil {
+				_ = sub.Unsubscribe()
+			}
+		}
+		eb.broadcastSubs = make(map[string]*nats.Subscription)
 		eb.mu.Unlock()
 	})
 	eb.wg.Wait()
