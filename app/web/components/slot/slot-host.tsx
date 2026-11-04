@@ -1,8 +1,7 @@
 import type { SlotEntry } from '@feedchamber/api-client';
 import { useQuery } from '@tanstack/react-query';
-
-import { MarkdownRenderer } from './renderers/markdown';
 import { ListRenderer } from './renderers/list';
+import { MarkdownRenderer } from './renderers/markdown';
 import { StatsRenderer } from './renderers/stats';
 import { entriesForSlot, parseProps } from './slot-logic';
 
@@ -68,7 +67,6 @@ export function SlotHost({ name, entries }: { name: string; entries: SlotEntry[]
 					if (!src) return null;
 					// 用原生 img 而非 next/image：src 由站长配置，
 					// 不受 next/image 的域名白名单约束。
-					// biome-ignore lint/performance/noImgElement: 站长配置的任意 URL
 					return <img key={entry.id} src={src} alt={String(props.alt ?? '')} className="mx-2 rounded-md" />;
 				}
 

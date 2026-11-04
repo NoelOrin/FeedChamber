@@ -11,9 +11,5 @@ export function MarkdownRenderer({ props }: { entry: SlotEntry; props: Record<st
 	const text = String(props.markdown ?? props.text ?? '');
 	if (text === '') return null;
 
-	return (
-		<div className="flex flex-col gap-1 px-2 text-[13px] whitespace-pre-wrap text-muted-foreground">
-			{text}
-		</div>
-	);
+	return <div className="flex flex-col gap-1 px-2 text-[13px] whitespace-pre-wrap text-muted-foreground">{text}</div>;
 }

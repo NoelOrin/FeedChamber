@@ -53,7 +53,7 @@
 
 | renderer | 需要的 props | 降级行为 |
 |----------|-------------|---------|
-| `list` | `{ items: string[] }` | 空数组返回 null |
+| `list` | `{ items: string[] }` | 空数组返回 null；key 用 `entry.id + item` 而非数组索引（条目内容可能重复，索引 key 会让重排时状态错位） |
 | `stats` | `{ value, label? }` | 无 value 返回 null |
 | `markdown` | `{ markdown }` 或 `{ text }` | 空文本返回 null |
 
