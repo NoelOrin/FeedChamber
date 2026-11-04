@@ -87,7 +87,7 @@ MUST NOT 插进现有审核链中间。
 | `manifest.go` | `Manifest` 结构、`ParseManifest`、`(*Manifest).Validate`、`ProtocolVersion1`、8 个钩子常量与白名单、`hookEvents` 绑定表、`HookEvents()` / `HookIsEventDriven()`、`entry` 路径校验 |
 | `manifest_test.go` | 解析/校验的契约：合法 manifest、未知协议版本、缺 name/version、未知钩子丢弃、未知能力报错、坏 JSON、钩子→事件映射、`entry` 逃逸拒绝 |
 | `ipc.go` | stdio JSON-RPC 编解码：`Frame`/`FrameError`、`Conn`、`NewConn`/`Start`/`Close`、`Call`/`Notify`/`Handle`、读循环与写串行化 |
-| `ipc_test.go` | IPC 契约（外部测试 `package plugin_test`，用 `net.Pipe()` 对接两条 `Conn`）：结果回传、handler 错误透传、ctx 超时、未知方法报错、通知不等待响应、关闭解除在途调用 |
+| `ipc_test.go` | IPC 契约（外部测试 `package plugin_test`，用 `net.Pipe()` 对接两条 `Conn`）：结果回传、handler 错误透传、ctx 超时、未知方法报错、通知不等待响应、关闭解除在途调用、坏行跳过、写入串行、重复响应不卡死 |
 
 后续任务追加（同一包，**内部测试用 `package plugin`、外部契约测试用 `package plugin_test`**，两者可共存）：
 
@@ -126,9 +126,14 @@ MUST NOT 插进现有审核链中间。
 - 响应**先于**注册到达是不可能发生的（同一 goroutine 里先注册后写）。
 - `id` 对不上任何在途调用（超时后迟到的响应、对端乱填的 id）被**静默丢弃**，
   不报错、不重试——超时已经让调用方拿到了 `ctx.Err()`。
+- **重复响应必须丢弃，投递必须非阻塞**。读循环用 `select { case ch <- f: default: }`。
+  改成阻塞式 `ch <- f` 会引入一个隐蔽的永久卡死：`ch` 容量 1，第一条响应被
+  `Call` 取走、`pending` 条目随后被删，此时第二条同 id 的响应到达，读循环就
+  永远等不到接收者——连接看起来还活着，之后**每个 `Call` 都只会超时**。
+  任何写错或恶意的插件都能触发。`TestConnDuplicateResponseDoesNotWedge` 钉住它。
 - 请求**不按 `id` 去重**，同一个 `id` 收到两次就是两个独立的请求。
 
-三条实现红线，改动时别弄反：
+四条实现红线，改动时别弄反：
 
 1. **写必须串行**（`writeMu`）。两个 goroutine 各写半行会让对端读到一行拼接的
    坏 JSON；坏行在读侧被跳过，症状是「帧凭空消失」而不是报错。
@@ -138,10 +143,45 @@ MUST NOT 插进现有审核链中间。
    handler；每个入站请求还各自起一个 goroutine。handler 里回调对端（插件问宿主、
    宿主再问插件）是合法用法，一旦读循环阻塞或持锁，这类回调就永远等不到自己的
    响应——表现为双向死锁而不是错误。
+4. **响应的投递必须非阻塞**，见上一条关联规则里的重复响应说明。
 
-`Call` 的两段 `select`（先等 write 完成，再等响应）都是必需的：对端不读 stdin
-时 `Write` 会无限阻塞，写在调用路径上等于让 ctx 取消失效。`Close` 除了关闭
-`closed` 信号，还关闭底层流，用来解开卡在 `Write`/`Scan` 上的 goroutine。
+### 写的阻塞边界：只有 `Call` 能被打断
+
+`Call` 的写跑在独立 goroutine 上、且有两段 `select`（先等 write 完成，再等响应），
+所以 ctx 到期一定能解开它。**但 `Notify` 与 `dispatch` 的写是同步的**——它们在
+调用方 goroutine 上直接拿 `writeMu` 并 `Write`，没有 ctx、没有超时：
+
+| 路径 | 写在哪 | 对端不消费 stdin 时 | 谁能解开 |
+|------|--------|---------------------|----------|
+| `Call` | 独立 goroutine | 卡在 goroutine 里，`Call` 按时返回 `ctx.Err()` | ctx 到期 / `Close` |
+| `Notify` | **调用方 goroutine** | **调用方被阻塞** | 只有 `Close` 或杀掉对端进程 |
+| `dispatch` | **该请求的 goroutine** | 该 dispatcher goroutine 被阻塞 | 只有 `Close` 或杀掉对端进程 |
+
+即：**一个卡死的 `writeMu` 只能靠 `Close`/杀进程解除**。Task 4 的
+「超时 → kill 子进程」正是这个兜底，supervisor MUST 保留它。删掉 kill 退路后，
+一个不读 stdin 的插件能把宿主的调用方 goroutine 一条条耗光。
+
+注意 `Call` 里那个写 goroutine **不保证会退出**：它只在 `Write` 返回后才结束，
+若对端永久卡住且 `w` 不是 `io.Closer`，它就被永久 pin 住。容量 1 的缓冲只保证
+它回送结果时不阻塞、不泄漏 channel，不是「goroutine 一定会回收」的保证。
+
+### 流的所有权与 supervisor 关停顺序
+
+**`Conn` 接管 `r`/`w` 的所有权，`Close` 会主动关闭它们**（实现了 `io.Closer` 时）。
+这是解开阻塞 `Write`/`Scan` 的唯一手段。代价是：调用方 MUST NOT 与 `Close` 并发地
+关同一对管道，尤其不能让它与 `cmd.Wait()` 抢——`os/exec` 会在 `Wait` 里关闭
+`StdinPipe`/`StdoutPipe`，并发关闭是数据竞争，在部分平台会返回一个伪错误，
+supervisor 误判成插件崩溃就会白白触发 1s→2s→4s 重启阶梯。
+
+Task 4 的推荐顺序：`conn.Close()` → 结束子进程（SIGTERM 宽限后 SIGKILL）→ `cmd.Wait()`。
+**永远不要自己关 `StdoutPipe`/`StdinPipe`**。
+
+### 关闭后的错误身份不确定
+
+`Close` 之后 `Call` 返回 `ErrClosed`（用 `errors.Is` 判断，别匹配文案）。但若 `Close`
+与某次在途写并发，那次写可能先把管道写失败，返回 `net.ErrClosed` /
+`io.ErrClosedPipe` / EPIPE 一类 I/O 错误而非 `ErrClosed`。两者都只意味着「连接没了」，
+调用方 MUST NOT 依赖具体是哪一个。
 
 未知方法**必须回错误帧**（`unknown method: <名>`），不能静默丢弃——否则对端的
 `Call` 只能等到自己的 ctx 超时，症状是「钩子调用莫名变慢」，排查时看不到任何线索。
@@ -205,7 +245,10 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 | `TestConnCallTimesOut` | 对端 handler 不返回时，`Call` 在 ctx 到期即返回 `context.DeadlineExceeded`（`errors.Is` 成立） |
 | `TestConnUnknownMethodReturnsError` | **未知方法回错误帧而非挂起**，错误里带 `unknown method` |
 | `TestConnNotifyDoesNotWaitForResponse` | `Notify` 立即返回，但请求确实被对端处理 |
-| `TestConnCallReturnsOnClose` | 对端已关闭时在途 `Call` 立即返回错误，不空等到自己的 ctx 到期（`Call` 里 `select` 的 `c.closed` 分支） |
+| `TestConnCallReturnsOnClose` | 对端已关闭时在途 `Call` 立即返回错误，不空等到自己的 ctx 到期（`Call` 里 `select` 的 `c.closed` 分支）；关闭后新发起的 `Call` 直接拿到 `ErrClosed` |
+| `TestConnSkipsMalformedLines` | **坏行跳过而不断连**：非 JSON、非对象 JSON、空行之后，合法请求仍被处理并回包 |
+| `TestConnWritesAreSerialized` | **写必须串行**：16×8 个并发 `Notify`，对端读到的每一行都是完整合法 JSON 且条数不差（少 `writeMu` 就会读到拼接坏行） |
+| `TestConnDuplicateResponseDoesNotWedge` | 同一 `id` 的第二条响应被丢弃而非堵死读循环；之后连接仍可正常 `Call`（阻塞式投递会永久卡死读循环） |
 
 `DropsUnknownHooks` 与 `RejectsUnknownCapabilities` 是**刻意相反**的一对：任何让两个方向趋同的
 改动（「未知的都丢弃」或「未知的都报错」）都会让其中一个变红。
@@ -241,4 +284,5 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 - capability 校验语义变化（哪一半报错、哪一半丢弃）
 - 安全边界表述变化（同用户运行、环境变量白名单）
 - **IPC 帧格式或请求/响应关联规则变化**（`Frame` 字段、方向判定依据、`id` 分配与丢弃策略）
+- 流的**所有权**或 supervisor 关停顺序变化；写入从同步改成异步（或反之）会改变「谁能解开一个卡死的 `writeMu`」
 - 新增对外导出的类型/函数（`Manifest` 字段、`ParseManifest`/`Validate` 签名、`HookEvents`/`HookIsEventDriven`、`Conn`/`Frame` 的方法集）

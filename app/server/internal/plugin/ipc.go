@@ -4,11 +4,23 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
 	"sync/atomic"
 )
+
+// ErrClosed 表示连接已关闭（本地 Close 或对端断开）。
+//
+// 调用方应当用 errors.Is(err, ErrClosed) 判断，而不是匹配错误文案。
+//
+// 注意：**关闭后的错误身份是不确定的**。若 Close 与某次在途写并发，那次
+// 写可能先把底层管道写失败（net.ErrClosed / io.ErrClosedPipe / EPIPE），
+// Call 就返回那个 I/O 错误而不是 ErrClosed。两者都只意味着「连接没了」，
+// 调用方不该依赖具体是哪一个——需要区分的是「有响应的失败」与「连接没了」，
+// 而那应当由 ctx 的取消状态另行判断。
+var ErrClosed = errors.New("ipc closed")
 
 // Frame 是 IPC 的一帧（NDJSON：一行一个 JSON 对象）。
 //
@@ -50,6 +62,30 @@ type Conn struct {
 }
 
 // NewConn 用一对读写流构造连接。子进程场景下 r 与 w 是同一个管道。
+//
+// # 流的所有权（调用方必读）
+//
+// **Conn 接管这两个流的所有权，并会在 Close 时主动关闭它们**
+// （只要它们实现了 io.Closer——os/exec 的 StdinPipe/StdoutPipe 都实现了）。
+// 这是刻意的：对端卡死、不再读 stdin 时，阻塞在 Write 上的 goroutine 只有
+// 关掉底层流才能解开（见 Close）。
+//
+// 因此，**调用方 MUST NOT 在 Close 之后、或与 Close 并发地，再自行关闭同一对管道**。
+// 与 os/exec 一起使用时这一点尤其重要：
+//
+//   - cmd.StdinPipe / cmd.StdoutPipe 返回的管道**由 cmd.Wait 负责关闭**；
+//   - 若 Conn.Close 与 cmd.Wait 并发关闭同一条管道，属于数据竞争，在部分平台上
+//     会让 Wait 返回一个伪错误（"file already closed" / EPIPE 一类）。
+//     supervisor 若把它当插件崩溃，就会无端触发 1s→2s→4s 的重启阶梯。
+//
+// # supervisor 推荐的关停顺序
+//
+//  1. conn.Close()            —— 先让本地不再有在途读写（解开所有阻塞的 Write/Scan）
+//  2. 结束子进程               —— SIGTERM，宽限期后 SIGKILL，或直接 Process.Kill()
+//  3. cmd.Wait()              —— 回收进程；此时管道由 Wait 关闭，与 1 不冲突
+//
+// 也就是说：**永远不要自己关 StdoutPipe/StdinPipe**，交给 step 1 与 step 3
+// 各关一次；两者之间隔着进程的结束，不会并发。
 func NewConn(r io.Reader, w io.Writer) *Conn {
 	return &Conn{
 		r:        r,
@@ -73,10 +109,12 @@ func (c *Conn) Start() error {
 	return nil
 }
 
-// Close 关闭连接；在途调用会收到错误。
+// Close 关闭连接；在途调用会返回 ErrClosed（或底层 I/O 错误）。
 //
-// 除了关闭 closed 信号，还关掉底层流：子进程卡死、不再读 stdin 时，
-// 阻塞在 Write 上的调用方（见 Call）只有这样才能被解开。
+// 除了关闭 closed 信号，还关掉底层流：子进程卡死、不再读 stdin 时，阻塞在
+// Write 上的调用方（见 Call、Notify、dispatch）只有这样才能被解开。
+//
+// 与 os/exec 共用管道时的关停顺序见 NewConn 的文档——不要与 cmd.Wait 并发。
 func (c *Conn) Close() error {
 	c.closeOn.Do(func() {
 		close(c.closed)
@@ -110,8 +148,12 @@ func (c *Conn) Call(ctx context.Context, method string, params any) (json.RawMes
 		return nil, fmt.Errorf("encode params: %w", err)
 	}
 
-	// 写单独放一个 goroutine：对端若不读 stdin（子进程已崩溃但管道未关），
-	// Write 会无限阻塞，直接写在调用路径上等于让 ctx 取消失效。
+	// 写单独放一个 goroutine：对端若不读 stdin（管道建立但没人消费），
+	// Write 会一直阻塞，直接写在调用路径上等于让 ctx 取消失效。
+	//
+	// 注意这**不能保证**写 goroutine 一定会退出：它只在 Write 返回后才结束，
+	// 而对端永久卡住且 w 不是 io.Closer 时，Write 永远不返回，这个 goroutine
+	// 就被永久 pin 住。缓冲容量 1 只保证它发结果时不阻塞、不泄漏 channel。
 	writeErr := make(chan error, 1)
 	go func() { writeErr <- c.write(Frame{ID: id, Method: method, Params: raw}) }()
 
@@ -123,7 +165,7 @@ func (c *Conn) Call(ctx context.Context, method string, params any) (json.RawMes
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-c.closed:
-		return nil, fmt.Errorf("ipc closed")
+		return nil, ErrClosed
 	}
 
 	select {
@@ -135,11 +177,16 @@ func (c *Conn) Call(ctx context.Context, method string, params any) (json.RawMes
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	case <-c.closed:
-		return nil, fmt.Errorf("ipc closed")
+		return nil, ErrClosed
 	}
 }
 
 // Notify 发一条不需要响应的请求。
+//
+// **写是同步的**：它在调用方 goroutine 上直接获取 writeMu 并写下去，没有
+// ctx、没有超时。对端停止消费 stdin 时，Notify 会一直阻塞在 writeMu/Write 上；
+// 此时唯一能解开它的是 Close（关闭底层流）或杀掉对端进程——见 NewConn 的
+// 关停顺序。supervisor 的超时→杀进程是最终兜底。
 func (c *Conn) Notify(method string, params any) error {
 	raw, err := json.Marshal(params)
 	if err != nil {
@@ -169,12 +216,18 @@ func (c *Conn) readLoop() {
 			continue // 坏帧跳过，不让单个脏行拖垮连接
 		}
 		if f.Method == "" {
-			// 响应
+			// 响应。非阻塞投递：同一个 id 的第二条响应（写错的或恶意的插件）
+			// 必须被丢弃。阻塞式 `ch <- f` 会在缓冲已满、而 pending 条目已被
+			// Call 删除时把整个读循环永久卡住——连接看着还活着，之后每个
+			// Call 都只会超时。
 			c.mu.Lock()
 			ch := c.pending[f.ID]
 			c.mu.Unlock()
 			if ch != nil {
-				ch <- f
+				select {
+				case ch <- f:
+				default: // 重复响应，丢弃（也可能是对端乱填的 id）
+				}
 			}
 			continue
 		}
@@ -190,6 +243,8 @@ func (c *Conn) dispatch(f Frame) {
 	fn, ok := c.handlers[f.Method]
 	c.mu.Unlock()
 
+	// 下面的写都在本 goroutine 上同步进行（没有 ctx、没有超时）。对端不再
+	// 消费 stdin 时会一起卡在 writeMu 上，只能靠 Close / 杀进程解开。
 	if !ok {
 		_ = c.write(Frame{ID: f.ID, Error: &FrameError{Message: "unknown method: " + f.Method}})
 		return
