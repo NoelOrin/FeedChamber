@@ -515,7 +515,7 @@ open http://localhost:8080/swagger/
 
 <!-- 由 `node scripts/check-agents-docs.mjs --write-index` 生成，请勿手改。 -->
 
-共 44 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
+共 45 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
 
 | 模块目录 | 文档 | 标题 |
 |----------|------|------|
@@ -559,6 +559,7 @@ open http://localhost:8080/swagger/
 | `packages/api-client/` | [AGENTS.md](packages/api-client/AGENTS.md) | API Client 前端 API 共享包 |
 | `packages/api-client/src/services/` | [AGENTS.md](packages/api-client/src/services/AGENTS.md) | API Service 模块（`packages/api-client/src/services/`） |
 | `packages/loadtest/` | [AGENTS.md](packages/loadtest/AGENTS.md) | Loadtest 压测（`packages/loadtest/`） |
+| `packages/plugin-cli/` | [AGENTS.md](packages/plugin-cli/AGENTS.md) | 插件开发 CLI（`packages/plugin-cli/`） |
 | `packages/shared-utils/` | [AGENTS.md](packages/shared-utils/AGENTS.md) | Shared Utils 跨前端共享工具 |
 | `packages/sse-client/` | [AGENTS.md](packages/sse-client/AGENTS.md) | SSE Client 框架无关 SSE 客户端 |
 | `packages/tokens/` | [AGENTS.md](packages/tokens/AGENTS.md) | Tokens 视觉设计 Token |
