@@ -43,6 +43,7 @@ lib/                      跨域基础设施（auth / query / api adapter / seo 
 | `home/` | 1 | 聚合首页 feed | 本文件 |
 | `error/` | 1 | 前台 `ErrorFallback` / 分区错误边界 | 本文件 |
 | `seo/` | 1 | `JsonLd`（受控 `dangerouslySetInnerHTML`） | 本文件 |
+| `slot/` | 5 | 壳层插槽渲染：`slot-logic.ts`（纯判定）+ `slot-host.tsx` + `renderers/` | [slot/AGENTS.md](slot/AGENTS.md) |
 | `providers.tsx` | 1 | Query / Nuqs / Tooltip / Toast 提供者 + 跨标签会话同步启动点 | 本文件 |
 | `query-hydration.tsx` | 1 | `'use client'` 边界，转出 `HydrationBoundary` | 本文件 |
 

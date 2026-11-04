@@ -5,6 +5,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { NotificationBell } from '~/components/layout/notification-bell';
 import { SiteName } from '~/components/layout/site-name';
+import { PublicSlot } from '~/components/slot/slot-host';
 import { ThemeToggle } from '~/components/layout/theme-toggle';
 import { UserInfo } from '~/components/layout/user-info';
 import { Button } from '~/components/ui/button';
@@ -65,8 +66,10 @@ export function Nav({ settings, onToggleSidebar }: NavProps) {
 						<Menu size={17} aria-hidden="true" />
 					</button>
 					<SiteName settings={settings} />
+					<PublicSlot name="header.left" />
 
 					<div className="ml-auto flex shrink-0 items-center gap-1">
+						<PublicSlot name="header.right.before" />
 						<button
 							type="button"
 							className={iconButton}
@@ -80,6 +83,7 @@ export function Nav({ settings, onToggleSidebar }: NavProps) {
 						<ThemeToggle />
 						<span className="mx-1 hidden h-4 w-px bg-border sm:block" aria-hidden="true" />
 						<UserInfo />
+						<PublicSlot name="header.right.after" />
 					</div>
 				</div>
 			</header>

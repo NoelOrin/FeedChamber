@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { MotionPanel } from '~/components/motion/motion-panel';
+import { PublicSlot } from '~/components/slot/slot-host';
 import { SpaceIcon } from '~/components/space/space-icon';
 import { publicCustomizationOptions } from '~/lib/customization/client';
 import { ChevronLeft } from '~/lib/icons';
@@ -132,13 +133,16 @@ export function SidebarContent() {
 
 	return (
 		<div className="sticky top-20 flex min-w-0 flex-col gap-5">
+			<PublicSlot name="sidebar.top" />
 			<BackToPrev />
 
 			{/* 站长配置的自定义导航（P1）。无配置时组件返回 null，侧栏保持既有结构。 */}
 			<CustomNav />
+			<PublicSlot name="sidebar.nav.after" />
 
 			<nav aria-label="版面导航" className="flex flex-col gap-1">
 				<PanelHeader href="/spaces" title="版面" count={String(countSpaces(spaces))} />
+				<PublicSlot name="sidebar.spaces.before" />
 				<div className="min-w-0">
 					{spacesPending ? (
 						<div className="flex flex-col gap-1.5 px-2">
@@ -153,6 +157,7 @@ export function SidebarContent() {
 					)}
 				</div>
 			</nav>
+			<PublicSlot name="sidebar.spaces.after" />
 
 			<MotionPanel />
 
@@ -176,6 +181,8 @@ export function SidebarContent() {
 					)}
 				</div>
 			</nav>
+			<PublicSlot name="sidebar.tags.after" />
+			<PublicSlot name="sidebar.bottom" />
 		</div>
 	);
 }
