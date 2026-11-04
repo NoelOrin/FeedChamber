@@ -7,13 +7,19 @@
 package container
 
 import (
+	"context"
+	"time"
+
 	"feedchamber/internal/config"
 	"feedchamber/internal/db"
 	"feedchamber/internal/pkg/eventbus"
 	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/plugin"
 	"feedchamber/internal/repository"
 	"feedchamber/internal/service"
 	"feedchamber/internal/storage"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Container holds every repository and service used by the application.
@@ -122,20 +128,23 @@ type Container struct {
 	OAuthSvc        service.OAuthService
 	PMSvc           service.PMService
 	PluginSvc       service.PluginService
-	CustomizeSvc    service.CustomizeService
-	MCPServerSvc    service.MCPServerService
-	PostSvc         service.PostService
-	ReportSvc       service.ReportService
-	RevisionSvc     service.RevisionService
-	RoleSvc         service.RoleService
-	TagSvc          service.TagService
-	ThemeSvc        service.ThemeService
-	TrustSvc        service.TrustService
-	UploadSvc       service.UploadService
-	UserSvc         service.UserService
-	WatchSvc        service.WatchService
-	UserBlockSvc    service.UserBlockService
-	WebhookSvc      service.WebhookService
+	// PluginHost 托管 Node 子进程插件。New 只构造对象图，不拉起任何进程；
+	// 真正拉起在 Start（runtime.go）。
+	PluginHost   *plugin.Host
+	CustomizeSvc service.CustomizeService
+	MCPServerSvc service.MCPServerService
+	PostSvc      service.PostService
+	ReportSvc    service.ReportService
+	RevisionSvc  service.RevisionService
+	RoleSvc      service.RoleService
+	TagSvc       service.TagService
+	ThemeSvc     service.ThemeService
+	TrustSvc     service.TrustService
+	UploadSvc    service.UploadService
+	UserSvc      service.UserService
+	WatchSvc     service.WatchService
+	UserBlockSvc service.UserBlockService
+	WebhookSvc   service.WebhookService
 }
 
 // New constructs the object graph. Services must be built in dependency order;
@@ -323,6 +332,21 @@ func New(d Deps) *Container {
 	)
 	c.AdminSvc = service.NewAdminService(c.AdminRepo, c.UserRepo, c.PostRepo, d.KV, c.SessionSvc, c.PermissionSvc, c.Tx)
 	c.DigestSvc = service.NewDigestService(c.UserPrefRepo, c.UserRepo, c.PostRepo, c.WatchRepo, c.EmailSvc, c.SettingSvc)
+
+	// 插件宿主：只构造，不启动。OnStatus 落库放到 goroutine 里——
+	// 它在 supervisor 的重启 goroutine 上同步执行，同步写库会拖慢退避节奏。
+	c.PluginHost = plugin.NewHostWithOptions(plugin.HostOptions{
+		PluginRoot: "./plugins",
+		OnStatus: func(pluginID, status, lastError string) {
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := c.PluginSvc.SetRuntimeStatus(ctx, pluginID, status, lastError); err != nil {
+					logrus.WithError(err).Warnf("plugin: 记录 %s 状态 %s 失败", pluginID, status)
+				}
+			}()
+		},
+	})
 
 	return c
 }

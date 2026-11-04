@@ -118,6 +118,8 @@ func Start(env Env) {
 		&model.Revision{},
 		&model.Backup{},
 		&model.Plugin{},
+		&model.PluginSource{},
+		&model.PluginInstall{},
 		&model.Group{},
 		&model.GroupMember{},
 		&model.GroupPermission{},

@@ -104,9 +104,28 @@ MUST NOT 插进现有审核链中间。
 
 后续任务追加（同一包，**内部测试用 `package plugin`、外部契约测试用 `package plugin_test`**，两者可共存）：
 
-| 计划文件 | 职责 |
-|----------|------|
-| `host.go` | 生命周期状态机（`installed`/`starting`/`running`/`crashed`/`stopped`），内嵌 `*dispatcher` |
+| 文件 | 职责 |
+|------|------|
+| `host.go` | 对外的 `Host`（内嵌 `*dispatcher`）：`NewHostWithOptions`、`StartPlugin`/`StopPlugin`/`StopAll`/`Running`/`Invoke`、`HostOptions.OnStatus`（状态落库回调）、`HostOptions.APIDepsFor`（按插件构造宿主 API 依赖）。**不拉起任何进程**——那是 `StartPlugin` 的事 |
+
+### `Host` 与 `dispatcher` 的分工
+
+`dispatcher`（hooks.go）只记「谁订阅了哪个钩子」并扇出；`Host`（host.go）管进程起停、
+能力授予与代际轮换。分两层的实际收益：`dispatcher` 的测试可以塞假 caller 不拉真进程，
+`Host` 的测试才需要 node。
+
+`Host.StartPlugin` 里的顺序是刻意的：
+
+1. **占位防并发**（`supers[id] = nil`）——两个 goroutine 同时 `StartPlugin` 同一 ID 时，
+   只靠「先查后写」会双双通过检查，最后跑两份进程、其中一份成孤儿。
+2. **先起进程再注册钩子**——反过来的话，钩子已注册但 Conn 还没有，分发会撞上空连接。
+3. **`RegisterPlugin(id, m, sup)` 传的是 supervisor 而不是 `conn`**——`dispatcher` 每次分发
+   都重新取 `sup.Conn()`，崩溃重启后自动用新一代。传 `*Conn` 就是 Task 4 点名的失效模式。
+
+`StopPlugin` 相反：**先摘钩子再停进程**。否则进程已死、钩子还在，分发会持续撞死 Conn。
+
+`OnStatus` 在 supervisor 的 goroutine 上同步执行，`container` 里因此把它包成 `go func()`——
+同步写库会拖慢退避重启节奏（见 `supervisor.go` 的 `OnCrash` 注释）。
 
 ## 钩子分发：`dispatcher`（`hooks.go`）
 
