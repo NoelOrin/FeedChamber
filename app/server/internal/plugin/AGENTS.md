@@ -97,6 +97,8 @@ MUST NOT 插进现有审核链中间。
 | `supervisor_test.go` | 内部测试（`package plugin`）：白名单重建/空值跳过/白名单本身无敏感名、退避阶梯、默认值、拉起握手、**子进程 env 端到端**、退避重启与超限停止、**Stop 解开卡死写** |
 | `hooks.go` | **`dispatcher`**（插件注册表 + 钩子分发）：`PluginCaller`、`newDispatcher`、`RegisterPlugin`（收 `*Supervisor`）/`RegisterPluginWithCaller`/`UnregisterPlugin`、`Dispatch`/`dispatchHooks`、`SubscribeEvents`、`Broadcaster`/`TraceBroadcaster` 接缝、`invertHookEvents`、`supervisorCaller` |
 | `hooks_test.go` | 分发契约（内部测试 `package plugin`）：fan-out 全员收到、非订阅者不调用、失败隔离、重复声明去重、摘除、**Dispatch 不阻塞**、**每调用超时**、**不继承调用方取消**、倒排索引、`content.created→comment.created`、**`user.registered` 双发只投一次**（fake + 真 eventbus 两条）、**换代后走新连接**、真实 IPC 往返、并发注册/分发 |
+| `api.go` | **宿主 API**：9 个 capability 常量与白名单、`KnownCapabilities()`（**已排序**）、`IsKnownCapability`、`CapabilitySet`、`CapabilitySetFromNames`、7 个接缝接口（`PostWriter` 等）、`APIDeps`、`apiSpecs` 规格表、`lookupAPI`（查找即校验）、`RegisterAPIs`、`pluginKVKey`（KV 命名空间）、`requireFields` |
+| `api_test.go` | 宿主 API 契约（内部测试 `package plugin`）：未声明能力被拒、已声明能力放行、**nil/空能力集拒绝每一个写类 API**、**写类 API 全部审计**、审计失败不翻转结果、缺字段不触达 service、**KV 键逃逸拒绝**（`../`、绝对路径、冒充他人命名空间）、**KV 按插件隔离**、`kv:read`/`kv:write` 互不蕴含、`CapabilitySetFromNames` 能直接喂 `Manifest.Validate` |
 | `pluginevent/broadcast.go` | `pluginevent.Broadcaster(*eventbus.EventBus)`：把 eventbus 广播适配成 `plugin.Broadcaster`+`TraceBroadcaster`。**独立成包是为了不让 eventbus 的 gorm 依赖进入 `internal/plugin`**，见「分层与事件接缝」 |
 | `pluginevent/broadcast_test.go` | 适配语义（`package pluginevent_test`）：type/payload 透传、实现 `TraceBroadcaster` 且 ctx 非 nil、nil bus/handler 安全空操作 |
 
@@ -104,7 +106,6 @@ MUST NOT 插进现有审核链中间。
 
 | 计划文件 | 职责 |
 |----------|------|
-| `api.go` | 宿主 API 注册与 capability 校验 |
 | `host.go` | 生命周期状态机（`installed`/`starting`/`running`/`crashed`/`stopped`），内嵌 `*dispatcher` |
 
 ## 钩子分发：`dispatcher`（`hooks.go`）
@@ -370,6 +371,82 @@ Windows 需要 Job Object，且与 `exec.CommandContext` 的取消语义有交�
 不代表 manifest 可用。`Validate` 同时拒绝「无钩子」的 manifest：钩子被全部过滤掉后，
 插件没有任何入口，加载它只会得到一个永不工作的进程。
 
+## 宿主 API：capability 校验放在查找阶段（`api.go`）
+
+插件调用宿主 API 走**同一对管道**：`method` 形如 `api.posts.setStatus`，`params` 是参数对象。
+`RegisterAPIs(conn, pluginID, caps, deps)` 在插件启动后调用一次。
+
+### 三个错法的对策（这是本节的核心）
+
+| 错法 | 症状 | 本实现的对策 | 回归网 |
+|------|------|-------------|--------|
+| `caps` nil/空时默认放行 | 没申请任何能力的插件能改库 | `CapabilitySet.grants` 对 nil 天然为 false，且 **`cap == ""` 恒不通过**——某个 spec 漏写 cap 时该 API 变成**不可调用**，而不是人人可调 | `TestLookupAPIFailsClosedWithoutCapabilities`（遍历 `writeAPIMethods()`） |
+| 未知能力在运行期静默忽略 | 管理员看到的清单与运行时权限不一致 | `Manifest.Validate` 在**安装期**报错（`ParseManifest` 不管能力，见「manifest 的校验分工」）；运行期 `CapabilitySetFromNames` 只**收窄**（丢弃未知名），永不放宽 | `TestManifestValidateRejectsUnknownCapabilities`、`TestCapabilitySetFromNamesFeedsManifestValidate` |
+| 为未授予的能力也注册 handler，让 handler 自己记得检查 | 新增 API 漏写一行即越权，且无人提醒 | 未授予时注册的是 **`denyHandler`**——它**不持有 deps**，里面没有任何 service 可碰；删除它内部的判定也执行不到业务代码 | `TestRegisterAPIsDoesNotHandleUndeclaredCapability`、`TestRegisterAPIsRejectsUndeclaredCapability` |
+
+第三条的取舍值得单独说明：**「注册了 handler 但 handler 检查」与「不注册」在插件侧都表现成一次拒绝**，
+但前者的安全性依赖「每个 handler 都写对了校验」，后者的安全性依赖「`lookupAPI` 这一条路径」。
+后者只有一个地方会错，且那个地方的第一个动作就是查表——所以选它。
+`RegisterAPIs` 里仍有第二道 `lookupAPI` 复查（纵深防御），但那不是主防线。
+
+### `apiSpecs` 规格表：方法名、能力、是否写类在同一行
+
+```go
+type apiSpec struct {
+    method string
+    cap    string          // 所需能力；漏写 → 该 API 不可调用（fail closed）
+    write  bool            // true → 成功后**统一**由 wrap 落审计
+    build  func(pluginID string, deps APIDeps) (Handler, error)
+    audit  func(pluginID string, p json.RawMessage) (action, target, detail string)
+}
+```
+
+三处收益，都是「让错误更难犯」而不是「少写几行」：
+
+- `apiMethodNames()` / `writeAPIMethods()` / `apiCapabilities()` 全部**从规格表推导**，
+  不再维护第二份手写字面量清单（brief 里的清单与 switch 是两份数据，少一条＝该方法永远 unknown method，不编译报错）。
+- 审计在 `wrap` 里统一落，**handler 内部没有审计调用点**——「写类 API 忘审计」不可能发生。
+  新增写 API 只要 `write: true`，`TestWriteAPIsAreAudited` 自动纳入覆盖。
+- `TestEveryAPIMethodDeclaresACapability` 要求每个方法都登记已知能力：`cap` 漏写在这一层就被拦。
+
+**审计失败不翻转结果。** 业务动作已经生效，把 error 返回给插件只会让它重试，而重试会**再执行一次**写操作。
+因此只记 error 日志（含 plugin/api/action 字段），返回成功。反过来，`deps.Audit == nil`（漏接线）
+也只记 error 不 panic——handler 跑在 ipc 的 dispatch goroutine 里，panic 就是整个后端崩溃。
+
+### 参数校验：只查非空，不查取值域
+
+`requireFields` 拒绝缺失/纯空白的必填字段（错误里**点名**哪个字段），但不校验 `status` 是否属于
+`approved/pending/...`——合法取值定义在 `internal/model`，而本包 MUST NOT 引入它（依赖 gorm）。
+取值域校验属于 Task 7/8 的 service 适配层。
+
+空值绝不能透传到 service：`{}` 解出来全是零值，`SetStatus("", "")` 可能命中一条空主键记录，
+也可能在 service 层变成一句看不懂的 SQL 错误。`value`（kv.set）是**唯一**允许为空串的字段。
+
+### 接缝：`APIDeps` 只暴露业务动作
+
+`PostWriter.SetStatus` / `AddTag`、`CommentWriter.SetStatus`、`UserReader.GetLevel` / `GetEmail`、
+`Notifier.Send`、`KVStore.Get` / `Set`、`SlotWriter.Set` / `Delete`、`AuditRecorder.RecordPluginAction`。
+
+刻意**没有**通用 CRUD（`Save(any)` / `Update(fields map[string]any)`）：收窄到枚举动作后，
+每一个动作都能对应一条有意义的审计记录；通用 CRUD 的审计只能写成「插件改了啥」，
+而且等于把 repository 的写权限整个交给插件。`deps` 字段为 nil（能力有但宿主没接线）时返回
+`errAPINotWired`，与 `ErrCapabilityDenied` 分开——前者该找运维，后者该找管理员申请权限。
+
+### KV 命名空间：前缀由 `api.go` 自己拼
+
+`pluginKVKey(pluginID, key)` 返回 `plugin:<pluginID>:<key>`，实现方拿到的**已经是**限定好的全键：
+
+- 前缀交给插件自觉 = 没有隔离；交给 `KVStore` 实现 = Task 7 用真实 kvstore 适配时要再写一遍，
+  两份逻辑迟早分叉。`api.go` 是插件 key 进入系统的唯一入口，作用域拼在这里。
+- 拒绝的形态：`..` / `.` 路径段（按 `/` 切分）、空路径段（`a//b`）、绝对路径（`/x`）、
+  反斜杠、含 `:`（冒充/混淆命名空间）、含空白或控制字符、以空白开头/结尾、超过 200 字节、空 key。
+- `pluginID` 自己也是逃逸面，同样校验：空 ID 会让所有插件共享 `plugin::`；含 `:` 的 ID（`"a:b"`）
+  与另一个插件（`"a"` + `"b:c"`）拼出同一个全键。两者都直接拒绝**整个** KV 操作。
+- `TestKVIsolatesPluginsFromEachOther` 端到端钉住：alpha 写 `shared`，beta 读 `shared` 拿到空；
+  beta 直接点名 `plugin:alpha:shared` 被拒绝。
+- **`kv:read` 与 `kv:write` 互不蕴含**（`TestKVCapabilitiesAreIndependent`）：只写不读是合法组合
+  （插件把状态放进 KV 但不想读回来），合并它们会凭空扩大权限。
+
 ## 安全边界（必须如实表述）
 
 插件子进程以**与后端相同的系统用户**运行。由此：
@@ -450,6 +527,24 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 | `TestSupervisorCallerReportsClosedConnection` | 已关闭的连接立刻失败，不空等到 timeout |
 | `TestSupervisorCallerWithoutRunningSupervisor` | supervisor 为 nil / 未 Start 时立刻返回 `errPluginNotRunning` |
 | `TestDispatcherConcurrentDispatchAndRegistration` | 并发分发与注册/摘除无数据竞争（`-race` 下有效）；分发在锁外调用 |
+| `TestRegisterAPIsRejectsUndeclaredCapability` | 只声明 `posts:read` 的插件调 `api.posts.setStatus` 被拒，错误含 `capability`，**service 一次都没被调用** |
+| `TestRegisterAPIsAllowsDeclaredCapability` | 声明 `posts:write` 时调用成功，且**恰好一条**审计 |
+| `TestRegisterAPIsDoesNotHandleUndeclaredCapability` | 经**真实 IPC** 调用：未声明能力拿到 capability 错误（不是静默、不是超时） |
+| `TestRegisterAPIHandlesDeclaredCapabilityOverIPC` | 经真实 IPC：已声明能力真的执行并返回 `{"ok":true}`（防「全都不注册」也能让上一条变绿） |
+| `TestLookupAPIFailsClosedWithoutCapabilities` | **nil 与空能力集拒绝每一个写类 API**，且不触达 service / KV / 审计 |
+| `TestWriteAPIsAreAudited` | 每一个写类 API 成功后**恰好**多一条审计，且带插件标识 |
+| `TestWriteAPIAuditFailureDoesNotFailTheCall` | 审计失败不把已生效的写动作翻成失败（否则插件重试会再写一次） |
+| `TestWriteAPIsRejectMissingRequiredFields` | 13 组缺字段参数全部报错，且 service / KV / 审计一个都没被碰 |
+| `TestKVRejectsKeysEscapingPluginNamespace` | `api.kv.get`/`set` 对 `../../x`、`/abs`、`plugin:other:k`、`sub\\..\\..\\x`、空 key 等 8 种形态全部拒绝，存储零调用 |
+| `TestKVScopesKeysUnderPluginPrefix` | 存储实现收到的 key **已是** `plugin:alpha:counter`（作用域在 api.go 拼，不靠插件自觉） |
+| `TestKVIsolatesPluginsFromEachOther` | beta 读不到 alpha 的同名键；beta 点名 `plugin:alpha:shared` 被拒绝 |
+| `TestKVRejectsUnsafePluginIDs` | 空/含 `:`/含 `/`/含 `..`/带空白的 pluginID 被拒绝（否则命名空间可能与其他插件重合） |
+| `TestKVCapabilitiesAreIndependent` | `kv:write` 不隐含 `kv:read`，反之亦然 |
+| `TestEveryAPIMethodDeclaresACapability` | 每个 API 都登记了**已知**能力（漏写 cap 会让该 API 不可调，是刻意的 fail-closed） |
+| `TestAPIMethodNamesMatchLookup` | `apiMethodNames()` 与 `lookupAPI` 严格一致；写类清单是其子集；方法名不重复 |
+| `TestKnownCapabilitiesAreSortedAndKnown` | `KnownCapabilities()` **排序**（连取 20 次比对，抓未排序）、内容与 9 个常量逐一对应、重复项为零 |
+| `TestCapabilitySetFromNamesFeedsManifestValidate` | `CapabilitySet` 能**直接**喂 `Manifest.Validate`；未知能力仍报错；nil/空 knownCaps 仍拒绝 |
+| `TestCapabilityErrorsAreIdentifiable` | 权限拒绝可被 `errors.Is(err, ErrCapabilityDenied)` 识别（插件据此区分「没申请」与「宿主出错」） |
 
 `TestDispatcherDispatchDoesNotBlockOnSlowPlugin` 有一个刻意的设计：它用 `time.AfterFunc`
 在 1s 后无条件释放插件。**没有这个兜底，把 `go func` 改成同步调用会让测试永久挂住**，
@@ -487,7 +582,18 @@ supervisor 的测试**分两层**，缺一层就有盲区：`buildPluginEnv`/`ba
 - 新增钩子时**优先复用现成事件**再考虑新增事件：`comment.created` → `content.created` 就是这么来的。
   插件侧的语义名可以更自然，传输侧不必跟着改。
 - 新增 capability：在 `api.go` 的 `knownCapabilities` 登记，并在后台的能力清单里展示——插件安装前
-  管理员看的就是这份清单。
+  管理员看的就是这份清单。**同时必须让至少一个 `apiSpec` 要求它**，否则它会出现在安装确认页
+  却没有任何 API 使用（`TestEveryAPIMethodDeclaresACapability` 只查反方向：每个 API 都登记已知能力）。
+- 新增宿主 API：**只加 `apiSpecs` 一行**（method / cap / write / build / audit），不要再去维护
+  `apiMethodNames()` 之类的字面量清单——它们全部从规格表推导。测试里补一条
+  `writeAPISampleParams`（写类）与审计断言，`TestWriteAPIsAreAudited` 会自动纳入覆盖。
+- 放宽 `pluginKVKey` 的任何一条拒绝规则都等于放宽插件 KV 隔离：`..` / 空段 / 绝对路径 / 含 `:`
+  这四类放开后，一个插件能读到另一个插件的键。改前先加测试再改实现。
+- 把能力校验从 `lookupAPI` 挪进某个 handler 是本文件最反对的改动：那会把
+  「一个地方会错」变成「每个 handler 都可能错」。若确需在 handler 内二次校验，
+  只能作为**额外的**纵深防御，不能删掉 `lookupAPI` 里那道。
+- 写类 API 的审计只在 `apiSpec.wrap` 里落。若新增一条绕过 `wrap` 的注册路径，
+  「所有写类 API 必须审计」这条 spec 就失去唯一保证。
 - 提升协议版本：`ProtocolVersion1` 是**唯一**可接受值，没有「兼容旧版本」分支。真要加 v2，
   必须同时定义 v1 的兼容策略，否则所有存量插件的 manifest 会在升级瞬间全部被拒。
 - `internal/plugin` 一旦 import 了 `internal/repository`，分层约束与 spec 同时失效
@@ -511,6 +617,9 @@ supervisor 的测试**分两层**，缺一层就有盲区：`buildPluginEnv`/`ba
 - 钩子清单增减、**钩子→事件映射变化**、协议版本策略变化
 - `entry` 校验规则变化（放行/拒绝哪些路径形态）
 - capability 校验语义变化（哪一半报错、哪一半丢弃）
+- **新增/删除宿主 API 方法**（`apiSpecs` 一行即一处契约；插件安装确认页与审计动作名都会变）
+- **KV 命名空间规则变化**（前缀形态 `plugin:<id>:`、拒绝的 key 形态、pluginID 校验）
+- **写类 API 的审计口径变化**（在哪一层落、失败是否翻转结果、`action`/`target` 的取值）
 - 安全边界表述变化（同用户运行、环境变量白名单）
 - **IPC 帧格式或请求/响应关联规则变化**（`Frame` 字段、方向判定依据、`id` 分配与丢弃策略）
 - 流的**所有权**或 supervisor 关停顺序变化；写入从同步改成异步（或反之）会改变「谁能解开一个卡死的 `writeMu`」
