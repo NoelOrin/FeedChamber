@@ -93,6 +93,19 @@ func (r *reg) adminRoutes() {
 			p.Post("/{id}/delete", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Delete)
 		})
 
+		// ── Slots（壳层插槽）─────────────────────────────────────
+		// 插槽属于站点自定义层，复用 customize 的读写权限码，不新造。
+		a.PartyFunc("/slots", func(sl iris.Party) {
+			sl.Use(middleware.RequirePermission(deps, model.PermCustomizeRead))
+			sl.Post("/list", h.Slot.List)
+		})
+		a.PartyFunc("/slots", func(sl iris.Party) {
+			sl.Use(middleware.RequirePermission(deps, model.PermCustomizeWrite))
+			sl.Post("/create", h.Slot.Create)
+			sl.Post("/{id}/update", h.Slot.Update)
+			sl.Post("/{id}/delete", h.Slot.Delete)
+		})
+
 		// ── Trash / Restore ────────────────────────────────────
 		a.PartyFunc("/trash", func(t iris.Party) {
 			t.Post("/posts/list", h.Trash.ListPosts)

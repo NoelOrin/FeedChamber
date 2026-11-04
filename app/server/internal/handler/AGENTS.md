@@ -57,7 +57,8 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 | trash.go | TrashHandler | ListPosts, RestorePost, ListComments, RestoreComment |
 | backup.go | BackupHandler | Create, List, Cleanup, Restore, Download, Delete |
 | webhook.go | WebhookHandler | Create, List, Update, Delete, ListDeliveries, Ping, RetryDelivery |
-| plugin.go | PluginHandler | List, Install, Update, SetEnabled, Delete |
+| plugin.go | PluginHandler | List, ListSources, CreateSource, ApproveSource, RejectSource, Install, Uninstall, Update, SetEnabled, Delete |
+| slot.go | SlotHandler | List, Create, Update, Delete（后台，挂 customize:read/write）；Public（公开，渲染只读库） |
 | badge.go | BadgeHandler | List, ListByUser |
 | theme.go | ThemeHandler | List, GetPreference, SetPreference |
 | leaderboard.go | LeaderboardHandler | List |

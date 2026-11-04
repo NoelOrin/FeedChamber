@@ -25,6 +25,7 @@ func (r *reg) publicRoutes() {
 	// 它们参与首屏注入，登录墙会让人看不到自己配的 CSS。
 	v1.Get("/pages/{slug}", h.Customize.GetPublicPage)
 	v1.Post("/customization/public", h.Customize.GetPublicCustomization)
+	v1.Post("/slots/public", h.Slot.Public)
 
 	v1.PartyFunc("/auth", func(auth iris.Party) {
 		auth.Post("/register",

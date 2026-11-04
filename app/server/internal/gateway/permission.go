@@ -353,6 +353,9 @@ func (p *PermissionCheckerMiddleware) initRouteMap() {
 	// 否则「只想看看装了哪些插件」的 Key 会拿到安装/卸载能力。
 	// 精确映射优先于前缀（Middleware 先查 exactMap 再扫 prefixMap）。
 	p.addExact("/api/v1/admin/plugins/list", model.PermPluginRead)
+	// 插槽：读接口 customize:read，写接口 customize:write。
+	p.addExact("/api/v1/admin/slots/list", model.PermCustomizeRead)
+	p.addPrefix("/api/v1/admin/slots/", model.PermCustomizeWrite)
 	p.addExact("/api/v1/admin/plugins/sources/list", model.PermPluginRead)
 	p.addExact("/api/v1/admin/plugins/install", model.PermPluginManage)
 	p.addExact("/api/v1/admin/plugins/sources/create", model.PermPluginManage)

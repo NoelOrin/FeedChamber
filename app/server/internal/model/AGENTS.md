@@ -38,6 +38,7 @@
 | moderation.go | ContentModeration, ModerationRule, ModerationConfig | 内容审核模型（H-02 已迁移未启用）。另含文章审核模式常量：`ModerationMode{Off,Async,External,Manual}`、`DefaultModerationMode=async`、`ParseModerationMode`（读取侧回落默认值）与 `ValidModerationMode`（写入侧校验），模式本身存系统设置 `moderation_mode`，不在这三张表里 |
 | meta.go | Meta | 键值元数据表（R-05 强制改密标记等） |
 | gate.go | GateRule, GateDomainDefault, GateCondition | 门控规则引擎：5 个能力域（`GateDomain*`）、固定谓词字段（`GateField*` + `GateFieldOps` / `GateWindowMetrics`）、4 个动作（`GateAction*`）、首启 seed（`DefaultGateRules` / `DefaultGateDomainDefaults`）。条件与动作参数都是 JSON 字符串，谓词集固定、不提供自由表达式 |
+| slot_entry.go | SlotEntry | 壳层插槽条目。11 个插槽枚举 + 5 种 Kind（`text`/`link`/`image`/`divider`/`widget`，**刻意不含 html**）。`Enabled` 刻意不带 gorm `default:true`——带默认值时 Create 传 false 会被覆盖成 true；默认启用由 service 层用 `*bool` 三态表达 |
 | trust.go | XPRule, XPStreakBonus, TrustLevel, XPAdjustment, LevelMetrics | XP / 等级体系：指标注册表（`Metric*` 常量 + `XPMetricLabels`）、指标→XP 规则、连续签到阶梯、等级定义、人工调整账本。首启 seed 用 `DefaultXPRules` / `DefaultXPStreakBonuses` / `DefaultTrustLevels` |
 
 > **关注目标类型只有 `post` / `tag`**：`watch.go` 的 `WatchTargetSpace` 已于 2026-10-28 删除（产品决定，与「关注话题」语义重叠），`validTargetType` 不再接受 `"space"`，存量行见 `db/migrations/cleanup_space_watches.sql`。

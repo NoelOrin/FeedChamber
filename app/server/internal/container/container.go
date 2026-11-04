@@ -75,6 +75,7 @@ type Container struct {
 	NotificationRepo  repository.NotificationRepository
 	OAuthRepo         repository.OAuthRepository
 	PluginRepo        repository.PluginRepository
+	SlotRepo          repository.SlotEntryRepository
 	PluginSourceRepo  repository.PluginSourceRepository
 	PluginInstallRepo repository.PluginInstallRepository
 	// 站点自定义层（P1）
@@ -128,6 +129,7 @@ type Container struct {
 	OAuthSvc        service.OAuthService
 	PMSvc           service.PMService
 	PluginSvc       service.PluginService
+	SlotSvc         service.SlotService
 	// PluginHost 托管 Node 子进程插件。New 只构造对象图，不拉起任何进程；
 	// 真正拉起在 Start（runtime.go）。
 	PluginHost   *plugin.Host
@@ -189,6 +191,7 @@ func New(d Deps) *Container {
 	c.NotificationRepo = repository.NewNotificationRepository(d.Store)
 	c.OAuthRepo = repository.NewOAuthRepository(d.Store)
 	c.PluginRepo = repository.NewPluginRepository(d.Store)
+	c.SlotRepo = repository.NewSlotEntryRepository(d.Store)
 	c.PluginSourceRepo = repository.NewPluginSourceRepository(d.Store)
 	c.PluginInstallRepo = repository.NewPluginInstallRepository(d.Store)
 	c.SnippetRepo = repository.NewSnippetRepository(d.Store)
@@ -225,6 +228,7 @@ func New(d Deps) *Container {
 	c.BadgeSvc = service.NewBadgeService(c.BadgeRepo, c.UserRepo)
 	c.AuditLogSvc = service.NewAuditLogService(c.AuditLogRepo)
 	c.PluginSvc = service.NewPluginService(c.PluginRepo, c.PluginSourceRepo, c.PluginInstallRepo, c.AuditLogSvc)
+	c.SlotSvc = service.NewSlotService(c.SlotRepo, c.AuditLogSvc)
 	c.CustomizeSvc = service.NewCustomizeService(
 		c.SnippetRepo, c.ThemeTokenRepo, c.NavItemRepo, c.HomeModuleRepo, c.CustomPageRepo, c.AuditLogSvc, c.Tx)
 	c.MCPServerSvc = service.NewMCPServerService(c.MCPServerRepo, c.AuditLogSvc)
