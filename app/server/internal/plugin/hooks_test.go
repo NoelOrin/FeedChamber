@@ -652,3 +652,42 @@ func TestDispatcherDispatchRecoversPanicInCaller(t *testing.T) {
 	// panic 的插件不影响另一个插件。
 	require.Eventually(t, func() bool { return rec.count("ok") == 1 }, 2*time.Second, 10*time.Millisecond)
 }
+
+// TestDispatchReachesCronDailyHook 钉住 cron.daily 的可达性。
+//
+// cron.daily 没有事件源（不在 HookEvents 里），只能由 ticker 直接 Dispatch。
+// 没有这条测试的话，「声明了 cron.daily 却永远收不到调用」是静默的——
+// 插件装得上、状态显示 running、就是不触发。
+func TestDispatchReachesCronDailyHook(t *testing.T) {
+	d := newDispatcher()
+
+	var mu sync.Mutex
+	calls := 0
+	d.RegisterPluginWithCaller("daily-plugin", &Manifest{Name: "daily-plugin", Hooks: []string{HookCronDaily}},
+		func(ctx context.Context, method string, params any) ([]byte, error) {
+			mu.Lock()
+			calls++
+			mu.Unlock()
+			require.Equal(t, "hook.cron.daily", method)
+			return []byte(`{}`), nil
+		})
+
+	// 走 Host 的 dispatchDaily 路径（它是 ticker 实际调用的入口）。
+	h := NewHostWithOptions(HostOptions{})
+	h.dispatcher = d
+	h.dispatchDaily()
+
+	require.Eventually(t, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return calls == 1
+	}, 2*time.Second, 10*time.Millisecond, "cron.daily 钩子必须被触发")
+}
+
+// cron.daily 不得出现在事件映射里——否则会订阅一个不存在的 eventbus 事件。
+func TestCronDailyIsNotEventDriven(t *testing.T) {
+	require.False(t, HookIsEventDriven(HookCronDaily),
+		"cron.daily 由 ticker 驱动，不应进 hookEvents")
+	_, inMap := HookEvents()[HookCronDaily]
+	require.False(t, inMap, "cron.daily 不得出现在事件映射里")
+}

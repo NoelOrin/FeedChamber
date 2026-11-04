@@ -71,8 +71,12 @@ v1 的 8 个钩子：`post.created` `post.closed` `comment.created`
 
 - `post.updated` **已删除**：`internal/pkg/eventbus/events.go` 里没有任何对应事件，
   留着等于让插件声明一个永远不触发的钩子（能装、能加载、静默收不到调用）。
-- `cron.daily` 由 `TrustService` 的每日 ticker 触发，不经事件总线。
-  `HookIsEventDriven("cron.daily") == false`，Task 5 据此把它排除在事件订阅之外。
+- `cron.daily` **由 `Host.StartDailyHookTicker` 自己的 ticker 触发**（首次延迟 2 分钟、之后每 24h），
+  不经事件总线。`HookIsEventDriven("cron.daily") == false`，`SubscribeEvents` 据此把它排除在事件订阅之外。
+  ticker 由 `container.Start` 装配为 `plugin_cron_daily` worker。
+
+  这条**必须有 ticker**：`cron.daily` 没有事件源，不接 ticker 的话插件声明了该钩子却永远收不到调用，
+  且症状是静默的（装得上、状态 running、就是不触发）。回归网 `TestDispatchReachesCronDailyHook`。
 - `user.registered` 绑定**别名事件本身**。Auth 注册成功时同时发布 `user.created` 与
   `user.registered`（`internal/service/auth.go`，`EventUserRegistered` 是 `EventUserCreated`
   的历史别名）。绑成 `user.created` 会让 Task 5 按事件反查钩子时两条发布都命中，

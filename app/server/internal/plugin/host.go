@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 )
@@ -197,3 +198,40 @@ func (h *Host) reportStatus(pluginID, status, lastError string) {
 
 // ErrPluginNotFound 供上层区分「插件不存在」与「插件启动失败」。
 var ErrPluginNotFound = errors.New("plugin not found")
+
+// StartDailyHookTicker 启动每日钩子触发，返回取消函数。
+//
+// `cron.daily` 没有事件源（它不在 hookEvents 里），因此必须由 ticker 直接
+// DispatchHook。不给它接 ticker 的话，插件声明了该钩子却永远收不到调用——
+// 而且症状是静默的（AGENTS.md 里明确记着这条，见「钩子名 ≠ 事件名」）。
+//
+// 首次触发延迟 2 分钟：与 TrustService 的每日重算保持同一节奏，避免
+// 启动瞬间所有定时任务一起压上来。
+func (h *Host) StartDailyHookTicker(ctx context.Context) context.CancelFunc {
+	ctx, cancel := context.WithCancel(ctx)
+	go func() {
+		timer := time.NewTimer(2 * time.Minute)
+		ticker := time.NewTicker(24 * time.Hour)
+		defer timer.Stop()
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-timer.C:
+				h.dispatchDaily()
+			case <-ticker.C:
+				h.dispatchDaily()
+			}
+		}
+	}()
+	return cancel
+}
+
+func (h *Host) dispatchDaily() {
+	// 用 Background 而不是 ticker 的 ctx：钩子不该因为宿主正在关停而被掐断，
+	// 关停顺序由 StopAll 负责。
+	h.Dispatch(context.Background(), HookCronDaily, map[string]any{
+		"trigger": "daily",
+	})
+}

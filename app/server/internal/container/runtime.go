@@ -49,6 +49,8 @@ func (c *Container) Start(ctx context.Context) (*Runtime, error) {
 		return nil, fmt.Errorf("start trust sync subscriber: %w", err)
 	}
 	r.workers["motion_resolver"] = c.MotionSvc.StartResolveTicker(ctx)
+	// 插件 cron.daily 没有事件源（不在 hookEvents 里），必须由 ticker 直接触发。
+	r.workers["plugin_cron_daily"] = c.PluginHost.StartDailyHookTicker(ctx)
 
 	// 「发布后异步审核」（moderation_mode=async）消费发帖事件；external 模式
 	// 在外部服务不可用时也走这条兜底路径。订阅本身不产生 goroutine，
