@@ -25,7 +25,7 @@ const tagSchema = z.object({ name: z.string().min(1, '请输入标签名称') })
 type TagValues = z.infer<typeof tagSchema>;
 
 export default function TagList() {
-	const [page] = useState(1);
+	const [page, setPage] = useState(1);
 	const [pageSize] = useState(20);
 	const [modalOpen, setModalOpen] = useState(false);
 	const [editingTag, setEditingTag] = useState<TagItem | null>(null);
@@ -42,7 +42,7 @@ export default function TagList() {
 		refetch,
 	} = useQuery({
 		queryKey: qk.admin.tags.list({ page, pageSize }),
-		queryFn: () => tagService.list(),
+		queryFn: () => tagService.list({ page, page_size: pageSize }),
 	});
 
 	const data = res?.data ?? [];
@@ -167,7 +167,7 @@ export default function TagList() {
 				data={data}
 				loading={loading}
 				getRowId={(row) => row.id}
-				pagination={{ page, pageSize, total, onChange: () => {} }}
+				pagination={{ page, pageSize, total, onChange: setPage }}
 			/>
 
 			<Dialog
