@@ -88,7 +88,7 @@ MUST NOT 插进现有审核链中间。
 | `manifest_test.go` | 解析/校验的契约：合法 manifest、未知协议版本、缺 name/version、未知钩子丢弃、未知能力报错、坏 JSON、钩子→事件映射、`entry` 逃逸拒绝 |
 | `ipc.go` | stdio JSON-RPC 编解码：`Frame`/`FrameError`、`Conn`、`NewConn`/`Start`/`Close`、`Call`/`Notify`/`Handle`、读循环与写串行化 |
 | `ipc_test.go` | IPC 契约（外部测试 `package plugin_test`，用 `net.Pipe()` 对接两条 `Conn`）：结果回传、handler 错误透传、ctx 超时、未知方法报错、通知不等待响应、关闭解除在途调用、坏行跳过、写入串行、重复响应不卡死 |
-| `supervisor.go` | `os/exec` 拉起 `node`、`buildPluginEnv` 白名单重建环境、退避重启（1s→2s→4s→8s→16s，`MaxRestarts` 默认 5）、三步关停 |
+| `supervisor.go` | `os/exec` 拉起 `node`、`buildPluginEnv` 白名单重建环境、退避重启（1s→2s→4s→8s→16s，`MaxRestarts` 默认 5）、三步关停、`Running()` / **`Conn()`（取当前代）** |
 | `supervisor_test.go` | 内部测试（`package plugin`）：白名单重建/空值跳过/白名单本身无敏感名、退避阶梯、默认值、拉起握手、**子进程 env 端到端**、退避重启与超限停止、**Stop 解开卡死写** |
 
 后续任务追加（同一包，**内部测试用 `package plugin`、外部契约测试用 `package plugin_test`**，两者可共存）：
@@ -155,12 +155,24 @@ MUST NOT 插进现有审核链中间。
 | 路径 | 写在哪 | 对端不消费 stdin 时 | 谁能解开 |
 |------|--------|---------------------|----------|
 | `Call` | 独立 goroutine | 卡在 goroutine 里，`Call` 按时返回 `ctx.Err()` | ctx 到期 / `Close` |
-| `Notify` | **调用方 goroutine** | **调用方被阻塞** | 只有 `Close` 或杀掉对端进程 |
-| `dispatch` | **该请求的 goroutine** | 该 dispatcher goroutine 被阻塞 | 只有 `Close` 或杀掉对端进程 |
+| `Notify` | **调用方 goroutine** | **调用方被阻塞** | **只有杀掉对端进程** |
+| `dispatch` | **该请求的 goroutine** | 该 dispatcher goroutine 被阻塞 | **只有杀掉对端进程** |
 
-即：**一个卡死的 `writeMu` 只能靠 `Close`/杀进程解除**。Task 4 的
-「超时 → kill 子进程」正是这个兜底，supervisor MUST 保留它。删掉 kill 退路后，
-一个不读 stdin 的插件能把宿主的调用方 goroutine 一条条耗光。
+**关键区别：`Close` 和「杀进程」不是同级的两条路。** 对一次**已经进入 `write(2)`** 的写，
+`Close` 解不开它——Go 的 `internal/poll.FD` 在写期间持 refcount，`Close` 只置 `closing`
+位并把 refcount 减一，真正的 fd 要等那次写返回、refcount 归零才释放。**只有对端进程死掉**
+（它持有的读端随之关闭 → 管道破裂 → 阻塞的 `write(2)` 拿到 EPIPE 返回）才能解开它。
+
+`Close` 真正能解开的是另外两类：阻塞在 `Scan` 上的**读**，以及**尚未进入 `write(2)`**、
+还在等 `writeMu` 的写。所以：
+
+- 一个卡死的 `writeMu` **只能靠杀掉对端进程解除**。Task 4 的
+  「超时 → kill 子进程」不是礼貌收尾，是**唯一解药**，supervisor MUST 保留它。
+  删掉 kill 退路后，一个不读 stdin 的插件能把宿主的调用方 goroutine 一条条耗光。
+- 这正是 `Stop` 里 `SIGTERM` → 宽限 → `SIGKILL` 必须存在的原因；`conn.Close()`
+  只是关停三步里的第一步（阻止新的写进来），不是解除阻塞的手段。
+- 回归网：`TestSupervisorStopUnblocksWedgedWrite`。删掉 `Stop` 里**全部**杀进程代码即红
+  （只剩主路径 SIGTERM 时仍绿——宽限期兜底会接住，这是刻意的双层设计）。
 
 注意 `Call` 里那个写 goroutine **不保证会退出**：它只在 `Write` 返回后才结束，
 若对端永久卡住且 `w` 不是 `io.Closer`，它就被永久 pin 住。容量 1 的缓冲只保证
@@ -169,7 +181,8 @@ MUST NOT 插进现有审核链中间。
 ### 流的所有权与 supervisor 关停顺序
 
 **`Conn` 接管 `r`/`w` 的所有权，`Close` 会主动关闭它们**（实现了 `io.Closer` 时）。
-这是解开阻塞 `Write`/`Scan` 的唯一手段。代价是：调用方 MUST NOT 与 `Close` 并发地
+它解开的是阻塞的 **`Scan`（读）** 与**尚未进入 `write(2)`** 的写；已经卡在 `write(2)`
+里的写只能靠杀掉对端进程解开（原因见上一节）。代价是：调用方 MUST NOT 与 `Close` 并发地
 关同一对管道，尤其不能让它与 `cmd.Wait()` 抢——`os/exec` 会在 `Wait` 里关闭
 `StdinPipe`/`StdoutPipe`，并发关闭是数据竞争，在部分平台会返回一个伪错误，
 supervisor 误判成插件崩溃就会白白触发 1s→2s→4s 重启阶梯。
@@ -220,18 +233,56 @@ EPIPE 返回**。`TestSupervisorStopUnblocksWedgedWrite` 钉住它：把 `Stop` 
 代码都删掉，该测试会以「停止超时，进程未被回收」变红（只删主路径不会红，因为宽限期兜底
 会接住——这是刻意的双层设计，不是冗余）。
 
-### `Start` 只返回第一代 `Conn`
+### `Start` 只返回第一代 `Conn`，用 `Conn()` 取当前代
 
-崩溃重启后新进程有新管道、新 `Conn`，**不经 `Start` 返回**。宿主（Task 7 的 `Host`）
-必须把 `OnCrash` 当作「这个插件这一代结束了」的信号，去标记状态 / 重新 `StartPlugin`；
-继续拿旧 `Conn` 发钩子只会得到 `ErrClosed`。这是「`Start` 返回 `*Conn` 一次」的必然结果，
-不是实现偷懒。
+`Start` 只能返回一次，所以它返回的永远是**第一代**连接。崩溃自动重启后，新一代进程有
+自己的管道与 `Conn`，**不经 `Start` 返回**——宿主手里的那个已经死了，但 `Running()` 是
+`true`。只看 `Running()` 就继续用旧 Conn 发钩子，**每个钩子都会拿到 `ErrClosed`，
+而状态面板显示「运行中」**，这是最难排查的一类故障。
 
-`OnCrash` 在 supervisor 自己的 goroutine 上同步执行、且不持锁（回调里调 `Running()`
-不会死锁），但**同步调用 `Stop()` 会**（`Stop` 要等这个 goroutine 结束）。耗时的回调请自行
-开 goroutine——Task 7 的 `OnStatus` 写库正是这么做的。
+因此 supervisor 提供 `Conn()`，返回**当前这一代**的连接（无锁外泄漏，start 前/Stop 后为 nil）：
+
+```go
+sup.Start(ctx)                       // 首次拉起
+sup.OnCrash = func(reason string) {  // 收到崩溃信号：标记状态
+    // 注意：不要在这里同步调 Stop()，见下
+}
+conn := sup.Conn()                   // 任何时刻取「现在」那条，别缓存 Start 的返回值
+```
+
+**正确用法是把 `ErrClosed` 当作「这一代结束了」的信号**，去等下一次 `Conn()` 换代，
+而不是重试同一条连接。`Conn()` 返回的指针仍可能在你拿到之后失效（对端恰好此刻崩溃）——
+这是分布式生命周期的固有竞态，不是缺陷。
+
+回归网：`TestSupervisorConnReturnsCurrentGeneration` 用「应答一次即崩溃」的插件逼出重启，
+断言 (a) 重启后 `Conn()` 指针变了、(b) 旧 Conn 拿到 `ErrClosed`、(c) 新 Conn 能完成往返。
+把 `Conn()` 改成永远返回第一代即红。
+
+`OnCrash` 在 supervisor 自己的 goroutine 上**同步**执行、且不持锁（回调里调 `Running()` /
+`Conn()` 不会死锁），但**同步调用 `Stop()` 会死锁**——`Stop` 要等这个 goroutine 结束，
+而 goroutine 正卡在回调里等 `Stop` 返回。耗时的回调请自行开 goroutine；
+Task 7 的 `OnStatus` 写库正是这么做的。
 
 `Start` 被重复调用时会先停掉上一代（`replaced` 分支），避免同一插件跑两份。
+
+### 刻意不做的事：进程组管理与「退出码零也算崩溃」
+
+两处**有意识的取舍**，不是遗漏。改动前先读理由。
+
+**1. 不管理进程组，孙进程可能变孤儿（v1 刻意不做，交 Task 8 安装流程）。**
+杀 `cmd.Process` 只杀 node 本身。插件若自己 spawn 子进程（`npm install`、worker、
+`sleep` 一类），node 死后这些孙进程会成孤儿继续跑。v1 的运行时钩子路径不 spawn 子进程，
+风险集中在**安装/依赖安装**（Task 8）——那里有明确的超时与清理窗口，是正确的位置。
+若将来要在运行时管理进程组，属 Unix-only（`Setpgid` + `kill(-pgid)`），
+Windows 需要 Job Object，且与 `exec.CommandContext` 的取消语义有交互，改动面不小。
+
+**2. `exit 0` 也算崩溃，进重启阶梯。**
+当前实现里任何非 `stopped`/`replaced` 的退出都算崩溃，包括插件自己 `process.exit(0)`。
+这是刻意的：**让一个本想常驻的插件静默消失，比多重启几次更糟**——后者在日志里可见、
+会被退避与上限收敛，前者只表现为「钩子莫名不再触发」。spec 只要求「异常退出必须重启」，
+没有要求「正常退出必须不重启」，因此这不违反规范。
+若将来需要区分，需要给 `OnCrash` 传结构化原因（退出码/信号），而不是 error 文案——
+但 `SupervisorOptions.OnCrash` 的签名是 `func(reason string)`，改它是接口变更，需单独裁定。
 
 ## manifest 的校验分工
 
@@ -308,6 +359,8 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 | `TestSupervisorStopsAfterMaxRestarts` | 崩溃回调次数恰为 `MaxRestarts+1`，且超限后不再重启（只看 `Running()` 抓不到 off-by-one） |
 | `TestSupervisorStopUnblocksWedgedWrite` | **kill 是卡死写的唯一解药**：node 不读 stdin 时 `Notify` 永久阻塞，`Stop` 必须能在超时内解开它（删掉 `Stop` 里全部杀进程代码即红） |
 | `TestSupervisorStopIsIdempotent` | `Stop` 可重复调用，之后 `Running()` 为 false |
+| `TestSupervisorConnReturnsCurrentGeneration` | **换代语义**：重启后 `Conn()` 指针与上一代不同；旧 Conn 拿到 `ErrClosed`；新 Conn 能完成真实往返（把 `Conn()` 改成永远返回第一代即红） |
+| `TestSupervisorConnNilBeforeStart` | `Conn()` 在 Start 之前与 Stop 之后返回 nil，不 panic |
 
 supervisor 的测试**分两层**，缺一层就有盲区：`buildPluginEnv`/`backoffDelay` 是纯函数，
 断言精确但抓不到装配错误；node 端到端测试抓装配，但依赖 PATH 上有 node，缺失时
@@ -353,3 +406,5 @@ supervisor 的测试**分两层**，缺一层就有盲区：`buildPluginEnv`/`ba
 - **退避阶梯或 `MaxRestarts` 语义变化**（阶梯本身、封顶值、`MaxRestarts+1` 的崩溃计数口径）
 - supervisor 的**管道构造方式**变化（换回 `StdinPipe`/`StdoutPipe` 会重新引入与 `Wait` 的关闭竞态）
 - 新增对外导出的类型/函数（`Manifest` 字段、`ParseManifest`/`Validate` 签名、`HookEvents`/`HookIsEventDriven`、`Conn`/`Frame` 的方法集、`Supervisor`/`SupervisorOptions` 的字段）
+- **`Conn()` 的语义变化**（返回哪一代、是否为 nil、是否缓存）——Task 7 的钩子分发直接依赖它
+- 「刻意不做的事」两条取舍（进程组管理、`exit 0` 算崩溃）被改变

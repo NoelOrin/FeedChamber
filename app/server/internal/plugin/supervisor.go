@@ -173,6 +173,30 @@ func (s *Supervisor) Running() bool {
 	return s.running
 }
 
+// Conn 返回**当前这一代**的连接；从未成功启动过时返回 nil。
+//
+// # 为什么必须有这个方法
+//
+// Start 只返回第一代 Conn（它只能返回一次）。插件崩溃自动重启后，新一代进程有
+// 自己的管道与 Conn，若宿主只能用 Start 的返回值，它手里那个已经死了——但
+// Running() 是 true。宿主于是会一边显示「运行中」，一边让每个钩子都拿到
+// ErrClosed，这是最难排查的一类故障。
+//
+// 因此宿主的正确用法是：
+//
+//	sup.Start(ctx)                       // 首次拉起
+//	sup.OnCrash = func(string) { ... }   // 收到崩溃信号，标记状态
+//	conn := sup.Conn()                   // 任何时刻取「现在」那条，而不是缓存 Start 的返回值
+//
+// 注意返回的 *Conn 仍可能在你拿到它之后失效（对端恰好此刻崩溃）——这是分布式
+// 生命周期的固有竞态，不是本方法的缺陷。正确做法是把 ErrClosed 当作
+// 「这一代结束了，去 OnCrash 里等下一代」的信号，而不是重试同一条连接。
+func (s *Supervisor) Conn() *Conn {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.conn
+}
+
 // Start 拉起子进程并建立 IPC。
 //
 // ctx 控制整个生命周期：它被取消时子进程会被结束，且不再重启。

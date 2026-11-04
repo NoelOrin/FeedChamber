@@ -382,3 +382,77 @@ func TestSupervisorStopIsIdempotent(t *testing.T) {
 	require.NoError(t, s.Stop(), "重复 Stop 必须安全")
 	require.False(t, s.Running())
 }
+
+// TestSupervisorConnReturnsCurrentGeneration 钉住「换代」语义（Ruling 11）。
+//
+// 崩溃自动重启后，`Start` 返回的那个 Conn 已经死了，但插件的状态是 running。
+// 宿主（Task 7 的 Host）如果只看 `Running()` 就继续用旧 Conn 发钩子，**每一个
+// 钩子都会拿到 ErrClosed**，而状态面板显示「运行中」——这正是最难的排查场景。
+//
+// 因此 `Conn()` 必须返回**当前这一代**的连接，并满足三条：
+//
+//	(a) 重启后指针与重启前不同；
+//	(b) 旧指针再 Call 拿 ErrClosed；
+//	(c) 新指针能真正完成一次往返。
+//
+// 插件每次被拉起只应答一次 ping 就退出，用「应答即崩溃」逼出重启；退避走生产
+// 序列（1s 起），不设测试专用快进——那句「不要改生产退避」在这里同样适用，
+// 1s 的等待对本测试可接受。
+func TestSupervisorConnReturnsCurrentGeneration(t *testing.T) {
+	requireNode(t)
+
+	// 收到 ping → 应答 → 50ms 后 exit(1)。每次进程都只活到第一次调用。
+	dir := writeTestPluginWithHandler(t, `
+  if (f.method === 'ping') {
+    send({ id: f.id, result: { gen: 'alive' } });
+    setTimeout(() => process.exit(1), 50);
+  }`)
+
+	s := NewSupervisor(SupervisorOptions{
+		NodePath: "node", PluginDir: dir, Entry: "index.js", MaxRestarts: 3,
+	})
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	first, err := s.Start(ctx)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = s.Stop() })
+
+	// 第一代：Conn() 与 Start 的返回值是同一个。
+	require.Same(t, first, s.Conn(), "刚 Start 后 Conn() 必须就是 Start 返回的那个")
+
+	raw, err := first.Call(ctx, "ping", nil)
+	require.NoError(t, err)
+	require.Contains(t, string(raw), "alive")
+
+	// 等它崩掉并按 1s 退避重启，然后等新一代上线。
+	require.Eventually(t, func() bool {
+		return s.Running() && s.Conn() != first
+	}, 15*time.Second, 50*time.Millisecond,
+		"崩溃重启后 Conn() 必须换成新一代（这是 Ruling 11 的核心）")
+
+	// (a) 指针必须不同。
+	second := s.Conn()
+	require.NotSame(t, first, second, "重启后的 Conn 必须是新对象")
+
+	// (b) 旧连接必须已经不可用，且错误身份是 ErrClosed。
+	_, err = first.Call(ctx, "ping", nil)
+	require.Error(t, err, "旧一代的 Conn 必须已失效")
+	require.ErrorIs(t, err, ErrClosed, "旧 Conn 的失败应可识别为 ErrClosed")
+
+	// (c) 新连接必须能真正完成一次往返。
+	raw, err = second.Call(ctx, "ping", nil)
+	require.NoError(t, err, "新一代的 Conn 必须可用")
+	require.Contains(t, string(raw), "alive")
+}
+
+// TestSupervisorConnNilBeforeStart 钉住 Conn() 的零值语义：Start 之前没有连接，
+// 返回 nil（而不是 panic 或某个哨兵对象）。
+func TestSupervisorConnNilBeforeStart(t *testing.T) {
+	s := NewSupervisor(SupervisorOptions{PluginDir: t.TempDir(), Entry: "index.js"})
+	require.Nil(t, s.Conn())
+
+	// Stop 之后同样不该 panic。
+	require.NoError(t, s.Stop())
+	require.Nil(t, s.Conn())
+}
