@@ -68,7 +68,7 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 
 ## 插件管理端点（2026-11-05）
 
-`plugin.go` 新增 `ListInstalls`（`POST /admin/plugins/installs/list`，返回 `plugin_installs` 运行状态）与 `Uninstall`（`POST /admin/plugins/{id}/uninstall`）。`Uninstall` 与 `Delete` 都走 `service.Uninstall` 的完整卸载（停进程 + 删双表 + 审计）；`/{id}/status` 是写操作，权限码为 `plugin:manage`（此前错挂 `plugin:read`，只读凭证可停掉全站插件）。
+`plugin.go` 新增 `ListInstalls`（`POST /admin/plugins/installs/list`，返回 `plugin_installs` 运行状态）与 `Uninstall`（`POST /admin/plugins/{id}/uninstall`）。`Uninstall` 与 `Delete` 都走 `service.Uninstall` 的完整卸载（停进程 + 删双表 + 审计）；`/{id}/status` 是写操作，权限码为 `plugin:manage`（此前错挂 `plugin:read`，只读凭证可停掉全站插件）。 所有写动作经 `…As(ctx, …, currentUserID(ctx))` 透传真实操作人，审计不再写死 `"system"`。
 
 ## 不在 handler 层的 HTTP 端点
 

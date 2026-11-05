@@ -92,6 +92,7 @@
 - `SetEnabled(false)` → `StopPlugin` + 置 `stopped`；`SetEnabled(true)` → 从落库 manifest/caps 快照复原并 `StartPlugin` + 置 `running`。
 - `Delete` 与 `Uninstall` 等价：先 `StopPlugin`，再删 `plugins` 与 `plugin_installs` 两张表，最后落审计（此前 `Delete` 只删一行，留下孤儿安装记录与运行中进程）。
 - `ListInstalls`：返回全部安装记录（status / restarts / last_error），供后台展示运行状态。
+- 审计：`InstallAs` / `UninstallAs` / `SetEnabledAs` / `UpdateAs` / `DeleteAs` 接收真实 `actorID`（handler 传 `currentUserID(ctx)`），审计记操作人；无 actor 的旧方法委托并落 `"system"`。
 - `Update` **不写 `enabled`**：元数据编辑与启停解耦。启停唯一入口是 `SetEnabled`（它同时驱动进程）；若 `Update` 接受 `enabled`，漏传该字段的客户端会用 Go 零值 `false` 把插件静默禁用，且会出现「库里已禁用、进程还在跑」的不一致。
 
 `HostOptions` 的适配层在 `internal/container/plugin_api_deps.go`，`PluginRuntime` 的实现 `hostRuntime` 固定用 `context.Background()` 拉起子进程——`exec.CommandContext(ctx)` 的语义决定不能把 HTTP 请求 ctx 透进去，否则请求结束即杀掉插件。
