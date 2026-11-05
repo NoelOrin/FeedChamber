@@ -86,6 +86,10 @@ func (s *pluginService) List(ctx context.Context) ([]model.Plugin, error) {
 }
 
 func (s *pluginService) Update(ctx context.Context, input PluginInput) error {
+	return s.UpdateAs(ctx, input, "system")
+}
+
+func (s *pluginService) UpdateAs(ctx context.Context, input PluginInput, actorID string) error {
 	if input.ID == "" || input.Name == "" {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "插件 ID 和名称不能为空")
 	}
@@ -110,6 +114,10 @@ func (s *pluginService) Update(ctx context.Context, input PluginInput) error {
 }
 
 func (s *pluginService) SetEnabled(ctx context.Context, id string, enabled bool) error {
+	return s.SetEnabledAs(ctx, id, enabled, "system")
+}
+
+func (s *pluginService) SetEnabledAs(ctx context.Context, id string, enabled bool, actorID string) error {
 	pluginRow, err := s.repo.Get(ctx, id)
 	if err != nil {
 		return err
@@ -178,7 +186,11 @@ func (s *pluginService) manifestForRuntime(ctx context.Context, id string) (*plu
 // Delete 是后台「卸载」按钮的入口：必须与 Uninstall 等价——停进程、清双表、
 // 落审计。此前它只删 plugins 一行，留下 plugin_installs 孤儿与运行中的子进程。
 func (s *pluginService) Delete(ctx context.Context, id string) error {
-	return s.Uninstall(ctx, id)
+	return s.DeleteAs(ctx, id, "system")
+}
+
+func (s *pluginService) DeleteAs(ctx context.Context, id, actorID string) error {
+	return s.UninstallAs(ctx, id, actorID)
 }
 
 // ListInstalls 返回全部安装记录（含运行状态、重启次数、最近错误），供后台
@@ -297,6 +309,10 @@ func (s *pluginService) setSourceStatus(ctx context.Context, id, actorID, status
 // 先校验 manifest 再看来源，是为了让「manifest 本身有问题」这种更好修的
 // 错误优先暴露，而不是被「来源未审批」挡住后发现改了来源还是装不上。
 func (s *pluginService) Install(ctx context.Context, in PluginInstallInput) (*model.PluginInstall, error) {
+	return s.InstallAs(ctx, in, "system")
+}
+
+func (s *pluginService) InstallAs(ctx context.Context, in PluginInstallInput, actorID string) (*model.PluginInstall, error) {
 	if !pluginIDPattern.MatchString(in.PluginID) {
 		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "插件 ID 只能包含字母、数字、点、下划线与连字符，且不超过 64 字符")
 	}
@@ -410,7 +426,7 @@ func (s *pluginService) Install(ctx context.Context, in PluginInstallInput) (*mo
 		}
 	}
 
-	s.recordAudit(ctx, "system", auditActionInstall, in.PluginID,
+	s.recordAudit(ctx, actorID, auditActionInstall, in.PluginID,
 		fmt.Sprintf("source=%s dir=%s caps=%s", src.ID, dir, string(capsJSON)))
 	return install, nil
 }
@@ -485,6 +501,10 @@ func (s *pluginService) resolveDir(explicit, pluginID string) (string, error) {
 // 顺序不可调换：先删库再停进程会留下「库里已消失、进程还在收钩子」的窗口；
 // 反过来先停进程再删库，中途失败最多是「停了但没删干净」，可重试修复。
 func (s *pluginService) Uninstall(ctx context.Context, pluginID string) error {
+	return s.UninstallAs(ctx, pluginID, "system")
+}
+
+func (s *pluginService) UninstallAs(ctx context.Context, pluginID, actorID string) error {
 	if pluginID == "" {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "插件 ID 不能为空")
 	}
@@ -499,7 +519,7 @@ func (s *pluginService) Uninstall(ctx context.Context, pluginID string) error {
 	if err := s.repo.Delete(ctx, pluginID); err != nil {
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	s.recordAudit(ctx, "system", auditActionUninstall, pluginID, "")
+	s.recordAudit(ctx, actorID, auditActionUninstall, pluginID, "")
 	return nil
 }
 

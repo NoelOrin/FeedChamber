@@ -65,7 +65,7 @@ func (h *pluginHandler) Install(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	install, err := h.svc.Install(ctx.Request().Context(), input)
+	install, err := h.svc.InstallAs(ctx.Request().Context(), input, currentUserID(ctx))
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return
@@ -94,7 +94,7 @@ func (h *pluginHandler) Update(ctx iris.Context) {
 	if input.ID == "" {
 		input.ID = ctx.Params().Get("id")
 	}
-	if err := h.svc.Update(ctx.Request().Context(), input); err != nil {
+	if err := h.svc.UpdateAs(ctx.Request().Context(), input, currentUserID(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
@@ -121,7 +121,7 @@ func (h *pluginHandler) SetEnabled(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
 		return
 	}
-	if err := h.svc.SetEnabled(ctx.Request().Context(), ctx.Params().Get("id"), body.Enabled); err != nil {
+	if err := h.svc.SetEnabledAs(ctx.Request().Context(), ctx.Params().Get("id"), body.Enabled, currentUserID(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
@@ -140,7 +140,7 @@ func (h *pluginHandler) SetEnabled(ctx iris.Context) {
 // @Failure      401  {object}  pkg.Response
 // @Router       /admin/plugins/{id}/delete [post]
 func (h *pluginHandler) Delete(ctx iris.Context) {
-	if err := h.svc.Delete(ctx.Request().Context(), ctx.Params().Get("id")); err != nil {
+	if err := h.svc.DeleteAs(ctx.Request().Context(), ctx.Params().Get("id"), currentUserID(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
@@ -264,7 +264,7 @@ func (h *pluginHandler) ListInstalls(ctx iris.Context) {
 // @Failure      401  {object}  pkg.Response
 // @Router       /admin/plugins/{id}/uninstall [post]
 func (h *pluginHandler) Uninstall(ctx iris.Context) {
-	if err := h.svc.Uninstall(ctx.Request().Context(), ctx.Params().Get("id")); err != nil {
+	if err := h.svc.UninstallAs(ctx.Request().Context(), ctx.Params().Get("id"), currentUserID(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}

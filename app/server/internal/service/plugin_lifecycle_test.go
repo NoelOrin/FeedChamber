@@ -193,3 +193,32 @@ func TestUpdateDoesNotChangeEnabled(t *testing.T) {
 	require.True(t, row.Enabled, "Update 不得因零值把已启用的插件静默禁用")
 	require.Equal(t, 0, len(rt.stopped), "Update 不得停止进程")
 }
+
+// 管理动作的审计必须记录**真实操作人**，而不是写死 "system"：事后追责与
+// 「谁在什么时候装了什么」的查询都依赖 actor_id。
+func TestAdminActionsAuditRealActor(t *testing.T) {
+	svc, _, store := managedPlugin(t)
+	ctx := context.Background()
+	src, err := svc.CreateSource(ctx, "s2", "git", "https://example.com/y.git", "admin")
+	require.NoError(t, err)
+	require.NoError(t, svc.ApproveSource(ctx, src.ID, "admin"))
+
+	_, err = svc.InstallAs(ctx, service.PluginInstallInput{
+		PluginID: "analytics2", SourceID: src.ID, Manifest: validManifestJSON,
+	}, "alice")
+	require.NoError(t, err)
+	require.NoError(t, svc.SetEnabledAs(ctx, "analytics2", false, "bob"))
+	require.NoError(t, svc.UninstallAs(ctx, "analytics2", "carol"))
+
+	var logs []model.AuditLog
+	require.NoError(t, store.SQL().DB().Where("action IN ?", []string{
+		"plugin.install", "plugin.uninstall",
+	}).Order("created_at").Find(&logs).Error)
+
+	actors := map[string]string{}
+	for _, l := range logs {
+		actors[l.Action+":"+l.Target] = l.ActorID
+	}
+	require.Equal(t, "alice", actors["plugin.install:analytics2"], "安装审计必须记真实操作人")
+	require.Equal(t, "carol", actors["plugin.uninstall:analytics2"], "卸载审计必须记真实操作人")
+}

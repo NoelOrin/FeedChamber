@@ -80,7 +80,15 @@ type PluginService interface {
 
 	// 安装与运行时
 	Install(ctx context.Context, in PluginInstallInput) (*model.PluginInstall, error)
+	// InstallAs / UninstallAs / SetEnabledAs / UpdateAs / DeleteAs 带真实
+	// 操作人，供 handler 透传 currentUserID；无 actor 的版本保留给内部/测试
+	// 调用（审计落 "system"）。
+	InstallAs(ctx context.Context, in PluginInstallInput, actorID string) (*model.PluginInstall, error)
 	Uninstall(ctx context.Context, pluginID string) error
+	UninstallAs(ctx context.Context, pluginID, actorID string) error
+	SetEnabledAs(ctx context.Context, id string, enabled bool, actorID string) error
+	UpdateAs(ctx context.Context, input PluginInput, actorID string) error
+	DeleteAs(ctx context.Context, id, actorID string) error
 	ListInstalls(ctx context.Context) ([]model.PluginInstall, error)
 	SetRuntimeStatus(ctx context.Context, pluginID, status, lastError string) error
 	ListResumable(ctx context.Context) ([]ResumablePlugin, error)
