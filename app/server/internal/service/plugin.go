@@ -70,6 +70,10 @@ func (s *pluginService) SetRuntime(rt PluginRuntime) {
 	s.runtime = rt
 }
 
+func (s *pluginService) HasRuntime() bool {
+	return s.runtime != nil
+}
+
 func (s *pluginService) List(ctx context.Context) ([]model.Plugin, error) {
 	items, err := s.repo.List(ctx)
 	if err != nil {

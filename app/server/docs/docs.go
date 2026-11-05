@@ -2776,7 +2776,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "登记一个插件的元数据。",
+                "description": "经已审批来源安装插件。manifest 原文随请求提交，能力清单以安装时为准落库。",
                 "consumes": [
                     "application/json"
                 ],
@@ -2789,26 +2789,60 @@ const docTemplate = `{
                 "summary": "安装插件",
                 "parameters": [
                     {
-                        "description": "插件元数据",
+                        "description": "安装请求",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
                             "type": "object",
                             "properties": {
-                                "description": {
+                                "manifest": {
                                     "type": "string"
                                 },
-                                "name": {
+                                "plugin_id": {
                                     "type": "string"
                                 },
-                                "version": {
+                                "source_id": {
                                     "type": "string"
                                 }
                             }
                         }
                     }
                 ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/plugins/installs/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "列出全部安装记录（status / restarts / last_error），供后台展示运行时状态。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件"
+                ],
+                "summary": "插件运行状态列表",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2832,7 +2866,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "列出已注册的插件（仅声明式元数据，无可执行扩展点）。",
+                "description": "列出已注册的插件。",
                 "consumes": [
                     "application/json"
                 ],
@@ -2843,6 +2877,182 @@ const docTemplate = `{
                     "插件"
                 ],
                 "summary": "插件列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/plugins/sources/create": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "登记一条插件来源，初始状态为待审批。操作留审计。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件"
+                ],
+                "summary": "新增插件来源",
+                "parameters": [
+                    {
+                        "description": "来源信息",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "kind": {
+                                    "type": "string"
+                                },
+                                "name": {
+                                    "type": "string"
+                                },
+                                "url": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/plugins/sources/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "列出全部插件来源及其审批状态。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件"
+                ],
+                "summary": "插件来源列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/plugins/sources/{id}/approve": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "将一条待审批的插件来源标记为已审批。未审批来源不可安装。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件"
+                ],
+                "summary": "审批插件来源",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "来源 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/plugins/sources/{id}/reject": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "将一条待审批的插件来源标记为已拒绝。已拒绝来源不可安装。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件"
+                ],
+                "summary": "拒绝插件来源",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "来源 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2959,6 +3169,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/plugins/{id}/uninstall": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "停止插件进程并删除插件登记与安装记录（两张表），操作留审计。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件"
+                ],
+                "summary": "卸载插件",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "资源 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/plugins/{id}/update": {
             "post": {
                 "security": [
@@ -2966,7 +3219,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "修改插件元数据。",
+                "description": "修改插件的声明式元数据（名称、版本、描述等）。不改变安装时授予的能力快照。",
                 "consumes": [
                     "application/json"
                 ],
@@ -3424,6 +3677,195 @@ const docTemplate = `{
                     },
                     "403": {
                         "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/slots/create": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "在指定插槽创建一条内容条目。不接受裸 HTML。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插槽"
+                ],
+                "summary": "创建插槽条目",
+                "parameters": [
+                    {
+                        "description": "条目内容",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SlotEntryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/slots/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "列出壳层插槽条目（含停用）。slot 为空时返回全部。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插槽"
+                ],
+                "summary": "插槽条目列表",
+                "parameters": [
+                    {
+                        "description": "按插槽筛选",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "slot": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/slots/{id}/delete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "删除一条插槽条目。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插槽"
+                ],
+                "summary": "删除插槽条目",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "条目 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/slots/{id}/update": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "修改一条插槽条目的内容或可见性。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插槽"
+                ],
+                "summary": "更新插槽条目",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "条目 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "条目内容",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.SlotEntryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
                         "schema": {
                             "$ref": "#/definitions/pkg.Response"
                         }
@@ -11754,6 +12196,29 @@ const docTemplate = `{
                 }
             }
         },
+        "/slots/public": {
+            "post": {
+                "description": "返回当前访问者可见的插槽条目（已按 slot + sort 排序）。游客也可见。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插槽"
+                ],
+                "summary": "公开插槽内容",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/spaces/create": {
             "post": {
                 "consumes": [
@@ -15122,6 +15587,33 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "handler.SlotEntryRequest": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "kind": {
+                    "type": "string"
+                },
+                "min_level": {
+                    "type": "integer"
+                },
+                "props": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "slot": {
+                    "type": "string"
+                },
+                "sort": {
+                    "type": "integer"
+                },
+                "visibility": {
                     "type": "string"
                 }
             }

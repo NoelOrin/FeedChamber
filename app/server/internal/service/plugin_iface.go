@@ -69,6 +69,8 @@ type PluginService interface {
 	// SetRuntime 注入子进程宿主。未注入时管理动作退化为纯元数据登记
 	//（测试与「只查库不起进程」场景），但绝不虚报 running 状态。
 	SetRuntime(rt PluginRuntime)
+	// HasRuntime 报告宿主是否已接线，供 composition root 装配断言用。
+	HasRuntime() bool
 
 	// 来源与审批
 	CreateSource(ctx context.Context, name, kind, url, actorID string) (*model.PluginSource, error)
