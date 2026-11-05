@@ -100,3 +100,8 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 ## 前台聚合的等级过滤
 
 `GetPublicCustomization` 用 `TrustService.LevelOf` 取访问者真实等级（游客 0）。此前固定传 0，`visibility=level` 的导航与首页模块对任何人都不显示。五个分区独立降级为空并落 warn 日志（`logCustomizeIssue`），DB 抖动不拖垮整站外观。
+
+## 插件预览 / 版本 / 回滚端点（2026-11-05）
+
+`plugin.go` 增 `Preview`（`POST /admin/plugins/preview`，不落库）、`ListVersions`（`POST /admin/plugins/versions/list`，body 传 `plugin_id`）、`Rollback`（`POST /admin/plugins/{id}/rollback`，body 传 `version_id`）。
+**版本列表刻意用 body 传 id 而不是路径参数**：网关的前缀映射先于 pattern，`/{id}/versions` 会被 `plugin:manage` 前缀吞掉，只读凭证就拿不到历史；`versions/list` 能走 exact 映射到 `plugin:read`。

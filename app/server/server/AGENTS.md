@@ -43,3 +43,7 @@
 ## 权限补齐的持久化（2026-10-30）
 
 `seedPermissions` 不再「每次启动把默认映射里缺的都补回」——那会让管理员撤销的默认权限在重启后静默复活。改为：meta key `seeded_role_permission_codes` 记录已应用过的权限码，只补首次出现的新码；首启把默认码全部写入该标记。纯函数在 `service.RolePermissionTopUp` / `MergeAppliedCodes` / `ParseAppliedCodes`，测试钉住「撤销不复活」。
+
+## 插件版本表迁移（2026-11-05）
+
+`AutoMigrate` 追加 `&model.PluginVersion{}`（插件安装/升级/回滚历史）。

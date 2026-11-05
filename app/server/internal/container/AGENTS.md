@@ -81,3 +81,7 @@ func (r *Runtime) Shutdown()                                 // 冲刷浏览量 
 ## 装配变更（2026-10-30）
 
 `NewCustomizeService` 增加 `db.TransactionManager` 入参（`c.Tx`）：`SetThemeTokens` 的批量覆盖整批在一个事务里，中途失败全量回滚。
+
+## 插件 fetcher 注入（2026-11-05）
+
+`New` 里追加 `c.PluginSvc.SetFetcher(service.NewExecPluginFetcher())`：不注入时 `Install` 只登记、不拉代码（测试与「代码已手工就位」场景）。`PluginVersionRepo` 随 `NewPluginVersionRepository(d.Store)` 构造并传给 `NewPluginService`（可选第 5 参）。

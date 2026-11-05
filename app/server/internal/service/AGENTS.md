@@ -189,3 +189,12 @@
 ## 权限补齐的「只补新码」
 
 `service/perm_seed.go` 的 `RolePermissionTopUp` 是纯函数：只补 `applied`（历史上已应用过的权限码）里没有的码。`server/iris.go` 把新码并入 meta `seeded_role_permission_codes`。这样升级能拿到新权限，而管理员撤销过的默认权限不会在重启时复活（R-04 的两半都成立）。
+
+## 插件代码拉取与版本历史（2026-11-05）
+
+- `plugin_fetch.go`：`PluginFetcher` 接缝（`Fetch` / `InstallDeps`）+ `execPluginFetcher` 真实实现（`git clone --depth 1 --single-branch`、`npm install --omit=dev --ignore-scripts`，均带超时与失败清理）。
+- `ValidateSourceURL` 是唯一的来源地址校验：只放行 http/https/git/git@，拒绝 `file://`、含空白/壳元字符、以 `-` 开头（会被 git 当选项）。命令走 `exec.Command` 而非 shell，但这条仍不可删。
+- `Install` 顺序固定为：校验 manifest → 校验来源已审批 → 落两表 → 拉代码 → 装依赖 → 算校验和 → 起进程。任一前置步骤失败必须回滚两表并删目录。
+- `HashPluginDir` 计算目录内容 sha256（排除 `node_modules` / `.git`），落 `plugin_installs.checksum` 与版本历史。
+- `Preview` 返回能力/依赖清单（临时目录拉一份读 `package.json`，用完即删），**不落库、不起进程**。
+- `ListVersions` / `RollbackAs`：每次安装/升级落一条 `plugin_versions`（note = install/upgrade/rollback）；回滚按历史 manifest 与来源重装。

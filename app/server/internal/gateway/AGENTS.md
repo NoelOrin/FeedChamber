@@ -133,3 +133,8 @@ protected.Use(gw.Enforce())
 - 写（exact/pattern → `plugin:manage`）：`install`、`sources/create`、`sources/{id}/approve|reject`、`{id}/status`、`{id}/uninstall`、`{id}/delete`，以及兜底前缀。
 
 **`/{id}/status` 是写操作**（启停进程），此前错挂 `plugin:read`，只读凭证可停掉全站插件，现改为 `plugin:manage`。`permission_test.go` 的 `TestPermMiddleware_PluginReadVsManageSplit` 在运行时解析层断言只读凭证访问 status/uninstall/delete 一律 403；`router/middleware_chain_test.go` 源码扫描同时钉住路由级 `RequirePermission`。新增插件端点必须两边同步补映射，否则默认拒绝。
+
+## 插件预览 / 版本 / 回滚权限（2026-11-05）
+
+`initRouteMap` 追加：`preview` → `plugin:manage`（exact）、`versions/list` → `plugin:read`（exact）、`{id}/rollback` → `plugin:manage`（pattern）。
+版本列表必须用 exact 的 `versions/list` 而不是 `{id}/versions`：前缀扫描先于 pattern，后者会被 `plugin:manage` 前缀吞掉。

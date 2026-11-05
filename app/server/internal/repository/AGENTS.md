@@ -63,3 +63,7 @@
 - `WrapDBErr` 除了 `ErrNotFound`，现在也把唯一约束冲突翻成 `ErrDuplicate`（`checker_sql.go` 注册 `gorm.ErrDuplicatedKey` + 三家后端文案匹配）。service 只判断 `errors.Is(err, ErrDuplicate)`，不要再字符串匹配。
 - `theme_tokens` 的身份是 `(token, mode)`（复合唯一索引 `idx_theme_token_mode`）：同一 token 的明暗两套覆盖各占一行。`Upsert` 按 `token AND mode` 匹配，`DeleteByToken` 删全部模式、`DeleteByTokenMode` 删单个模式。
 - `snippet` 的 `ListEnabled` 不按 `position` 列过滤（权威位置是 `EffectivePosition()`，见 service 层）。
+
+## 插件版本历史（2026-11-05）
+
+`plugin_version.go` / `plugin_version_sql.go`：`Create` / `ListByPlugin`（`created_at DESC`）/ `Get` / `DeleteByPlugin`（卸载时清理历史）。

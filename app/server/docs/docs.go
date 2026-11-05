@@ -2893,6 +2893,51 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/plugins/preview": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "返回能力清单、依赖清单与来源地址，不落库、不起进程。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件"
+                ],
+                "summary": "安装前预览",
+                "parameters": [
+                    {
+                        "description": "安装请求",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/service.PluginInstallInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/plugins/sources/create": {
             "post": {
                 "security": [
@@ -3069,6 +3114,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/admin/plugins/versions/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "列出某插件的历次安装/升级/回滚快照（最新在前）。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件"
+                ],
+                "summary": "插件版本历史",
+                "parameters": [
+                    {
+                        "description": "插件 ID",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "plugin_id": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/plugins/{id}/delete": {
             "post": {
                 "security": [
@@ -3094,6 +3189,63 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/plugins/{id}/rollback": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按指定历史版本的 manifest 与来源重新安装（停进程 → 重新拉取 → 起进程）。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "插件"
+                ],
+                "summary": "回滚到历史版本",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "插件 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "目标版本记录 ID",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "version_id": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     }
                 ],
                 "responses": {
@@ -17340,6 +17492,24 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "visibility": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.PluginInstallInput": {
+            "type": "object",
+            "properties": {
+                "dir": {
+                    "description": "Dir 是插件代码在磁盘上的绝对路径。留空时由 service 按插件根目录\n拼出 \u003croot\u003e/\u003cpluginID\u003e。",
+                    "type": "string"
+                },
+                "manifest": {
+                    "type": "string"
+                },
+                "plugin_id": {
+                    "type": "string"
+                },
+                "source_id": {
                     "type": "string"
                 }
             }

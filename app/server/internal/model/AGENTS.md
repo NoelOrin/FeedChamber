@@ -51,3 +51,8 @@
 
 - `ThemeToken` 的身份是 `(token, mode)`（`idx_theme_token_mode` 复合唯一索引）：同一 token 可分别覆盖明亮与暗色，规范要求「同时作用于两种模式或明确指定其一」。
 - `MetaSeededRolePermissionCodes`（`seeded_role_permission_codes`）记录「已应用过的默认权限码」：升级补齐只补新码，管理员撤销的默认权限不会在重启时复活（R-04）。
+
+## 插件安装记录与版本历史（2026-11-05）
+
+- `plugin_install.go`：`PluginInstall` 增 `Checksum`（插件目录内容 sha256，排除 node_modules/.git）。
+- `plugin_version.go`：`PluginVersion` 是安装/升级/回滚的历史快照（Manifest 原文 + Caps 快照 + Checksum + ActorID + Note）。与 `PluginInstall` 的分工是「当前这一份」vs「历次装过什么」。

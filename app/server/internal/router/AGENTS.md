@@ -186,3 +186,7 @@
 `routes_admin.go` 的 `/plugins` Party 现有 11 条 `POST`：`list` / `sources/list` / `installs/list`（`plugin:read`），`install` / `sources/create` / `sources/{id}/approve|reject` / `{id}/update|status|uninstall|delete`（`plugin:manage`）。
 
 固定段 `/sources/*` `/installs/*` 必须排在参数段 `/{id}/*` 之前。`/{id}/status` 是写操作，权限码为 `plugin:manage`（此前错挂 `plugin:read`）；网关 `permission.go` 的映射必须同步（新增端点默认拒绝）。`middleware_chain_test.go` 的 `TestAdminPluginRoutesHaveGatewayPermission` 同时扫描两处源码钉住读/写分离与端点齐全。
+
+## 插件预览 / 版本 / 回滚路由（2026-11-05）
+
+`/plugins` Party 追加：`preview`（manage）、`versions/list`（read）、`{id}/rollback`（manage）。固定段 `versions/*` 必须排在 `/{id}/*` 之前。

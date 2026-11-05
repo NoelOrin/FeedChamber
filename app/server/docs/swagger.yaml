@@ -1283,6 +1283,20 @@ definitions:
       visibility:
         type: string
     type: object
+  service.PluginInstallInput:
+    properties:
+      dir:
+        description: |-
+          Dir 是插件代码在磁盘上的绝对路径。留空时由 service 按插件根目录
+          拼出 <root>/<pluginID>。
+        type: string
+      manifest:
+        type: string
+      plugin_id:
+        type: string
+      source_id:
+        type: string
+    type: object
   service.RegisterRequest:
     properties:
       email:
@@ -3113,6 +3127,42 @@ paths:
       summary: 删除插件
       tags:
       - 插件
+  /admin/plugins/{id}/rollback:
+    post:
+      consumes:
+      - application/json
+      description: 按指定历史版本的 manifest 与来源重新安装（停进程 → 重新拉取 → 起进程）。
+      parameters:
+      - description: 插件 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 目标版本记录 ID
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            version_id:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 回滚到历史版本
+      tags:
+      - 插件
   /admin/plugins/{id}/status:
     post:
       consumes:
@@ -3292,6 +3342,34 @@ paths:
       summary: 插件列表
       tags:
       - 插件
+  /admin/plugins/preview:
+    post:
+      consumes:
+      - application/json
+      description: 返回能力清单、依赖清单与来源地址，不落库、不起进程。
+      parameters:
+      - description: 安装请求
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/service.PluginInstallInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 安装前预览
+      tags:
+      - 插件
   /admin/plugins/sources/{id}/approve:
     post:
       consumes:
@@ -3400,6 +3478,37 @@ paths:
       security:
       - BearerAuth: []
       summary: 插件来源列表
+      tags:
+      - 插件
+  /admin/plugins/versions/list:
+    post:
+      consumes:
+      - application/json
+      description: 列出某插件的历次安装/升级/回滚快照（最新在前）。
+      parameters:
+      - description: 插件 ID
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            plugin_id:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 插件版本历史
       tags:
       - 插件
   /admin/reconcile/counters:
