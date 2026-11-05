@@ -84,12 +84,15 @@ func (r *reg) adminRoutes() {
 		a.PartyFunc("/plugins", func(p iris.Party) {
 			p.Post("/list", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.List)
 			p.Post("/sources/list", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.ListSources)
+			p.Post("/installs/list", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.ListInstalls)
 			p.Post("/install", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Install)
 			p.Post("/sources/create", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.CreateSource)
 			p.Post("/sources/{id}/approve", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.ApproveSource)
 			p.Post("/sources/{id}/reject", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.RejectSource)
 			p.Post("/{id}/update", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Update)
-			p.Post("/{id}/status", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.SetEnabled)
+			// 启停是写操作：只读凭证不得停掉全站插件。
+			p.Post("/{id}/status", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.SetEnabled)
+			p.Post("/{id}/uninstall", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Uninstall)
 			p.Post("/{id}/delete", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Delete)
 		})
 

@@ -357,11 +357,16 @@ func (p *PermissionCheckerMiddleware) initRouteMap() {
 	p.addExact("/api/v1/admin/slots/list", model.PermCustomizeRead)
 	p.addPrefix("/api/v1/admin/slots/", model.PermCustomizeWrite)
 	p.addExact("/api/v1/admin/plugins/sources/list", model.PermPluginRead)
+	p.addExact("/api/v1/admin/plugins/installs/list", model.PermPluginRead)
 	p.addExact("/api/v1/admin/plugins/install", model.PermPluginManage)
 	p.addExact("/api/v1/admin/plugins/sources/create", model.PermPluginManage)
 	p.addPattern("/api/v1/admin/plugins/sources/{id}/approve", model.PermPluginManage)
 	p.addPattern("/api/v1/admin/plugins/sources/{id}/reject", model.PermPluginManage)
-	p.addPattern("/api/v1/admin/plugins/{id}/status", model.PermPluginRead)
+	// 启停是写操作，必须与安装/卸载同属 plugin:manage。此前挂 plugin:read，
+	// 只读凭证可以停掉全站插件。
+	p.addPattern("/api/v1/admin/plugins/{id}/status", model.PermPluginManage)
+	p.addPattern("/api/v1/admin/plugins/{id}/uninstall", model.PermPluginManage)
+	p.addPattern("/api/v1/admin/plugins/{id}/delete", model.PermPluginManage)
 	p.addPrefix("/api/v1/admin/plugins/", model.PermPluginManage)
 
 	// ── SSO ──────────────────────────────────────────────

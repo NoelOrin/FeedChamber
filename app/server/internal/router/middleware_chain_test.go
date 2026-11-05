@@ -251,9 +251,13 @@ func TestAdminPluginRoutesHaveGatewayPermission(t *testing.T) {
 	}
 
 	// 写入类接口必须落在 plugin:manage 上（正向确认，防止误把写接口降到 read）。
+	// /{id}/status 是写操作，绝不能挂 read：只读凭证不得启停插件。
 	managePaths := []string{
 		"/api/v1/admin/plugins/install",
 		"/api/v1/admin/plugins/sources/create",
+		"/api/v1/admin/plugins/{id}/status",
+		"/api/v1/admin/plugins/{id}/uninstall",
+		"/api/v1/admin/plugins/{id}/delete",
 	}
 	for _, p := range managePaths {
 		line := lineContaining(permSrc, `"`+p+`"`)
@@ -285,6 +289,9 @@ func TestAdminPluginRoutesHaveGatewayPermission(t *testing.T) {
 		{`p.Post("/sources/create"`, "PermPluginManage", "新增来源"},
 		{`p.Post("/sources/{id}/approve"`, "PermPluginManage", "审批来源"},
 		{`p.Post("/sources/{id}/reject"`, "PermPluginManage", "拒绝来源"},
+		{`p.Post("/installs/list"`, "PermPluginRead", "运行状态列表"},
+		{`p.Post("/{id}/status"`, "PermPluginManage", "启停（写操作）"},
+		{`p.Post("/{id}/uninstall"`, "PermPluginManage", "卸载"},
 		{`p.Post("/{id}/delete"`, "PermPluginManage", "删除"},
 	} {
 		line := lineContaining(window, want.path)

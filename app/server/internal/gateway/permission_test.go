@@ -537,7 +537,10 @@ func TestPermMiddleware_PluginReadVsManageSplit(t *testing.T) {
 	app := setupPermApp(NewPermissionChecker(Deps{Perms: readOnly}), "admin")
 	app.Post("/api/v1/admin/plugins/list", okHandler)
 	app.Post("/api/v1/admin/plugins/sources/list", okHandler)
+	app.Post("/api/v1/admin/plugins/installs/list", okHandler)
 	app.Post("/api/v1/admin/plugins/install", okHandler)
+	app.Post("/api/v1/admin/plugins/{id}/status", okHandler)
+	app.Post("/api/v1/admin/plugins/{id}/uninstall", okHandler)
 	app.Post("/api/v1/admin/plugins/{id}/delete", okHandler)
 
 	e := httptest.New(t, app)
@@ -545,8 +548,12 @@ func TestPermMiddleware_PluginReadVsManageSplit(t *testing.T) {
 	// 读接口放行。
 	e.POST("/api/v1/admin/plugins/list").Expect().Status(http.StatusOK)
 	e.POST("/api/v1/admin/plugins/sources/list").Expect().Status(http.StatusOK)
+	e.POST("/api/v1/admin/plugins/installs/list").Expect().Status(http.StatusOK)
 
-	// 写接口被前缀映射拦下（plugin:manage 未持有）。
+	// 写接口被拦下（plugin:manage 未持有）。/status 是写操作，只读凭证
+	// 绝不能启停插件——此前它错挂 plugin:read，这条断言会红。
 	e.POST("/api/v1/admin/plugins/install").Expect().Status(http.StatusForbidden)
+	e.POST("/api/v1/admin/plugins/alpha/status").Expect().Status(http.StatusForbidden)
+	e.POST("/api/v1/admin/plugins/alpha/uninstall").Expect().Status(http.StatusForbidden)
 	e.POST("/api/v1/admin/plugins/alpha/delete").Expect().Status(http.StatusForbidden)
 }

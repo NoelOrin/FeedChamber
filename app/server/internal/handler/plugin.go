@@ -9,10 +9,12 @@ import (
 
 type PluginHandler interface {
 	List(ctx iris.Context)
+	ListInstalls(ctx iris.Context)
 	Install(ctx iris.Context)
 	Update(ctx iris.Context)
 	SetEnabled(ctx iris.Context)
 	Delete(ctx iris.Context)
+	Uninstall(ctx iris.Context)
 
 	// 来源与审批
 	ListSources(ctx iris.Context)
@@ -225,6 +227,44 @@ func (h *pluginHandler) ApproveSource(ctx iris.Context) {
 // @Router       /admin/plugins/sources/{id}/reject [post]
 func (h *pluginHandler) RejectSource(ctx iris.Context) {
 	if err := h.svc.RejectSource(ctx.Request().Context(), ctx.Params().Get("id"), currentUserID(ctx)); err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, nil)
+}
+
+// 插件运行状态列表
+// @Summary      插件运行状态列表
+// @Description  列出全部安装记录（status / restarts / last_error），供后台展示运行时状态。
+// @Tags         插件
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Router       /admin/plugins/installs/list [post]
+func (h *pluginHandler) ListInstalls(ctx iris.Context) {
+	items, err := h.svc.ListInstalls(ctx.Request().Context())
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, items)
+}
+
+// 卸载插件
+// @Summary      卸载插件
+// @Description  停止插件进程并删除插件登记与安装记录（两张表），操作留审计。
+// @Tags         插件
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "资源 ID"
+// @Success      200  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Router       /admin/plugins/{id}/uninstall [post]
+func (h *pluginHandler) Uninstall(ctx iris.Context) {
+	if err := h.svc.Uninstall(ctx.Request().Context(), ctx.Params().Get("id")); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}
