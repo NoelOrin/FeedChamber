@@ -46,6 +46,7 @@ type pluginService struct {
 	installs repository.PluginInstallRepository
 	audit    AuditLogService
 	root     string
+	runtime  PluginRuntime
 }
 
 func NewPluginService(
@@ -61,6 +62,12 @@ func NewPluginService(
 		audit:    audit,
 		root:     defaultPluginRoot,
 	}
+}
+
+// SetRuntime 注入子进程宿主。container 在构造完 Host 后调用；未注入时
+// 管理动作仍是纯元数据登记（测试可用），但不会虚报 running。
+func (s *pluginService) SetRuntime(rt PluginRuntime) {
+	s.runtime = rt
 }
 
 func (s *pluginService) List(ctx context.Context) ([]model.Plugin, error) {
@@ -101,13 +108,85 @@ func (s *pluginService) SetEnabled(ctx context.Context, id string, enabled bool)
 	if err != nil {
 		return err
 	}
+
+	// 运行时先动、数据库后动：进程起停成功才把 enabled 落库，否则一次
+	// 失败的 Start 会留下「标记启用但根本没在跑」的假状态。
+	if s.runtime != nil {
+		if enabled {
+			if !s.runtime.Running(id) {
+				m, caps, rerr := s.manifestForRuntime(ctx, id)
+				if rerr != nil {
+					return rerr
+				}
+				if err := s.runtime.StartPlugin(id, m, caps); err != nil {
+					return pkg.NewAppError(pkg.INTERNAL_ERROR, "启用插件失败: "+err.Error())
+				}
+				if err := s.installs.UpdateStatus(ctx, id, model.PluginStatusRunning, ""); err != nil {
+					return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+				}
+			}
+		} else if s.runtime.Running(id) {
+			if err := s.runtime.StopPlugin(id); err != nil {
+				return pkg.NewAppError(pkg.INTERNAL_ERROR, "停用插件失败: "+err.Error())
+			}
+			if err := s.installs.UpdateStatus(ctx, id, model.PluginStatusStopped, ""); err != nil {
+				return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+			}
+		}
+	}
+
 	pluginRow.Enabled = enabled
 	pluginRow.UpdatedAt = time.Now()
 	return s.repo.Update(ctx, pluginRow)
 }
 
+// manifestForRuntime 从落库的安装快照复原启动参数。
+//
+// 刻意用 plugins.Manifest 原文重新 ParseManifest + plugin_installs.Caps 快照，
+// 而不是信任任何请求参数：启停时插件的信任边界必须与安装时一致。
+func (s *pluginService) manifestForRuntime(ctx context.Context, id string) (*plugin.Manifest, plugin.CapabilitySet, error) {
+	row, err := s.repo.Get(ctx, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	if row.Manifest == "" {
+		return nil, nil, pkg.NewAppError(pkg.INVALID_PARAMS, "插件缺少 manifest，无法启动")
+	}
+	m, err := plugin.ParseManifest([]byte(row.Manifest))
+	if err != nil {
+		return nil, nil, pkg.NewAppError(pkg.INVALID_PARAMS, err.Error())
+	}
+	inst, err := s.installs.GetByPluginID(ctx, id)
+	if err != nil {
+		return nil, nil, err
+	}
+	var caps []string
+	if inst.Caps != "" {
+		if err := json.Unmarshal([]byte(inst.Caps), &caps); err != nil {
+			return nil, nil, pkg.NewAppError(pkg.INTERNAL_ERROR, "能力快照非法: "+err.Error())
+		}
+	}
+	return m, plugin.CapabilitySetFromNames(caps), nil
+}
+
+// Delete 是后台「卸载」按钮的入口：必须与 Uninstall 等价——停进程、清双表、
+// 落审计。此前它只删 plugins 一行，留下 plugin_installs 孤儿与运行中的子进程。
 func (s *pluginService) Delete(ctx context.Context, id string) error {
-	return s.repo.Delete(ctx, id)
+	return s.Uninstall(ctx, id)
+}
+
+// ListInstalls 返回全部安装记录（含运行状态、重启次数、最近错误），供后台
+// 展示「装了什么、跑没跑起来」。列表接口不分页：插件数量是管理员手工控制
+// 的小集合，且前端要按 plugin_id 与 plugins 列表合并。
+func (s *pluginService) ListInstalls(ctx context.Context) ([]model.PluginInstall, error) {
+	items, err := s.installs.List(ctx)
+	if err != nil {
+		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	if items == nil {
+		items = []model.PluginInstall{}
+	}
+	return items, nil
 }
 
 // ── 来源与审批 ────────────────────────────────────────────────
@@ -272,13 +351,19 @@ func (s *pluginService) Install(ctx context.Context, in PluginInstallInput) (*mo
 		UpdatedAt:       now,
 	}
 
+	// 只有 runtime 注入且真的拉起成功时才写 running：没有宿主就虚报
+	// running，会让重启恢复去启动一个从未装好代码的插件。
+	installStatus := model.PluginStatusInstalled
+	if s.runtime != nil {
+		installStatus = model.PluginStatusRunning
+	}
 	install := &model.PluginInstall{
 		ID:        pkg.NewID(),
 		PluginID:  in.PluginID,
 		SourceID:  src.ID,
 		Dir:       dir,
 		Entry:     m.Entry,
-		Status:    model.PluginStatusInstalled,
+		Status:    installStatus,
 		Caps:      string(capsJSON),
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -286,6 +371,13 @@ func (s *pluginService) Install(ctx context.Context, in PluginInstallInput) (*mo
 
 	// 重装（同 ID）走覆盖而不是报错：插件升级是常态，要求先卸载再装会把
 	// 「升级」变成两步非原子操作，中途失败会留下「已卸载未安装」。
+	// 重装前先停旧进程，避免升级后旧代码还在收钩子。
+	if s.runtime != nil && s.runtime.Running(in.PluginID) {
+		if err := s.runtime.StopPlugin(in.PluginID); err != nil {
+			return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, "停止旧插件进程失败: "+err.Error())
+		}
+	}
+
 	created, err := s.upsertPluginRecord(ctx, record)
 	if err != nil {
 		return nil, err
@@ -297,6 +389,19 @@ func (s *pluginService) Install(ctx context.Context, in PluginInstallInput) (*mo
 			_ = s.repo.Delete(ctx, record.ID)
 		}
 		return nil, err
+	}
+
+	// 先落库再拉起：拉起失败要把刚写的两行一起回滚，绝不能留下
+	// 「库里 running、进程根本没起来」的假状态。
+	if s.runtime != nil {
+		if err := s.runtime.StartPlugin(in.PluginID, m,
+			plugin.CapabilitySetFromNames(m.Capabilities)); err != nil {
+			_ = s.installs.Delete(ctx, in.PluginID)
+			if created {
+				_ = s.repo.Delete(ctx, record.ID)
+			}
+			return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, "启动插件失败: "+err.Error())
+		}
 	}
 
 	s.recordAudit(ctx, "system", auditActionInstall, in.PluginID,
@@ -369,14 +474,18 @@ func (s *pluginService) resolveDir(explicit, pluginID string) (string, error) {
 	return abs, nil
 }
 
-// Uninstall 删除安装记录与插件登记。
+// Uninstall 卸载插件：先停进程，再删两张表，最后落审计。
 //
-// 它**不**停止正在运行的子进程：进程生命周期归 plugin.Host，本包不持有它。
-// 调用方 MUST 先 host.StopPlugin 再调本方法，否则会留下一个已从库里消失
-// 但仍在跑、仍会收到钩子调用的进程。
+// 顺序不可调换：先删库再停进程会留下「库里已消失、进程还在收钩子」的窗口；
+// 反过来先停进程再删库，中途失败最多是「停了但没删干净」，可重试修复。
 func (s *pluginService) Uninstall(ctx context.Context, pluginID string) error {
 	if pluginID == "" {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "插件 ID 不能为空")
+	}
+	if s.runtime != nil && s.runtime.Running(pluginID) {
+		if err := s.runtime.StopPlugin(pluginID); err != nil {
+			return pkg.NewAppError(pkg.INTERNAL_ERROR, "停止插件进程失败: "+err.Error())
+		}
 	}
 	if err := s.installs.Delete(ctx, pluginID); err != nil {
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
