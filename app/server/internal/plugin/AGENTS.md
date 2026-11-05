@@ -110,7 +110,9 @@ MUST NOT 插进现有审核链中间。
 
 | 文件 | 职责 |
 |------|------|
-| `host.go` | 对外的 `Host`（内嵌 `*dispatcher`）：`NewHostWithOptions`、`StartPlugin`/`StopPlugin`/`StopAll`/`Running`/`Invoke`、`HostOptions.OnStatus`（状态落库回调）、`HostOptions.APIDepsFor`（按插件构造宿主 API 依赖）。**不拉起任何进程**——那是 `StartPlugin` 的事 |
+| `host.go` | 对外的 `Host`（内嵌 `*dispatcher`）：`NewHostWithOptions`、`StartPlugin`/`StopPlugin`/`StopAll`/`Running`/`Invoke`、`HasAPIDeps`、`HostOptions.OnStatus`（状态落库回调）、`HostOptions.APIDepsFor`（按插件构造宿主 API 依赖）。**不拉起任何进程**——那是 `StartPlugin` 的事 |
+
+`HasAPIDeps()`（2026-11-05）不是给运行时用的，是给 composition root 的装配断言用：漏接 `APIDepsFor` 时 `RegisterAPIs` 永不执行、9 个 `api.*` 空壳且没有任何现有测试会变红。容器侧由 `plugin_wiring_test.go` 的 `TestNew_WiresPluginHostRuntime` 钉住。真实接缝适配在 `internal/container/plugin_api_deps.go`（本包保持不 import repository / 不持有 gorm）。
 
 ### `Host` 与 `dispatcher` 的分工
 

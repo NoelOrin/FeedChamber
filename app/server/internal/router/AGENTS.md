@@ -180,3 +180,9 @@
 ## 站点自定义的发布门（2026-10-30）
 
 网关的 path→permission 映射把 `/api/v1/admin/customization/` 整体挂在 `customize:write`（前缀优先于 pattern），因此 `publish` 与 `toggle` **额外**挂 route 级 `middleware.RequirePermission(deps, model.PermCustomizePublish)`。这两条动作等于「让任意脚本对全站访客生效」，不能与「改配置」共用同一个门。
+
+## 插件后台端点（2026-11-05）
+
+`routes_admin.go` 的 `/plugins` Party 现有 11 条 `POST`：`list` / `sources/list` / `installs/list`（`plugin:read`），`install` / `sources/create` / `sources/{id}/approve|reject` / `{id}/update|status|uninstall|delete`（`plugin:manage`）。
+
+固定段 `/sources/*` `/installs/*` 必须排在参数段 `/{id}/*` 之前。`/{id}/status` 是写操作，权限码为 `plugin:manage`（此前错挂 `plugin:read`）；网关 `permission.go` 的映射必须同步（新增端点默认拒绝）。`middleware_chain_test.go` 的 `TestAdminPluginRoutesHaveGatewayPermission` 同时扫描两处源码钉住读/写分离与端点齐全。

@@ -319,7 +319,9 @@ TOTP 绑定/启用/禁用 + 备份码重生成；登录时 `/auth/mfa/verify` �
 主题订阅（回复/点赞事件通知）；用户拉黑（影响私信与互动）。
 
 ### Backup / Plugin / Theme / SEO / Realtime (`handler/backup.go`, `plugin.go`, `theme.go`, `seo.go`, `realtime.go`)
-备份创建/列表/下载/恢复/清理（`cmd backup.go` 亦可 CLI 触发）；插件仅声明式元数据（install/enable，无执行扩展点）；主题偏好（用户级）；通用 SSE。
+备份创建/列表/下载/恢复/清理（`cmd backup.go` 亦可 CLI 触发）；插件为 v2 子进程插件（`internal/plugin/`：Node 子进程 + stdio JSON-RPC + 语义钩子 + 宿主 API，后台 `/admin/plugins` 管来源审批 / manifest 安装 / 启停 / 卸载 / 运行状态）；主题偏好（用户级）；通用 SSE。
+
+> 2026-11-05：后台管理动作已接通运行时（`service.SetRuntime` + `container` 的 `APIDepsFor` 装配），装 / 启 / 停 / 删会真正拉起或停止插件进程；此前「仅声明式元数据、无执行扩展点」的表述已过时。
 
 **爬虫面由后端独占**：`/sitemap.xml`（索引）、`/sitemap-posts.xml?page=N`、`/sitemap-spaces.xml`、`/sitemap-tags.xml`、`/robots.txt`、`/latest.rss` 全部挂在 app 根（不在 `/api/v1` 下），前端**不生成任何爬虫文件**。部署层 `deploy/nginx/nginx.conf` 用 6 条精确 `location =` 把这 6 条路径转给后端——少了它们会落到前端并 404。索引策略（内容页是否要登录）由设置 `post_auth_required` / `space_view_auth_required` / `user_profile_auth_required` 决定，`user_profile_indexable`（默认 false）控制他人主页是否进索引；`/sitemap-spaces.xml` 只收录匿名（TL0）可读的启用版面，login / level 版面不进爬虫面。规范见 `openspec/specs/seo`。
 

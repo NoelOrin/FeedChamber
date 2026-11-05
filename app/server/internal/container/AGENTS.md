@@ -10,6 +10,16 @@
 | deps.go | `Deps`：`New` 的全部输入（配置、基础设施句柄、启动期预建的共享服务） |
 | container.go | `Container` 结构体（字段按字母序）+ `New(Deps) *Container` |
 | runtime.go | `Runtime` + `(*Container).Start(ctx) (*Runtime, error)` + `Runtime.Shutdown()` |
+| plugin_api_deps.go | `newPluginAPIDeps` 把真实 service 适配成 `internal/plugin.APIDeps` 的七个接缝；`hostRuntime` 把 `*plugin.Host` 适配成 `service.PluginRuntime` |
+
+## 插件接线（2026-11-05）
+
+`New` 里两处装配缺一不可，均有 `plugin_wiring_test.go` 断言：
+
+- `HostOptions.APIDepsFor = newPluginAPIDeps`：漏了它，`Host.StartPlugin` 里的 `RegisterAPIs` 永不执行，9 个 `api.*` 宿主 API 全是空壳。
+- `c.PluginSvc.SetRuntime(hostRuntime{host: c.PluginHost})`：漏了它，后台装/启/停/删只写库、进程永不起停。
+
+`hostRuntime.StartPlugin` 固定用 `context.Background()`：**绝不能把 HTTP 请求 ctx 透给 `exec.CommandContext`**，否则请求结束即杀掉插件进程。适配器只暴露窄动作（如 `PostWriter` 只有 `SetStatus`/`AddTag`），不把整个 service 交给插件；`AddTag` 先读回已有标签再追加，避免 `SetPostTags` 的整组替换语义抹掉其它标签。
 
 ## 签名
 

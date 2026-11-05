@@ -124,3 +124,12 @@ protected.Use(gw.Enforce())
 - `/api/v1/posts/{id}/feature` → `report:manage`
 
 > 2026-10-29：项目更名为 Feed Chamber（Go module `feedchamber`、npm `@feedchamber/*`、镜像 `feedchamber-*`）。
+
+## 插件后台权限映射（2026-11-05）
+
+`initRouteMap` 的 `/api/v1/admin/plugins/` 段：
+
+- 读（exact → `plugin:read`）：`list`、`sources/list`、`installs/list`。
+- 写（exact/pattern → `plugin:manage`）：`install`、`sources/create`、`sources/{id}/approve|reject`、`{id}/status`、`{id}/uninstall`、`{id}/delete`，以及兜底前缀。
+
+**`/{id}/status` 是写操作**（启停进程），此前错挂 `plugin:read`，只读凭证可停掉全站插件，现改为 `plugin:manage`。`permission_test.go` 的 `TestPermMiddleware_PluginReadVsManageSplit` 在运行时解析层断言只读凭证访问 status/uninstall/delete 一律 403；`router/middleware_chain_test.go` 源码扫描同时钉住路由级 `RequirePermission`。新增插件端点必须两边同步补映射，否则默认拒绝。

@@ -453,7 +453,7 @@ gw.SSO.{Discovery,JWKS,Authorize,Token,UserInfo}
 | 13 | Iris 的兄弟 party 共享父切片空闲槽 | 任何新的子 party `Use` 都可能改写邻近 party 的链；只能靠 `middleware_chain_test.go` 与约定拦着 |
 | 14 | ~~两个包各有一份同形接缝接口~~（2026-10-27 已合并） | 原来 `internal/gateway/deps.go` 与 `internal/middleware/deps.go` 各自声明 `SettingReader` / `PermissionChecker` / `BanChecker` vs `BannedChecker`。现已统一到 `internal/pkg/seams.go` 一份声明，`gateway/deps.go` 删除、`Deps` 并入 `gateway.go`；`BanChecker` 与 `BannedChecker` 合并为 `pkg.BannedChecker`（含 `IsBanned` + `IsBannedInSpace`） |
 | 15 | `AutoMigrate` 承载全部建表（55 模型） | 与手写 `db/migrations/*.sql` 并存，存在「迁移来源二元」 |
-| 16 | 插件系统仅声明式元数据 | `Plugin` 只有 install/enable 记录，无可执行扩展点 |
+| 16 | ~~插件系统仅声明式元数据~~（2026-11-05 已收口） | 现为 `internal/plugin/` 子进程插件 + 宿主 API，后台动作经 `SetRuntime` 驱动进程起停；剩余开放项见 `docs/backend-overview.md` §29 |
 | 17 | `METRICS_PORT`(9091) 无鉴权 | 靠部署纪律兜底：改 `expose` → `ports` 或给 nginx 加 location 就会公网可读 |
 | 18 | 端到端 trace 未打通 | nginx 只在 `location /api/v1/` 透传 `X-Request-ID`，`/swagger/` 与前端 location 未设 |
 | 19 | 「不引入 OpenTelemetry」无 ADR | 决策语境只在 change 的 `design.md`，`docs/adr/` 只有 `chat-mvp.md` |

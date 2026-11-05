@@ -206,7 +206,7 @@ HTTP Request
 | Draft / Revision / Trash | 草稿保存/列表/删除；帖子与评论修订列表/恢复；回收站列表/恢复 | |
 | Invite | List/Create/Delete | 邀请注册 |
 | Webhook | CRUD + deliveries + ping + retry | 事件驱动，含 worker 重投 |
-| Plugin | List/Install/Update/SetEnabled/Delete | 仅声明式元数据，可执行插件能力缺失 |
+| Plugin | List/ListSources/CreateSource/ApproveSource/RejectSource/Install/ListInstalls/Update/SetEnabled/Uninstall/Delete | v2 子进程插件（Node + stdio JSON-RPC），来源审批 / manifest 安装 / 宿主 API / 运行时状态；后台动作经 `SetRuntime` 驱动进程起停 |
 | Backup | Create/List/Cleanup/Download/Restore/Delete | `cmd backup.go` 亦可 CLI 触发 |
 | OAuth(账号侧) | Providers/GetAuthURL/HandleCallback/Get+LinkedAccounts/Link/Unlink | 消费方 OAuth |
 | OAuth Provider / SSO / APIKey / Session / Security | 见 §4.1 | 网关能力，直连 `gw.*` |
@@ -493,7 +493,7 @@ AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uu
 **架构层**
 
 28. **`AutoMigrate` 承载全部建表**：55 个模型集中于启动时迁移，且与手写 `db/migrations/*.sql` 并存，存在「迁移来源二元」的维护风险。
-29. **插件系统仅元数据**：`Plugin` 只有 install/enable 的声明式记录，无可执行扩展点。
+29. **插件系统已升级为可执行子进程（2026-11-05 收口）**：`internal/plugin/` 提供 Node 子进程 + stdio JSON-RPC + 语义钩子 + 宿主 API；`service.SetRuntime` 与 `container` 的 `APIDepsFor` 让后台装 / 启 / 停 / 删真正驱动进程生命周期（此前曾长期停留在「仅声明式元数据、无执行扩展点」的半成品状态）。仍属 v1 的开放项：无包签名验签、无 git clone / npm install 拉代码、无升级回滚、插件与后端同系统用户（隔离是约定非强制）。
 30. **`internal/pkg` 与 `pkg/` 命名易混（2026-10-18 已关闭）**：`app/server/pkg` 现为空目录（不被版本控制跟踪），混淆源消失。
 31. **party 中间件仍依赖父切片容量这一隐式条件**：修掉的是「重复挂载」这个具体触发点，Iris 的兄弟 party 共享空闲槽机制本身还在——任何新的子 party `Use` 都可能再次改写邻近 party 的链，只能靠 `middleware_chain_test.go` 与约定拦着。
 32. **两个包各有一份同形的鉴权接缝接口（2026-10-27 已合并）**：原 `internal/gateway/deps.go` 与 `internal/middleware/deps.go` 各自声明 `SettingReader`、`PermissionChecker`、`BanChecker` vs `BannedChecker`。现统一到 `internal/pkg/seams.go`：`SettingReader` / `PermissionChecker` / `BannedChecker`（含 `IsBanned` + `IsBannedInSpace`）/ `SpaceReader` 各一份；`gateway/deps.go` 删除，`Deps` 结构体并入 `gateway.go`，`middleware/deps.go` 只留 `Deps` 结构体。

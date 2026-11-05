@@ -84,6 +84,19 @@
 
 > 上表未覆盖全部（现共 108 个文件 / 36 个接口）。另含（举例）：`space.go`、`group.go`、`trust.go`、`mfa.go`/`totp.go`、`pm.go`、`webhook.go`、`plugin.go`、`backup.go`、`draft.go`、`revision.go`、`trash.go`、`badge.go`、`theme.go`、`leaderboard.go`、`invite.go`、`watch.go`、`user_block.go`、`trust_level.go`、`digest.go` 等。
 
+## 插件管理动作与运行时接线（2026-11-05）
+
+`plugin.go` 的 `PluginService` 经 `SetRuntime(PluginRuntime)` 注入子进程宿主（窄接口：`StartPlugin` / `StopPlugin` / `Running`），四个管理动作因此不再是纯元数据登记：
+
+- `Install`：先落两张表，再 `StartPlugin`；失败回滚两表。只有接了 runtime 才把 `plugin_installs.status` 写成 `running`（`ListResumable` 只认 running，否则新装插件永远不被恢复拉起）。
+- `SetEnabled(false)` → `StopPlugin` + 置 `stopped`；`SetEnabled(true)` → 从落库 manifest/caps 快照复原并 `StartPlugin` + 置 `running`。
+- `Delete` 与 `Uninstall` 等价：先 `StopPlugin`，再删 `plugins` 与 `plugin_installs` 两张表，最后落审计（此前 `Delete` 只删一行，留下孤儿安装记录与运行中进程）。
+- `ListInstalls`：返回全部安装记录（status / restarts / last_error），供后台展示运行状态。
+
+`HostOptions` 的适配层在 `internal/container/plugin_api_deps.go`，`PluginRuntime` 的实现 `hostRuntime` 固定用 `context.Background()` 拉起子进程——`exec.CommandContext(ctx)` 的语义决定不能把 HTTP 请求 ctx 透进去，否则请求结束即杀掉插件。
+
+`content.go` 新增 `SetStatusForPlugin`（`ContentService` 接口）：插件宿主 API 的 `comments.setStatus` 经 service 层写库并自带取值域校验，不给插件直连 repository 的后门。
+
 ## Trust / XP（2026-10-29 P1）
 
 `trust_level.go` 是 XP 与等级体系的**唯一写入点**（`TrustService.Recompute`）：

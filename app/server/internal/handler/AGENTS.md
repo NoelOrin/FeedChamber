@@ -57,7 +57,7 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 | trash.go | TrashHandler | ListPosts, RestorePost, ListComments, RestoreComment |
 | backup.go | BackupHandler | Create, List, Cleanup, Restore, Download, Delete |
 | webhook.go | WebhookHandler | Create, List, Update, Delete, ListDeliveries, Ping, RetryDelivery |
-| plugin.go | PluginHandler | List, ListSources, CreateSource, ApproveSource, RejectSource, Install, Uninstall, Update, SetEnabled, Delete |
+| plugin.go | PluginHandler | List, ListInstalls, ListSources, CreateSource, ApproveSource, RejectSource, Install, Uninstall, Update, SetEnabled, Delete |
 | slot.go | SlotHandler | List, Create, Update, Delete（后台，挂 customize:read/write）；Public（公开，渲染只读库） |
 | badge.go | BadgeHandler | List, ListByUser |
 | theme.go | ThemeHandler | List, GetPreference, SetPreference |
@@ -65,6 +65,10 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 | invite.go | InviteHandler | Create, List, Delete |
 | seo.go | SEOHandler | Sitemap, SitemapIndex, SitemapSpaces, SitemapTags, Robots, LatestRSS |
 | realtime.go | RealtimeHandler | Stream |
+
+## 插件管理端点（2026-11-05）
+
+`plugin.go` 新增 `ListInstalls`（`POST /admin/plugins/installs/list`，返回 `plugin_installs` 运行状态）与 `Uninstall`（`POST /admin/plugins/{id}/uninstall`）。`Uninstall` 与 `Delete` 都走 `service.Uninstall` 的完整卸载（停进程 + 删双表 + 审计）；`/{id}/status` 是写操作，权限码为 `plugin:manage`（此前错挂 `plugin:read`，只读凭证可停掉全站插件）。
 
 ## 不在 handler 层的 HTTP 端点
 
