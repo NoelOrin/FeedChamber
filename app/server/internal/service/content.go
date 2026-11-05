@@ -472,3 +472,22 @@ func (s *contentService) RestoreTrash(ctx context.Context, id string) error {
 	}
 	return s.repo.Restore(ctx, id)
 }
+
+// SetStatusForPlugin 直接变更评论状态，供插件宿主 API 的 comments.setStatus
+// 使用。取值域与帖子的 SetStatus 保持一致，非法值一律拒绝，避免插件把评论
+// 写成一个系统里没人认识的状态。
+func (s *contentService) SetStatusForPlugin(ctx context.Context, id, status string) error {
+	if !isValidPostStatus(status) {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "status 必须为 approved、pending、rejected 或 closed")
+	}
+	c, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return err
+	}
+	if c.Status == status {
+		return nil
+	}
+	c.Status = status
+	c.UpdatedAt = time.Now()
+	return s.repo.Update(ctx, c)
+}

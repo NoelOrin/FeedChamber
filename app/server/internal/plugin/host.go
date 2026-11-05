@@ -63,6 +63,16 @@ func NewHostWithOptions(opts HostOptions) *Host {
 	}
 }
 
+// HasAPIDeps 报告宿主是否已接上真实 service 适配。
+//
+// 这不是给运行时用的，而是给 composition root 的装配断言用：
+// StartPlugin 里 `if APIDepsFor != nil` 一旦漏接线，9 个 api.* 方法全是
+// 空壳，症状是「插件显示 running 但一调宿主 API 就 not wired」，且不会
+// 让任何现有测试变红。
+func (h *Host) HasAPIDeps() bool {
+	return h.opts.APIDepsFor != nil
+}
+
 // StartPlugin 拉起一个插件并注册它的钩子。
 //
 // 重复启动同一插件返回错误而不是静默覆盖：静默覆盖会让旧进程变成

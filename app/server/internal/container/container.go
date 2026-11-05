@@ -341,6 +341,11 @@ func New(d Deps) *Container {
 	// 它在 supervisor 的重启 goroutine 上同步执行，同步写库会拖慢退避节奏。
 	c.PluginHost = plugin.NewHostWithOptions(plugin.HostOptions{
 		PluginRoot: "./plugins",
+		// APIDepsFor 把真实 service 适配成宿主 API 的七个接缝。漏了这一项，
+		// StartPlugin 里的 RegisterAPIs 永不执行，9 个 api.* 方法全是空壳。
+		APIDepsFor: func(pluginID string, caps plugin.CapabilitySet) plugin.APIDeps {
+			return newPluginAPIDeps(c, pluginID, caps)
+		},
 		OnStatus: func(pluginID, status, lastError string) {
 			go func() {
 				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -351,6 +356,11 @@ func New(d Deps) *Container {
 			}()
 		},
 	})
+
+	// 后台管理动作（装/启/停/删）必须驱动 Host，而不只是写库。
+	// hostRuntime 固定用 context.Background() 拉起子进程，避免 HTTP 请求
+	// ctx 结束时把插件一起杀掉（exec.CommandContext 的语义）。
+	c.PluginSvc.SetRuntime(hostRuntime{host: c.PluginHost})
 
 	return c
 }

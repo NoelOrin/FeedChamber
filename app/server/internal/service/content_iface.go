@@ -24,4 +24,8 @@ type ContentService interface {
 	Delete(ctx context.Context, postID, id, actorUUID, actorRole string) error
 	AdminDelete(ctx context.Context, id, actorRole string) error
 	RestoreTrash(ctx context.Context, id string) error
+	// SetStatusForPlugin 供插件宿主 API 的 comments.setStatus 使用。它只改
+	// 状态列且自带取值域校验，不经过所有权 / 权限判定——插件调用已经过
+	// capability 校验，管理员操作则走 AdminDelete 等带权限的入口。
+	SetStatusForPlugin(ctx context.Context, id, status string) error
 }
