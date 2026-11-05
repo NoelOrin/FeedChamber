@@ -93,6 +93,28 @@ describe('pluginService v2 contract', () => {
 		pluginService.delete('x');
 		expect(postMock).toHaveBeenCalledWith('/admin/plugins/x/delete', {});
 	});
+
+	it('preview(input) posts the exact PluginInstallInput body to /preview', () => {
+		const input = { plugin_id: 'x', source_id: 'y', manifest: '{}' };
+		pluginService.preview(input);
+		expect(postMock).toHaveBeenCalledWith('/admin/plugins/preview', input);
+	});
+
+	it('preview(input) forwards the optional dir when provided', () => {
+		const input = { plugin_id: 'x', source_id: 'y', manifest: '{}', dir: '/srv/plugins/x' };
+		pluginService.preview(input);
+		expect(postMock).toHaveBeenCalledWith('/admin/plugins/preview', input);
+	});
+
+	it('listVersions(pluginId) posts { plugin_id } to versions/list', () => {
+		pluginService.listVersions('x');
+		expect(postMock).toHaveBeenCalledWith('/admin/plugins/versions/list', { plugin_id: 'x' });
+	});
+
+	it('rollback(id, versionId) posts { version_id } to {id}/rollback', () => {
+		pluginService.rollback('x', 'v-1');
+		expect(postMock).toHaveBeenCalledWith('/admin/plugins/x/rollback', { version_id: 'v-1' });
+	});
 });
 
 describe('plugin permission codes', () => {

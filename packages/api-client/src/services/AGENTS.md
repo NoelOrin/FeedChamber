@@ -98,4 +98,4 @@ export const postService = {
 
 ## 插件服务（2026-11-05）
 
-`plugin.ts` 覆盖 `/admin/plugins/{list,sources/list,installs/list,install,sources/create,sources/{id}/approve,sources/{id}/reject,{id}/update,{id}/status,{id}/uninstall,{id}/delete}`；类型与常量在同目录 `plugin.test.ts` 有契约测试（vitest，mock `post` 断言 URL/方法/body）。不提供单插件详情方法（见 `app/web/app/admin/AGENTS.md` 的说明）。
+`plugin.ts` 覆盖 `/admin/plugins/{list,sources/list,installs/list,install,preview,versions/list,{id}/rollback,sources/create,sources/{id}/approve,sources/{id}/reject,{id}/update,{id}/status,{id}/uninstall,{id}/delete}`；类型与常量在同目录 `plugin.test.ts` 有契约测试（vitest，mock `post` 断言 URL/方法/body）。不提供单插件详情方法（见 `app/web/app/admin/AGENTS.md` 的说明）。

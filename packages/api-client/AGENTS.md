@@ -47,3 +47,5 @@ Web 和 Dashboard 共同依赖，封装所有后端 API 调用。
 ## 插件服务 v2（2026-11-05）
 
 `services/plugin.ts` 已对齐后端 v2：`PluginSource` / `PluginInstall` / `PluginInstallInput` / `PluginUpdateInput` 类型 + `listSources` / `createSource` / `approveSource` / `rejectSource` / `install` / `uninstall` / `listInstalls`。`install` 入参是 `PluginInstallInput`（**不是** `Partial<Plugin>`），`update` 的 `PluginUpdateInput.enabled` 必填且 body 恒带 `enabled`（漏传后端会按零值禁用插件）。`PermissionCode` 新增 `PLUGIN_READ` / `PLUGIN_MANAGE`。
+
+2026-11-05 追加三个端点：`preview(input: PluginInstallInput)` → `PluginPreview`（能力 / 依赖 / 钩子 / 来源地址 / `already_installed`，**不落库不起进程**）、`listVersions(pluginId)` → `PluginVersion[]`（body `{plugin_id}`，`note ∈ install|upgrade|rollback`）、`rollback(id, versionId)` → `null`（body `{version_id}`，后端停进程→重新拉取→重启）。三者都是 POST 且带动词后缀。

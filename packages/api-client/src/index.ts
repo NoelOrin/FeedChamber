@@ -75,11 +75,14 @@ export type {
 	PluginInstall,
 	PluginInstallInput,
 	PluginInstallStatus,
+	PluginPreview,
 	PluginSource,
 	PluginSourceInput,
 	PluginSourceKind,
 	PluginSourceStatus,
 	PluginUpdateInput,
+	PluginVersion,
+	PluginVersionNote,
 } from './services/plugin';
 export { pluginService } from './services/plugin';
 export { pmService } from './services/pm';

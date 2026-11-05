@@ -60,6 +60,48 @@ export type PluginInstallInput = {
 };
 
 /**
+ * 安装前预览（POST /admin/plugins/preview）。
+ *
+ * 不落库、不起进程：只把 manifest 解析出来的能力清单、依赖清单与来源地址
+ * 返回给管理员确认「装的是什么」。`already_installed` 为 true 时本次是升级。
+ */
+export type PluginPreview = {
+	plugin_id: string;
+	name: string;
+	version: string;
+	protocol_version: string;
+	entry: string;
+	hooks: string[];
+	capabilities: string[];
+	/** package.json 的 dependencies（name@range）。 */
+	dependencies: string[];
+	/** 被审批来源的地址。 */
+	source_url: string;
+	/** 同 ID 已存在：本次将是升级而非全新安装。 */
+	already_installed: boolean;
+};
+
+/** 版本记录的来源标记（后端 `PluginVersion.Note`）。 */
+export type PluginVersionNote = 'install' | 'upgrade' | 'rollback';
+
+/** 一次安装/升级/回滚的历史快照（POST /admin/plugins/versions/list，最新在前）。 */
+export type PluginVersion = {
+	id: string;
+	plugin_id: string;
+	version: string;
+	source_id: string;
+	/** 装进来时的 plugin.json 原文。 */
+	manifest: string;
+	/** 当时授予的能力快照（JSON 数组字符串）。 */
+	caps: string;
+	/** 当时插件目录内容的 sha256。 */
+	checksum: string;
+	actor_id: string;
+	note: PluginVersionNote;
+	created_at: string;
+};
+
+/**
  * 更新入参（POST /admin/plugins/{id}/update）。
  *
  * `enabled` 必须显式传入：后端对零值 false 不做区分（`pluginRow.Enabled = input.Enabled`），
@@ -113,6 +155,18 @@ export const pluginService = {
 	},
 	install(body: PluginInstallInput) {
 		return post<PluginInstall>('/admin/plugins/install', body);
+	},
+	/** 安装前预览：只读派生信息，不落库、不起进程。 */
+	preview(input: PluginInstallInput) {
+		return post<PluginPreview>('/admin/plugins/preview', input);
+	},
+	/** 版本历史（最新在前）。 */
+	listVersions(pluginId: string) {
+		return post<PluginVersion[]>('/admin/plugins/versions/list', { plugin_id: pluginId });
+	},
+	/** 回滚：停进程 → 重新拉取代码 → 起进程，并落一条 rollback 历史。 */
+	rollback(id: string, versionId: string) {
+		return post<null>(`/admin/plugins/${id}/rollback`, { version_id: versionId });
 	},
 	uninstall(id: string) {
 		return post<null>(`/admin/plugins/${id}/uninstall`, {});
