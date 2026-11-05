@@ -80,5 +80,5 @@ lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / ut
 
 ## 插件后台的查询键与准入（2026-11-05）
 
-- `qk.admin.plugins` 增加 `sources` / `installs` 两个子键，与 `list` 共用 `all` 前缀以便一次 invalidate 全部刷新。
+- `qk.admin.plugins` 增加 `sources` / `installs` / `versions(pluginId)` 子键，与 `list` 共用 `all` 前缀以便一次 invalidate 全部刷新；版本历史按插件 ID 单独成 key（弹窗关闭即停发）。
 - `lib/admin/auth/route-access.ts` 的 `/admin/plugins` 改为 `anyOf: ['plugin:read','plugin:manage']`（只读管理员可进页面，写操作由后端 403）；`access.ts` 的准入白名单登记 `plugin:read`。

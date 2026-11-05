@@ -103,3 +103,9 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 - 三个 query（list / sources / installs）各自 `isError` → `Alert variant="destructive"`，遵循「列表页的错误态（2026-10-30）」。
 
 权限：`plugin:read` 为读级码（`route-access.ts` 的 `/admin/plugins` 为 `anyOf: ['plugin:read','plugin:manage']`），写操作由后端网关把守。
+
+### 预览 / 版本回滚（2026-11-05）
+
+- **安装前预览**：安装弹窗的「预览」按钮调 `pluginService.preview(PluginInstallInput)` → `PluginPreview`（`capabilities` / `dependencies` / `hooks` / `source_url` / `already_installed`）。后端**不落库、不起进程**，所以预览绝不能顺带调 `install`；真正写入只有「确认安装」按钮（`type="submit"` → `install`）。`already_installed` 为 true 时显式提示「将升级已安装插件」。表单任一字段变动即作废旧预览（`installForm.watch` 订阅里清空）。
+- **版本历史**：列表操作列「版本」打开弹窗，`pluginService.listVersions(id)`（`qk.admin.plugins.versions(id)`，`enabled: versionTarget !== null` 门控，关闭弹窗即停发）。每行展示 version / note badge（install 安装、upgrade 升级、rollback 回滚）/ actor_id / created_at（`formatTime`）/ checksum 前 12 位，并给出「回滚到此版本」→ `useConfirm`（danger，文案写明**停进程 → 重新拉取代码 → 重启，期间不可用**）→ `pluginService.rollback(id, versionId)`。
+- 版本查询自身 `isError` → `Alert variant="destructive"`，与其余三个 query 一致。

@@ -200,6 +200,8 @@ export const qk = {
 			list: ['admin', 'plugins', 'list'] as const,
 			sources: ['admin', 'plugins', 'sources'] as const,
 			installs: ['admin', 'plugins', 'installs'] as const,
+			/** 某插件的版本历史（install / upgrade / rollback 快照，最新在前）。 */
+			versions: (pluginId: string) => ['admin', 'plugins', 'versions', pluginId] as const,
 		},
 		security: {
 			all: ['admin', 'security'] as const,

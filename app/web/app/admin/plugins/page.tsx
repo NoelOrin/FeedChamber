@@ -4,14 +4,18 @@ import {
 	type Plugin,
 	type PluginInstall,
 	type PluginInstallStatus,
+	type PluginPreview,
 	type PluginSource,
 	type PluginSourceStatus,
+	type PluginVersion,
+	type PluginVersionNote,
 	pluginService,
 } from '@feedchamber/api-client';
+import { formatTime } from '@feedchamber/shared-utils';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef } from '@tanstack/react-table';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
@@ -93,6 +97,34 @@ const INSTALL_STATUS: Record<
 
 type ModalMode = 'install' | 'edit' | null;
 
+/** 版本历史里的来源标记。install = 首次装，upgrade = 覆盖，rollback = 回滚动作本身。 */
+const VERSION_NOTE: Record<PluginVersionNote, { label: string; variant: 'info' | 'warning' | 'success' | 'outline' }> =
+	{
+		install: { label: '安装', variant: 'info' },
+		upgrade: { label: '升级', variant: 'success' },
+		rollback: { label: '回滚', variant: 'warning' },
+	};
+
+/** capabilities / hooks 之类的「一段文字 + 若干标签」小行。 */
+function MetaRow({ label, values }: { label: string; values: string[] }) {
+	return (
+		<div className="flex flex-col gap-1">
+			<span className="text-xs font-medium text-foreground">{label}</span>
+			{values.length === 0 ? (
+				<span className="text-xs text-muted-foreground">（无）</span>
+			) : (
+				<div className="flex flex-wrap gap-1">
+					{values.map((v) => (
+						<Badge key={v} variant="outline">
+							{v}
+						</Badge>
+					))}
+				</div>
+			)}
+		</div>
+	);
+}
+
 export default function Plugins() {
 	const [modal, setModal] = useState<ModalMode>(null);
 	const [editing, setEditing] = useState<Plugin | null>(null);
@@ -102,11 +134,26 @@ export default function Plugins() {
 	const [sourceName, setSourceName] = useState('');
 	const [sourceKind, setSourceKind] = useState<'git'>('git');
 	const [sourceUrl, setSourceUrl] = useState('');
+	/** 安装前预览结果：只在「预览」按钮触发后存在，确认安装前不落库。 */
+	const [preview, setPreview] = useState<PluginPreview | null>(null);
+	const [previewing, setPreviewing] = useState(false);
+	const [previewError, setPreviewError] = useState<string | null>(null);
+	/** 版本历史弹窗：非空即打开，值是被查看的插件登记记录。 */
+	const [versionTarget, setVersionTarget] = useState<Plugin | null>(null);
 	const [confirm, confirmDialog] = useConfirm();
 	const queryClient = useQueryClient();
 
 	const installForm = useForm<InstallValues>({ resolver: zodResolver(installSchema), defaultValues: INSTALL_EMPTY });
 	const editForm = useForm<EditValues>({ resolver: zodResolver(editSchema), defaultValues: EDIT_EMPTY });
+
+	/* 表单任何字段变动都作废旧预览：屏幕上不能停着一份与当前输入不匹配的能力清单。 */
+	useEffect(() => {
+		const sub = installForm.watch(() => {
+			setPreview(null);
+			setPreviewError(null);
+		});
+		return () => sub.unsubscribe();
+	}, [installForm]);
 
 	/* 每个查询都保留 query 对象：error 态用 Alert variant="destructive" 显式呈现，
 	   不用 `const { data = [] }`（解构默认值每次渲染都是新数组）。 */
@@ -122,10 +169,17 @@ export default function Plugins() {
 		queryKey: qk.admin.plugins.installs,
 		queryFn: async () => (await pluginService.listInstalls()) ?? [],
 	});
+	/* 版本历史按需取数：弹窗关闭时不发请求（enabled 门控）。 */
+	const versionsQuery = useQuery({
+		queryKey: qk.admin.plugins.versions(versionTarget?.id ?? ''),
+		queryFn: async () => (await pluginService.listVersions(versionTarget?.id ?? '')) ?? [],
+		enabled: versionTarget !== null,
+	});
 
 	const plugins = pluginsQuery.data ?? [];
 	const sources = sourcesQuery.data ?? [];
 	const installs = installsQuery.data ?? [];
+	const versions = versionsQuery.data ?? [];
 
 	/** 写操作后一次失效该模块的 list / sources / installs 三份缓存。 */
 	const invalidate = useCallback(
@@ -142,6 +196,8 @@ export default function Plugins() {
 
 	const openInstall = useCallback(() => {
 		setEditing(null);
+		setPreview(null);
+		setPreviewError(null);
 		installForm.reset(INSTALL_EMPTY);
 		setModal('install');
 	}, [installForm]);
@@ -177,6 +233,45 @@ export default function Plugins() {
 			}
 		},
 		[invalidate],
+	);
+
+	/**
+	 * 预览：只解析 manifest 派生信息（能力 / 依赖 / 来源地址），
+	 * 后端不落库、不起进程——所以这里绝不能顺带调 install。
+	 */
+	const handlePreview = useCallback(async () => {
+		const valid = await installForm.trigger(['plugin_id', 'source_id', 'manifest']);
+		if (!valid) return;
+		setPreviewing(true);
+		setPreviewError(null);
+		try {
+			const result = await pluginService.preview(installForm.getValues());
+			setPreview(result);
+		} catch (err) {
+			setPreview(null);
+			setPreviewError(errorMessage(err));
+		} finally {
+			setPreviewing(false);
+		}
+	}, [installForm]);
+
+	/** 版本历史弹窗的打开/关闭。关闭时清掉目标，versionsQuery 随之停发。 */
+	const openVersions = useCallback((plugin: Plugin) => setVersionTarget(plugin), []);
+	const closeVersions = useCallback(() => setVersionTarget(null), []);
+
+	const handleRollback = useCallback(
+		async (version: PluginVersion) => {
+			if (!versionTarget) return;
+			try {
+				await pluginService.rollback(versionTarget.id, version.id);
+				toast.success(`已回滚到 ${version.version || version.id}，插件进程已重启`);
+				// invalidate 命中 qk.admin.plugins.all，版本历史一并重取。
+				await invalidate();
+			} catch (err) {
+				toast.error(errorMessage(err));
+			}
+		},
+		[invalidate, versionTarget],
 	);
 
 	const handleEdit = useCallback(
@@ -305,11 +400,14 @@ export default function Plugins() {
 			{
 				id: 'actions',
 				header: '操作',
-				size: 140,
+				size: 200,
 				cell: ({ row }) => (
 					<div className="flex items-center gap-1.5">
 						<Button variant="outline" size="xs" onClick={() => openEdit(row.original)}>
 							编辑
+						</Button>
+						<Button variant="outline" size="xs" onClick={() => openVersions(row.original)}>
+							版本
 						</Button>
 						<Button
 							variant="destructive"
@@ -330,7 +428,7 @@ export default function Plugins() {
 				),
 			},
 		],
-		[confirm, handleToggle, handleUninstall, installByPlugin, openEdit],
+		[confirm, handleToggle, handleUninstall, installByPlugin, openEdit, openVersions],
 	);
 
 	return (
@@ -473,12 +571,47 @@ export default function Plugins() {
 									</FormItem>
 								)}
 							/>
+							{/* 预览结果：只展示派生信息，确认安装前不落库、不起进程。 */}
+							{previewError ? (
+								<Alert variant="destructive">
+									<AlertDescription>预览失败：{previewError}</AlertDescription>
+								</Alert>
+							) : null}
+							{preview ? (
+								<div className="flex flex-col gap-2 rounded-md border border-border p-3">
+									{preview.already_installed ? (
+										<Alert variant="warning">
+											<AlertDescription>
+												该插件 ID 已存在安装记录，确认安装将<strong>升级已安装插件</strong>，并重启其进程。
+											</AlertDescription>
+										</Alert>
+									) : null}
+									<div className="flex flex-wrap items-baseline gap-2">
+										<span className="text-sm font-semibold text-foreground">{preview.name || preview.plugin_id}</span>
+										<Badge variant="info">{preview.version || '未标注版本'}</Badge>
+										<Badge variant="outline">协议 {preview.protocol_version || '未标注'}</Badge>
+									</div>
+									<div className="text-xs text-muted-foreground">
+										入口：<span className="font-mono">{preview.entry || '—'}</span>
+									</div>
+									<div className="text-xs text-muted-foreground">
+										来源：
+										<span className="font-mono break-all">{preview.source_url || '—'}</span>
+									</div>
+									<MetaRow label="能力（capabilities）" values={preview.capabilities} />
+									<MetaRow label="依赖（dependencies）" values={preview.dependencies} />
+									<MetaRow label="钩子（hooks）" values={preview.hooks} />
+								</div>
+							) : null}
 							<DialogFooter className="mt-2 gap-2">
 								<Button type="button" variant="outline" size="sm" onClick={() => setModal(null)}>
 									取消
 								</Button>
+								<Button type="button" variant="secondary" size="sm" loading={previewing} onClick={handlePreview}>
+									预览
+								</Button>
 								<Button type="submit" size="sm" loading={saving}>
-									注册
+									确认安装
 								</Button>
 							</DialogFooter>
 						</form>
@@ -626,6 +759,77 @@ export default function Plugins() {
 						</Button>
 						<Button size="sm" loading={sourceSaving} onClick={handleCreateSource}>
 							登记
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+
+			{/* 版本历史：install / upgrade / rollback 快照，每行可回滚 */}
+			<Dialog open={versionTarget !== null} onOpenChange={(v) => !v && closeVersions()}>
+				<DialogContent className="max-h-[85vh] overflow-y-auto">
+					<DialogHeader>
+						<DialogTitle>版本历史 · {versionTarget?.name || versionTarget?.id || ''}</DialogTitle>
+					</DialogHeader>
+					<div className="flex flex-col gap-2">
+						<Alert variant="warning">
+							<AlertDescription>
+								回滚会停止当前插件进程、按历史版本重新拉取代码并重启进程，期间插件功能不可用。
+							</AlertDescription>
+						</Alert>
+						{versionsQuery.isError ? (
+							<Alert variant="destructive">
+								<AlertDescription>版本历史读取失败：{errorMessage(versionsQuery.error)}</AlertDescription>
+							</Alert>
+						) : versionsQuery.isPending ? (
+							<p className="text-sm text-muted-foreground">加载中…</p>
+						) : versions.length === 0 ? (
+							<p className="text-sm text-muted-foreground">还没有版本记录。</p>
+						) : (
+							<div className="flex flex-col gap-2">
+								{versions.map((v) => {
+									const noteMeta = VERSION_NOTE[v.note] ?? {
+										label: v.note,
+										variant: 'outline' as const,
+									};
+									return (
+										<div key={v.id} className="flex flex-col gap-1.5 rounded-md border border-border px-3 py-2.5">
+											<div className="flex flex-wrap items-center gap-2">
+												<span className="text-sm font-medium text-foreground">{v.version || '未标注版本'}</span>
+												<Badge variant={noteMeta.variant}>{noteMeta.label}</Badge>
+												<span className="text-xs text-muted-foreground">{formatTime(v.created_at)}</span>
+												<Button
+													variant="outline"
+													size="xs"
+													className="ml-auto"
+													onClick={() =>
+														confirm({
+															title: `回滚到 ${v.version || v.id}？`,
+															description: '将停止当前插件进程、按该历史版本重新拉取代码并重启进程，期间插件不可用。',
+															danger: true,
+															confirmText: '回滚',
+															onConfirm: () => handleRollback(v),
+														})
+													}
+												>
+													回滚到此版本
+												</Button>
+											</div>
+											<div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+												<span>操作人：{v.actor_id || '—'}</span>
+												<span>
+													checksum：
+													<span className="font-mono">{v.checksum ? v.checksum.slice(0, 12) : '—'}</span>
+												</span>
+											</div>
+										</div>
+									);
+								})}
+							</div>
+						)}
+					</div>
+					<DialogFooter className="gap-2">
+						<Button variant="outline" size="sm" onClick={closeVersions}>
+							关闭
 						</Button>
 					</DialogFooter>
 				</DialogContent>
