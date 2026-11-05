@@ -43,3 +43,7 @@ Web 和 Dashboard 共同依赖，封装所有后端 API 调用。
 ## 常量（2026-10-30）
 
 `SettingKey` 新增 `MCP_ENABLED` / `MCP_DISABLED_TOOLS` / `MCP_MAX_RESULT_BYTES`——它们与后台 `app/admin/settings/settingsConfig.ts` 的白名单必须成对维护：漏登记就没有任何 UI 能改到该设置。
+
+## 插件服务 v2（2026-11-05）
+
+`services/plugin.ts` 已对齐后端 v2：`PluginSource` / `PluginInstall` / `PluginInstallInput` / `PluginUpdateInput` 类型 + `listSources` / `createSource` / `approveSource` / `rejectSource` / `install` / `uninstall` / `listInstalls`。`install` 入参是 `PluginInstallInput`（**不是** `Partial<Plugin>`），`update` 的 `PluginUpdateInput.enabled` 必填且 body 恒带 `enabled`（漏传后端会按零值禁用插件）。`PermissionCode` 新增 `PLUGIN_READ` / `PLUGIN_MANAGE`。

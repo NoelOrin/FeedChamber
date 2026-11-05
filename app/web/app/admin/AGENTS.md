@@ -90,3 +90,16 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 `customize/{nav,home,snippets}`、`mcp-servers`、`mcp` 等列表页统一：`const query = useQuery(...)` + `data = query.data ?? []` + `isError` 分支（`Alert variant="destructive"` 显示 `query.error.message`）。不要用 `const { data = [] } = useQuery()`：解构默认值在 pending/error 期每次渲染都是新数组，若再喂给 `useEffect` 依赖就是无限渲染（`customize/theme` 曾如此）。
 
 列表里的 `enabled` 只表达「启停」，不要套 `AppliedBadge`——列表接口没有 `applied` 字段，那是**写入结果**的语义，由保存回调的 toast 呈现（`applied=false` 时必须说明「已保存为草稿」及 `reason`）。
+
+## 插件管理页（`plugins/`，2026-11-05）
+
+`/admin/plugins` 已按后端 v2 契约重做（此前是 v1 声明式元数据 CRUD，`install` 请求体与后端 `PluginInstallInput` 完全不匹配、点一次必失败）：
+
+- **安装**走 `pluginService.install({plugin_id, source_id, manifest, dir?})`：来源下拉只列 `status=approved` 的（pending/rejected 禁用并标注），manifest 是 `plugin.json` 原文 textarea。
+- **来源审批**同页：列表 + 新建 + 批准/拒绝（`sources/*`）。没有来源 UI 时管理员根本无法装任何 v2 插件。
+- **运行状态**由 `pluginService.listInstalls()` 与 `list()` 按 `plugin_id` 合并展示（status badge / restarts / last_error）——**不要**再调单插件详情端点（`/{id}` 会被网关前缀判成 `plugin:manage`，只读详情权限错配）。
+- **卸载**调 `pluginService.uninstall(id)`（后端停进程 + 清 `plugins` 与 `plugin_installs` 两表），文案必须说明这一点；旧 `delete` 只删一行会留孤儿进程。
+- **编辑**必须显式传 `enabled: editing.enabled`：后端 `Update` 用 `pluginRow.Enabled = input.Enabled` 取零值，漏传会把插件静默禁用。
+- 三个 query（list / sources / installs）各自 `isError` → `Alert variant="destructive"`，遵循「列表页的错误态（2026-10-30）」。
+
+权限：`plugin:read` 为读级码（`route-access.ts` 的 `/admin/plugins` 为 `anyOf: ['plugin:read','plugin:manage']`），写操作由后端网关把守。

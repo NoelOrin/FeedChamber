@@ -95,3 +95,7 @@ export const postService = {
 | `mcp-server.ts` | `/admin/mcp-servers/*`（外部 MCP 登记、测试连通）+ `/admin/mcp/tools*`（本站工具启停） |
 
 两者都在 `src/index.ts` re-export；新增/改动端点后同步 `packages/api-client/AGENTS.md` 的服务清单与 `openapi.json`。
+
+## 插件服务（2026-11-05）
+
+`plugin.ts` 覆盖 `/admin/plugins/{list,sources/list,installs/list,install,sources/create,sources/{id}/approve,sources/{id}/reject,{id}/update,{id}/status,{id}/uninstall,{id}/delete}`；类型与常量在同目录 `plugin.test.ts` 有契约测试（vitest，mock `post` 断言 URL/方法/body）。不提供单插件详情方法（见 `app/web/app/admin/AGENTS.md` 的说明）。

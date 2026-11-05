@@ -77,3 +77,8 @@ lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / ut
 | `emit.ts` | **片段 → DOM 容器的唯一映射**：按 kind 选 `<style>` / `<script>` / 容器 `<div>`，并中和 `</style` / `</script` |
 
 根布局把 `customization` 一并 `setQueryData(qk.customization, …)`，否则首屏 HomeModules/CustomNav 读到 pending 先返回 null 再补发请求。
+
+## 插件后台的查询键与准入（2026-11-05）
+
+- `qk.admin.plugins` 增加 `sources` / `installs` 两个子键，与 `list` 共用 `all` 前缀以便一次 invalidate 全部刷新。
+- `lib/admin/auth/route-access.ts` 的 `/admin/plugins` 改为 `anyOf: ['plugin:read','plugin:manage']`（只读管理员可进页面，写操作由后端 403）；`access.ts` 的准入白名单登记 `plugin:read`。
