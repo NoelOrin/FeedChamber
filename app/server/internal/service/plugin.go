@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -14,6 +15,8 @@ import (
 	"feedchamber/internal/pkg"
 	"feedchamber/internal/plugin"
 	"feedchamber/internal/repository"
+
+	"github.com/sirupsen/logrus"
 )
 
 // defaultPluginRoot 是插件代码的默认根目录（相对 app/server 工作目录）。
@@ -47,6 +50,8 @@ type pluginService struct {
 	audit    AuditLogService
 	root     string
 	runtime  PluginRuntime
+	fetcher  PluginFetcher
+	versions repository.PluginVersionRepository
 }
 
 func NewPluginService(
@@ -54,14 +59,21 @@ func NewPluginService(
 	sources repository.PluginSourceRepository,
 	installs repository.PluginInstallRepository,
 	audit AuditLogService,
+	versions ...repository.PluginVersionRepository,
 ) PluginService {
-	return &pluginService{
+	svc := &pluginService{
 		repo:     repo,
 		sources:  sources,
 		installs: installs,
 		audit:    audit,
 		root:     defaultPluginRoot,
 	}
+	// 版本历史是可选依赖：不传时 ListVersions 返回空、Rollback 报不支持，
+	// 既有构造点（测试）无需改动。
+	if len(versions) > 0 {
+		svc.versions = versions[0]
+	}
+	return svc
 }
 
 // SetRuntime 注入子进程宿主。container 在构造完 Host 后调用；未注入时
@@ -72,6 +84,10 @@ func (s *pluginService) SetRuntime(rt PluginRuntime) {
 
 func (s *pluginService) HasRuntime() bool {
 	return s.runtime != nil
+}
+
+func (s *pluginService) SetFetcher(f PluginFetcher) {
+	s.fetcher = f
 }
 
 func (s *pluginService) List(ctx context.Context) ([]model.Plugin, error) {
@@ -413,6 +429,34 @@ func (s *pluginService) InstallAs(ctx context.Context, in PluginInstallInput, ac
 		return nil, err
 	}
 
+	// 拉代码 + 装依赖必须在拉起进程之前完成，且失败要把刚落库的两行一起
+	// 回滚——否则会留下「登记了但没有代码」的插件，重启恢复还会去拉它。
+	if s.fetcher != nil {
+		if err := s.fetcher.Fetch(ctx, src.URL, dir); err != nil {
+			_ = s.installs.Delete(ctx, in.PluginID)
+			if created {
+				_ = s.repo.Delete(ctx, record.ID)
+			}
+			_ = os.RemoveAll(dir)
+			return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, "拉取插件代码失败: "+err.Error())
+		}
+		if err := s.fetcher.InstallDeps(ctx, dir); err != nil {
+			_ = s.installs.Delete(ctx, in.PluginID)
+			if created {
+				_ = s.repo.Delete(ctx, record.ID)
+			}
+			_ = os.RemoveAll(dir)
+			return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, "安装插件依赖失败: "+err.Error())
+		}
+	}
+
+	// 代码就位后记内容校验和：装的是什么，事后必须能核对。
+	// 取不到（如只登记未拉代码）不算失败，留空即「未校验」。
+	if sum, herr := HashPluginDir(dir); herr == nil && sum != "" {
+		install.Checksum = sum
+		_ = s.installs.Update(ctx, install)
+	}
+
 	// 先落库再拉起：拉起失败要把刚写的两行一起回滚，绝不能留下
 	// 「库里 running、进程根本没起来」的假状态。
 	if s.runtime != nil {
@@ -426,8 +470,15 @@ func (s *pluginService) InstallAs(ctx context.Context, in PluginInstallInput, ac
 		}
 	}
 
+	// 版本历史：同 ID 既存记录视为升级，否则是首次安装。
+	note := "install"
+	if !created {
+		note = "upgrade"
+	}
+	s.recordVersion(ctx, in.PluginID, m.Version, src.ID, in.Manifest, string(capsJSON), install.Checksum, actorID, note)
+
 	s.recordAudit(ctx, actorID, auditActionInstall, in.PluginID,
-		fmt.Sprintf("source=%s dir=%s caps=%s", src.ID, dir, string(capsJSON)))
+		fmt.Sprintf("source=%s dir=%s caps=%s checksum=%s", src.ID, dir, string(capsJSON), install.Checksum))
 	return install, nil
 }
 
@@ -622,4 +673,142 @@ func validatePluginSettings(raw string) error {
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "插件 settings 必须是合法 JSON")
 	}
 	return nil
+}
+
+// ── 版本历史 / 回滚 ──────────────────────────────────────────────
+
+// ListVersions 返回某插件的历次安装/升级快照（最新在前）。
+func (s *pluginService) ListVersions(ctx context.Context, pluginID string) ([]model.PluginVersion, error) {
+	if s.versions == nil {
+		return []model.PluginVersion{}, nil
+	}
+	items, err := s.versions.ListByPlugin(ctx, pluginID)
+	if err != nil {
+		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	if items == nil {
+		items = []model.PluginVersion{}
+	}
+	return items, nil
+}
+
+// recordVersion 在每次成功安装/升级后落一条历史快照。
+// 版本历史是辅助能力：写失败只记日志，不让已完成的安装翻成失败。
+func (s *pluginService) recordVersion(ctx context.Context, pluginID, version, sourceID, manifest, caps, checksum, actorID, note string) {
+	if s.versions == nil {
+		return
+	}
+	v := &model.PluginVersion{
+		ID: pkg.NewID(), PluginID: pluginID, Version: version, SourceID: sourceID,
+		Manifest: manifest, Caps: caps, Checksum: checksum,
+		ActorID: actorID, Note: note, CreatedAt: time.Now(),
+	}
+	if err := s.versions.Create(ctx, v); err != nil {
+		logrus.WithError(err).Warnf("plugin: 记录 %s 版本历史失败", pluginID)
+	}
+}
+
+// RollbackAs 把插件回滚到某个历史版本：停进程 → 用该版本的 manifest 重新
+// 走一遍安装（代码目录按来源重新拉取）→ 起进程 → 落一条 rollback 历史。
+//
+// 刻意不缓存旧代码副本：插件代码在磁盘上只有一份，回滚等价于「按旧 manifest
+// 重新拉取」，这样回滚后的内容与当初安装的是同一份来源，而不是一份可能过期
+// 的本地快照。
+func (s *pluginService) RollbackAs(ctx context.Context, pluginID, versionID, actorID string) error {
+	if s.versions == nil {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "当前部署未启用版本历史，无法回滚")
+	}
+	v, err := s.versions.Get(ctx, versionID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return pkg.NewAppError(pkg.NOT_FOUND, "版本记录不存在")
+		}
+		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	if v.PluginID != pluginID {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "版本记录不属于该插件")
+	}
+	// 回滚是一次带新历史的安装：source/manifest 取历史快照。
+	// InstallAs 会按「已存在即 upgrade」落一条历史；回滚在此基础上再补一条
+	// rollback 记录，让历史里能明确区分「升级」与「回滚」。
+	if _, err := s.InstallAs(ctx, PluginInstallInput{
+		PluginID: pluginID,
+		SourceID: v.SourceID,
+		Manifest: v.Manifest,
+	}, actorID); err != nil {
+		return err
+	}
+	s.recordVersion(ctx, pluginID, v.Version, v.SourceID, v.Manifest, v.Caps, v.Checksum, actorID, "rollback")
+	s.recordAudit(ctx, actorID, "plugin.rollback", pluginID,
+		fmt.Sprintf("to_version=%s version_id=%s", v.Version, versionID))
+	return nil
+}
+
+// Preview 返回安装前的确认信息（能力清单 + 依赖清单），不落库、不起进程。
+//
+// 依赖清单来自被审批来源在临时目录里的一次拉取——这是唯一能拿到真实
+// package.json 的办法。临时目录用完即删；拉取失败时降级为空清单并在
+// 返回值里体现错误，而不是让整个预览失败（管理员至少还能看到能力清单）。
+func (s *pluginService) Preview(ctx context.Context, in PluginInstallInput) (*PluginPreview, error) {
+	if !pluginIDPattern.MatchString(in.PluginID) {
+		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "插件 ID 形式非法")
+	}
+	m, err := plugin.ParseManifest([]byte(in.Manifest))
+	if err != nil {
+		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, err.Error())
+	}
+	if err := m.Validate(plugin.CapabilitySetFromNames(plugin.KnownCapabilities())); err != nil {
+		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, err.Error())
+	}
+	if in.SourceID == "" {
+		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "来源 ID 不能为空")
+	}
+	src, err := s.sources.Get(ctx, in.SourceID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "来源不存在")
+		}
+		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
+	}
+	if src.Status != model.PluginSourceApproved {
+		return nil, pkg.NewAppError(pkg.FORBIDDEN, "插件来源尚未审批，无法预览")
+	}
+
+	prev := &PluginPreview{
+		PluginID:     in.PluginID,
+		Name:         m.Name,
+		Version:      m.Version,
+		ProtocolVer:  m.ProtocolVersion,
+		Entry:        m.Entry,
+		Hooks:        m.Hooks,
+		Capabilities: m.Capabilities,
+		SourceURL:    src.URL,
+	}
+	if prev.Hooks == nil {
+		prev.Hooks = []string{}
+	}
+	if prev.Capabilities == nil {
+		prev.Capabilities = []string{}
+	}
+	if _, gerr := s.repo.Get(ctx, in.PluginID); gerr == nil {
+		prev.AlreadyInstalled = true
+	}
+
+	// 依赖清单：临时拉一份代码读 package.json。
+	if s.fetcher != nil {
+		tmp, terr := os.MkdirTemp("", "plugin-preview-*")
+		if terr == nil {
+			defer os.RemoveAll(tmp)
+			target := filepath.Join(tmp, "src")
+			if ferr := s.fetcher.Fetch(ctx, src.URL, target); ferr == nil {
+				if deps, derr := ReadDependencyList(target); derr == nil {
+					prev.Dependencies = deps
+				}
+			}
+		}
+	}
+	if prev.Dependencies == nil {
+		prev.Dependencies = []string{}
+	}
+	return prev, nil
 }

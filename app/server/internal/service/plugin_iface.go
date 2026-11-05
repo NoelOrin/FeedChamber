@@ -36,6 +36,24 @@ type PluginInstallInput struct {
 // Manifest 给的是原文而不是 *plugin.Manifest：调用方（container）要重新
 // 解析一遍才能拿到钩子与 entry，这样「装的时候校验过」与「起的时候用到的」
 // 是同一份输入，不会因为结构体序列化差异而漂移。
+// PluginPreview 是安装前的确认信息：能力清单与依赖清单。
+// 管理员必须在真正落盘/起进程之前看到这两份，否则「装的是什么」无从判断。
+type PluginPreview struct {
+	PluginID     string   `json:"plugin_id"`
+	Name         string   `json:"name"`
+	Version      string   `json:"version"`
+	ProtocolVer  string   `json:"protocol_version"`
+	Entry        string   `json:"entry"`
+	Hooks        []string `json:"hooks"`
+	Capabilities []string `json:"capabilities"`
+	// Dependencies 来自 package.json 的 dependencies（name@range）。
+	Dependencies []string `json:"dependencies"`
+	// SourceURL 是被审批来源的地址。
+	SourceURL string `json:"source_url"`
+	// AlreadyInstalled 表示同 ID 已存在（本次将是升级而非全新安装）。
+	AlreadyInstalled bool `json:"already_installed"`
+}
+
 type ResumablePlugin struct {
 	PluginID     string   `json:"plugin_id"`
 	Manifest     string   `json:"manifest"`
@@ -71,6 +89,16 @@ type PluginService interface {
 	SetRuntime(rt PluginRuntime)
 	// HasRuntime 报告宿主是否已接线，供 composition root 装配断言用。
 	HasRuntime() bool
+	// SetFetcher 注入代码拉取/依赖安装实现（git + npm）。未注入时 Install
+	// 只登记不拉取代码（测试与「代码已手工就位」场景）。
+	SetFetcher(f PluginFetcher)
+
+	// 安装前预览（能力 + 依赖清单，不落库）
+	Preview(ctx context.Context, in PluginInstallInput) (*PluginPreview, error)
+
+	// 升级与历史
+	ListVersions(ctx context.Context, pluginID string) ([]model.PluginVersion, error)
+	RollbackAs(ctx context.Context, pluginID, versionID, actorID string) error
 
 	// 来源与审批
 	CreateSource(ctx context.Context, name, kind, url, actorID string) (*model.PluginSource, error)

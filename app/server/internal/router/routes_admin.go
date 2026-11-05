@@ -85,6 +85,7 @@ func (r *reg) adminRoutes() {
 			p.Post("/list", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.List)
 			p.Post("/sources/list", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.ListSources)
 			p.Post("/installs/list", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.ListInstalls)
+			p.Post("/preview", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Preview)
 			p.Post("/install", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Install)
 			p.Post("/sources/create", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.CreateSource)
 			p.Post("/sources/{id}/approve", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.ApproveSource)
@@ -93,6 +94,8 @@ func (r *reg) adminRoutes() {
 			// 启停是写操作：只读凭证不得停掉全站插件。
 			p.Post("/{id}/status", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.SetEnabled)
 			p.Post("/{id}/uninstall", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Uninstall)
+			p.Post("/versions/list", middleware.RequirePermission(deps, model.PermPluginRead), h.Plugin.ListVersions)
+			p.Post("/{id}/rollback", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Rollback)
 			p.Post("/{id}/delete", middleware.RequirePermission(deps, model.PermPluginManage), h.Plugin.Delete)
 		})
 

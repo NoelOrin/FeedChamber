@@ -120,6 +120,7 @@ func Start(env Env) {
 		&model.Plugin{},
 		&model.PluginSource{},
 		&model.PluginInstall{},
+		&model.PluginVersion{},
 		&model.SlotEntry{},
 		&model.Group{},
 		&model.GroupMember{},

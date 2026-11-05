@@ -358,6 +358,7 @@ func (p *PermissionCheckerMiddleware) initRouteMap() {
 	p.addPrefix("/api/v1/admin/slots/", model.PermCustomizeWrite)
 	p.addExact("/api/v1/admin/plugins/sources/list", model.PermPluginRead)
 	p.addExact("/api/v1/admin/plugins/installs/list", model.PermPluginRead)
+	p.addExact("/api/v1/admin/plugins/preview", model.PermPluginManage)
 	p.addExact("/api/v1/admin/plugins/install", model.PermPluginManage)
 	p.addExact("/api/v1/admin/plugins/sources/create", model.PermPluginManage)
 	p.addPattern("/api/v1/admin/plugins/sources/{id}/approve", model.PermPluginManage)
@@ -366,6 +367,8 @@ func (p *PermissionCheckerMiddleware) initRouteMap() {
 	// 只读凭证可以停掉全站插件。
 	p.addPattern("/api/v1/admin/plugins/{id}/status", model.PermPluginManage)
 	p.addPattern("/api/v1/admin/plugins/{id}/uninstall", model.PermPluginManage)
+	p.addExact("/api/v1/admin/plugins/versions/list", model.PermPluginRead)
+	p.addPattern("/api/v1/admin/plugins/{id}/rollback", model.PermPluginManage)
 	p.addPattern("/api/v1/admin/plugins/{id}/delete", model.PermPluginManage)
 	p.addPrefix("/api/v1/admin/plugins/", model.PermPluginManage)
 

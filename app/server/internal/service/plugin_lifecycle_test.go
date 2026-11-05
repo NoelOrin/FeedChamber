@@ -222,3 +222,101 @@ func TestAdminActionsAuditRealActor(t *testing.T) {
 	require.Equal(t, "alice", actors["plugin.install:analytics2"], "安装审计必须记真实操作人")
 	require.Equal(t, "carol", actors["plugin.uninstall:analytics2"], "卸载审计必须记真实操作人")
 }
+
+// 每次安装/升级都要留下历史快照，回滚才能从历史里取。
+func TestInstallRecordsVersionHistory(t *testing.T) {
+	svc, _, _ := managedPlugin(t)
+	ctx := context.Background()
+
+	versions, err := svc.ListVersions(ctx, "analytics")
+	require.NoError(t, err)
+	require.Len(t, versions, 1, "首次安装应留下一条历史")
+	require.Equal(t, "install", versions[0].Note)
+	require.Equal(t, "1.0.0", versions[0].Version)
+	require.NotEmpty(t, versions[0].Manifest)
+	require.Equal(t, "system", versions[0].ActorID)
+}
+
+// 升级（同 ID 再装）追加历史并标记为 upgrade。
+func TestReinstallMarksUpgrade(t *testing.T) {
+	svc, _, _ := managedPlugin(t)
+	ctx := context.Background()
+
+	src, err := svc.CreateSource(ctx, "s3", "git", "https://example.com/z.git", "admin")
+	require.NoError(t, err)
+	require.NoError(t, svc.ApproveSource(ctx, src.ID, "admin"))
+
+	_, err = svc.Install(ctx, service.PluginInstallInput{
+		PluginID: "analytics", SourceID: src.ID, Manifest: validManifestJSON,
+	})
+	require.NoError(t, err)
+
+	versions, err := svc.ListVersions(ctx, "analytics")
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	require.Equal(t, "upgrade", versions[0].Note, "最新一条是升级")
+}
+
+// 回滚到指定历史版本必须成功并再落一条 rollback 历史。
+func TestRollbackToVersion(t *testing.T) {
+	svc, _, _ := managedPlugin(t)
+	ctx := context.Background()
+	src, err := svc.CreateSource(ctx, "s4", "git", "https://example.com/w.git", "admin")
+	require.NoError(t, err)
+	require.NoError(t, svc.ApproveSource(ctx, src.ID, "admin"))
+	_, err = svc.Install(ctx, service.PluginInstallInput{
+		PluginID: "analytics", SourceID: src.ID, Manifest: validManifestJSON,
+	})
+	require.NoError(t, err)
+
+	versions, err := svc.ListVersions(ctx, "analytics")
+	require.NoError(t, err)
+	require.Len(t, versions, 2)
+	oldest := versions[len(versions)-1]
+
+	require.NoError(t, svc.RollbackAs(ctx, "analytics", oldest.ID, "dave"))
+
+	after, err := svc.ListVersions(ctx, "analytics")
+	require.NoError(t, err)
+	// 回滚本身是一次重装（upgrade 记录）+ 一条显式的 rollback 标记。
+	require.Len(t, after, 4)
+	require.Equal(t, "rollback", after[0].Note)
+	require.Equal(t, "dave", after[0].ActorID)
+}
+
+// 预览必须返回能力清单、依赖清单与「是否已安装」，且不落库。
+func TestPreviewReturnsCapsAndDeps(t *testing.T) {
+	svc, store := newPluginTestSvc(t)
+	ff := &fakeFetcher{}
+	svc.SetFetcher(ff)
+	ctx := context.Background()
+	src, err := svc.CreateSource(ctx, "s", "git", "https://example.com/p.git", "admin")
+	require.NoError(t, err)
+	require.NoError(t, svc.ApproveSource(ctx, src.ID, "admin"))
+
+	prev, err := svc.Preview(ctx, service.PluginInstallInput{
+		PluginID: "previewme", SourceID: src.ID, Manifest: validManifestJSON,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "previewme", prev.PluginID)
+	require.Equal(t, []string{"posts:write"}, prev.Capabilities)
+	require.False(t, prev.AlreadyInstalled)
+	require.Equal(t, "https://example.com/p.git", prev.SourceURL)
+
+	var plugins []model.Plugin
+	require.NoError(t, store.SQL().DB().Find(&plugins).Error)
+	require.Empty(t, plugins, "预览不得落库")
+}
+
+// 未审批来源不可预览（与安装同一信任门）。
+func TestPreviewRejectsUnapprovedSource(t *testing.T) {
+	svc, _ := newPluginTestSvc(t)
+	ctx := context.Background()
+	src, err := svc.CreateSource(ctx, "s", "git", "https://example.com/p.git", "admin")
+	require.NoError(t, err)
+
+	_, err = svc.Preview(ctx, service.PluginInstallInput{
+		PluginID: "previewme", SourceID: src.ID, Manifest: validManifestJSON,
+	})
+	require.Error(t, err)
+}

@@ -34,13 +34,15 @@ func newPluginTestSvc(t *testing.T) (service.PluginService, db.Store) {
 	require.NoError(t, err)
 	t.Cleanup(func() { _ = store.Close() })
 	require.NoError(t, store.AutoMigrate(
-		&model.Plugin{}, &model.PluginSource{}, &model.PluginInstall{}, &model.AuditLog{},
+		&model.Plugin{}, &model.PluginSource{}, &model.PluginInstall{},
+		&model.PluginVersion{}, &model.AuditLog{},
 	))
 	svc := service.NewPluginService(
 		repository.NewPluginRepository(store),
 		repository.NewPluginSourceRepository(store),
 		repository.NewPluginInstallRepository(store),
 		service.NewAuditLogService(repository.NewAuditLogRepository(store)),
+		repository.NewPluginVersionRepository(store),
 	)
 	return svc, store
 }

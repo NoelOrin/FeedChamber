@@ -257,7 +257,9 @@ func TestAdminPluginRoutesHaveGatewayPermission(t *testing.T) {
 		"/api/v1/admin/plugins/sources/create",
 		"/api/v1/admin/plugins/{id}/status",
 		"/api/v1/admin/plugins/{id}/uninstall",
+		"/api/v1/admin/plugins/{id}/rollback",
 		"/api/v1/admin/plugins/{id}/delete",
+		"/api/v1/admin/plugins/preview",
 	}
 	for _, p := range managePaths {
 		line := lineContaining(permSrc, `"`+p+`"`)
@@ -290,6 +292,9 @@ func TestAdminPluginRoutesHaveGatewayPermission(t *testing.T) {
 		{`p.Post("/sources/{id}/approve"`, "PermPluginManage", "审批来源"},
 		{`p.Post("/sources/{id}/reject"`, "PermPluginManage", "拒绝来源"},
 		{`p.Post("/installs/list"`, "PermPluginRead", "运行状态列表"},
+		{`p.Post("/preview"`, "PermPluginManage", "安装前预览"},
+		{`p.Post("/versions/list"`, "PermPluginRead", "版本历史"},
+		{`p.Post("/{id}/rollback"`, "PermPluginManage", "回滚"},
 		{`p.Post("/{id}/status"`, "PermPluginManage", "启停（写操作）"},
 		{`p.Post("/{id}/uninstall"`, "PermPluginManage", "卸载"},
 		{`p.Post("/{id}/delete"`, "PermPluginManage", "删除"},

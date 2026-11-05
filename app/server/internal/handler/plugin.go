@@ -21,6 +21,11 @@ type PluginHandler interface {
 	CreateSource(ctx iris.Context)
 	ApproveSource(ctx iris.Context)
 	RejectSource(ctx iris.Context)
+
+	// 安装前预览 / 版本历史 / 回滚
+	Preview(ctx iris.Context)
+	ListVersions(ctx iris.Context)
+	Rollback(ctx iris.Context)
 }
 
 type pluginHandler struct{ svc service.PluginService }
@@ -265,6 +270,86 @@ func (h *pluginHandler) ListInstalls(ctx iris.Context) {
 // @Router       /admin/plugins/{id}/uninstall [post]
 func (h *pluginHandler) Uninstall(ctx iris.Context) {
 	if err := h.svc.UninstallAs(ctx.Request().Context(), ctx.Params().Get("id"), currentUserID(ctx)); err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, nil)
+}
+
+// 安装前预览
+// @Summary      安装前预览
+// @Description  返回能力清单、依赖清单与来源地址，不落库、不起进程。
+// @Tags         插件
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body body service.PluginInstallInput true "安装请求"
+// @Success      200  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Router       /admin/plugins/preview [post]
+func (h *pluginHandler) Preview(ctx iris.Context) {
+	var input service.PluginInstallInput
+	if err := ctx.ReadJSON(&input); err != nil {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
+		return
+	}
+	prev, err := h.svc.Preview(ctx.Request().Context(), input)
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, prev)
+}
+
+// 版本历史
+// @Summary      插件版本历史
+// @Description  列出某插件的历次安装/升级/回滚快照（最新在前）。
+// @Tags         插件
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body body object{plugin_id=string} true "插件 ID"
+// @Success      200  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Router       /admin/plugins/versions/list [post]
+func (h *pluginHandler) ListVersions(ctx iris.Context) {
+	var body struct {
+		PluginID string `json:"plugin_id"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
+		return
+	}
+	items, err := h.svc.ListVersions(ctx.Request().Context(), body.PluginID)
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, items)
+}
+
+// 回滚插件
+// @Summary      回滚到历史版本
+// @Description  按指定历史版本的 manifest 与来源重新安装（停进程 → 重新拉取 → 起进程）。
+// @Tags         插件
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id path string true "插件 ID"
+// @Param        body body object{version_id=string} true "目标版本记录 ID"
+// @Success      200  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Router       /admin/plugins/{id}/rollback [post]
+func (h *pluginHandler) Rollback(ctx iris.Context) {
+	var body struct {
+		VersionID string `json:"version_id"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
+		return
+	}
+	if err := h.svc.RollbackAs(ctx.Request().Context(), ctx.Params().Get("id"),
+		body.VersionID, currentUserID(ctx)); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}

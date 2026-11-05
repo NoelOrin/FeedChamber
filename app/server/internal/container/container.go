@@ -78,6 +78,7 @@ type Container struct {
 	SlotRepo          repository.SlotEntryRepository
 	PluginSourceRepo  repository.PluginSourceRepository
 	PluginInstallRepo repository.PluginInstallRepository
+	PluginVersionRepo repository.PluginVersionRepository
 	// 站点自定义层（P1）
 	SnippetRepo    repository.SnippetRepository
 	ThemeTokenRepo repository.ThemeTokenRepository
@@ -194,6 +195,7 @@ func New(d Deps) *Container {
 	c.SlotRepo = repository.NewSlotEntryRepository(d.Store)
 	c.PluginSourceRepo = repository.NewPluginSourceRepository(d.Store)
 	c.PluginInstallRepo = repository.NewPluginInstallRepository(d.Store)
+	c.PluginVersionRepo = repository.NewPluginVersionRepository(d.Store)
 	c.SnippetRepo = repository.NewSnippetRepository(d.Store)
 	c.ThemeTokenRepo = repository.NewThemeTokenRepository(d.Store)
 	c.NavItemRepo = repository.NewNavItemRepository(d.Store)
@@ -227,7 +229,7 @@ func New(d Deps) *Container {
 	c.LeaderboardSvc = service.NewLeaderboardService(c.UserRepo)
 	c.BadgeSvc = service.NewBadgeService(c.BadgeRepo, c.UserRepo)
 	c.AuditLogSvc = service.NewAuditLogService(c.AuditLogRepo)
-	c.PluginSvc = service.NewPluginService(c.PluginRepo, c.PluginSourceRepo, c.PluginInstallRepo, c.AuditLogSvc)
+	c.PluginSvc = service.NewPluginService(c.PluginRepo, c.PluginSourceRepo, c.PluginInstallRepo, c.AuditLogSvc, c.PluginVersionRepo)
 	c.SlotSvc = service.NewSlotService(c.SlotRepo, c.AuditLogSvc)
 	c.CustomizeSvc = service.NewCustomizeService(
 		c.SnippetRepo, c.ThemeTokenRepo, c.NavItemRepo, c.HomeModuleRepo, c.CustomPageRepo, c.AuditLogSvc, c.Tx)
@@ -361,6 +363,9 @@ func New(d Deps) *Container {
 	// hostRuntime 固定用 context.Background() 拉起子进程，避免 HTTP 请求
 	// ctx 结束时把插件一起杀掉（exec.CommandContext 的语义）。
 	c.PluginSvc.SetRuntime(hostRuntime{host: c.PluginHost})
+	// 代码拉取与依赖安装（git clone --depth 1 + npm install --omit=dev）。
+	// 未注入时 Install 只登记，不拉代码。
+	c.PluginSvc.SetFetcher(service.NewExecPluginFetcher())
 
 	return c
 }

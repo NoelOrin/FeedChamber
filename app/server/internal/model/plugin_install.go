@@ -60,8 +60,11 @@ type PluginInstall struct {
 	Restarts      int        `gorm:"not null;default:0" json:"restarts"`
 	LastError     string     `gorm:"type:text" json:"last_error"`
 	LastStartedAt *time.Time `json:"last_started_at,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
+	// Checksum 是插件目录内容的 sha256（排除 node_modules/.git）。用于
+	// 「装的是不是同一份代码」的事后可查与升级前后的比对。
+	Checksum  string    `gorm:"size:64" json:"checksum,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 func (PluginInstall) TableName() string { return "plugin_installs" }
