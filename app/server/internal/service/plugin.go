@@ -102,7 +102,9 @@ func (s *pluginService) Update(ctx context.Context, input PluginInput) error {
 	pluginRow.Description = input.Description
 	pluginRow.Homepage = input.Homepage
 	pluginRow.Settings = input.Settings
-	pluginRow.Enabled = input.Enabled
+	// 刻意**不**写 pluginRow.Enabled：启停唯一入口是 SetEnabled（它同时驱动
+	// 进程）。Update 若接受 enabled，会出现「库里已禁用、进程还在跑」的不一致，
+	// 且漏传该字段的客户端会用零值 false 把插件静默禁用。
 	pluginRow.UpdatedAt = time.Now()
 	return s.repo.Update(ctx, pluginRow)
 }

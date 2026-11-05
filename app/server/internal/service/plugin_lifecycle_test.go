@@ -171,3 +171,25 @@ func TestServiceWorksWithoutRuntime(t *testing.T) {
 	require.Equal(t, model.PluginStatusInstalled, inst.Status,
 		"没有 runtime 时不该虚报 running；登记仍成功，由后续接线补拉起")
 }
+
+// 元数据编辑（Update）不得改动 enabled：启停只能走 SetEnabled，否则会
+// 出现「库里的 enabled 变了、进程还在跑」的不一致，而且漏传字段的客户端
+// 会把插件静默禁用（Go 零值 false）。
+func TestUpdateDoesNotChangeEnabled(t *testing.T) {
+	svc, rt, store := managedPlugin(t)
+	ctx := context.Background()
+
+	// 初始：装好即启用、进程 running。
+	var before model.Plugin
+	require.NoError(t, store.SQL().DB().Where("id = ?", "analytics").First(&before).Error)
+	require.True(t, before.Enabled)
+
+	// 一次不带 enabled 的元数据编辑（零值 false）：不得把插件静默禁用。
+	require.NoError(t, svc.Update(ctx, service.PluginInput{ID: "analytics", Name: "Renamed"}))
+
+	var row model.Plugin
+	require.NoError(t, store.SQL().DB().Where("id = ?", "analytics").First(&row).Error)
+	require.Equal(t, "Renamed", row.Name)
+	require.True(t, row.Enabled, "Update 不得因零值把已启用的插件静默禁用")
+	require.Equal(t, 0, len(rt.stopped), "Update 不得停止进程")
+}
