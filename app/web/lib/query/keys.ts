@@ -198,6 +198,8 @@ export const qk = {
 		plugins: {
 			all: ['admin', 'plugins'] as const,
 			list: ['admin', 'plugins', 'list'] as const,
+			sources: ['admin', 'plugins', 'sources'] as const,
+			installs: ['admin', 'plugins', 'installs'] as const,
 		},
 		security: {
 			all: ['admin', 'security'] as const,

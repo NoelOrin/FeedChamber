@@ -57,6 +57,10 @@ export const PermissionCode = {
 	RECONCILE_COUNTERS: 'reconcile:counters',
 	LEVEL_MANAGE: 'level:manage',
 	GATE_MANAGE: 'gate:manage',
+	// 插件：读接口（list / sources/list / installs/list / detail / status）只需 plugin:read，
+	// 安装、来源审批、卸载、编辑等写接口要 plugin:manage。
+	PLUGIN_READ: 'plugin:read',
+	PLUGIN_MANAGE: 'plugin:manage',
 	// 站点自定义层：独立权限域，MUST NOT 并入任何既有 scope（见 mcp-server 规范）。
 	CUSTOMIZE_READ: 'customize:read',
 	CUSTOMIZE_WRITE: 'customize:write',

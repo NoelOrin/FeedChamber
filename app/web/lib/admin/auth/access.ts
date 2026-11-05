@@ -38,6 +38,9 @@ export const DASHBOARD_PERMISSION_CODES = [
 	'admin:search',
 	'admin:metrics',
 	'backup:manage',
+	// plugin:read 是读级权限：让只读角色也能进后台查看插件清单与运行状态，
+	// 但不会因此获得安装/审批/卸载能力（那些由后端 plugin:manage 把关）。
+	'plugin:read',
 	'plugin:manage',
 	'level:manage',
 	'gate:manage',

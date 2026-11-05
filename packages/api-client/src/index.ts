@@ -70,10 +70,18 @@ export { oauthService } from './services/oauth';
 export type { OAuthClient, OAuthClientSecretResult } from './services/oauth-client';
 export { oauthClientService } from './services/oauth-client';
 export { permissionService } from './services/permission';
-export type { Plugin } from './services/plugin';
+export type {
+	Plugin,
+	PluginInstall,
+	PluginInstallInput,
+	PluginInstallStatus,
+	PluginSource,
+	PluginSourceInput,
+	PluginSourceKind,
+	PluginSourceStatus,
+	PluginUpdateInput,
+} from './services/plugin';
 export { pluginService } from './services/plugin';
-export { slotService, SLOT_NAMES, SLOT_KINDS } from './services/slot';
-export type { SlotEntry, SlotEntryInput, SlotName, SlotKind } from './services/slot';
 export { pmService } from './services/pm';
 export { postService } from './services/post';
 export { reportService } from './services/report';
@@ -85,6 +93,8 @@ export { securityService } from './services/security';
 export type { UserSession } from './services/session';
 export { sessionService } from './services/session';
 export { settingService } from './services/setting';
+export type { SlotEntry, SlotEntryInput, SlotKind, SlotName } from './services/slot';
+export { SLOT_KINDS, SLOT_NAMES, slotService } from './services/slot';
 export { spaceService } from './services/space';
 export { tagService } from './services/tag';
 export type { Theme } from './services/theme';

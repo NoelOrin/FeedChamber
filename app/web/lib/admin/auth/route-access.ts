@@ -52,7 +52,9 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
 	{ path: '/admin/invites', anyOf: ['user:update'] },
 	{ path: '/admin/moderation', anyOf: ['report:manage'] },
 	{ path: '/admin/oauth-clients', anyOf: ['setting:manage'] },
-	{ path: '/admin/plugins', anyOf: ['plugin:manage'] },
+	// 插件：列表/来源/运行状态读接口只需 plugin:read，写操作（安装/审批/卸载）
+	// 由后端 plugin:manage 门控。两个码都登记，只读角色也能进这个页面看状态。
+	{ path: '/admin/plugins', anyOf: ['plugin:read', 'plugin:manage'] },
 	{ path: '/admin/search', anyOf: ['admin:search'] },
 	{ path: '/admin/security', anyOf: ['security:read'] },
 	{ path: '/admin/sessions', anyOf: ['session:self'] },
