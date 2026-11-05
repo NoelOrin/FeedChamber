@@ -7,13 +7,19 @@
 package container
 
 import (
+	"context"
+	"time"
+
 	"feedchamber/internal/config"
 	"feedchamber/internal/db"
 	"feedchamber/internal/pkg/eventbus"
 	"feedchamber/internal/pkg/kvstore"
+	"feedchamber/internal/plugin"
 	"feedchamber/internal/repository"
 	"feedchamber/internal/service"
 	"feedchamber/internal/storage"
+
+	"github.com/sirupsen/logrus"
 )
 
 // Container holds every repository and service used by the application.
@@ -46,29 +52,32 @@ type Container struct {
 	SessionSvc service.SessionStore
 
 	// Repositories (alphabetical)
-	AdminRepo        repository.AdminRepository
-	AnnouncementRepo repository.AnnouncementRepository
-	AuditLogRepo     repository.AuditLogRepository
-	BackupRepo       repository.BackupRepository
-	BadgeRepo        repository.BadgeRepository
-	BannedRepo       repository.BannedRepository
-	CheckInRepo      repository.CheckInRepository
-	ConversationRepo repository.ConversationRepository
-	ContentRepo      repository.ContentRepository
-	CredentialRepo   repository.CredentialRepository
-	DraftRepo        repository.DraftRepository
-	FavoriteRepo     repository.FavoriteRepository
-	FollowRepo       repository.FollowRepository
-	GateRepo         repository.GateRepository
-	GroupRepo        repository.GroupRepository
-	InviteRepo       repository.InviteRepository
-	LikeRepo         repository.LikeRepository
-	MetaRepo         repository.MetaRepository
-	ModerationRepo   repository.ModerationRepository
-	MotionRepo       repository.MotionRepository
-	NotificationRepo repository.NotificationRepository
-	OAuthRepo        repository.OAuthRepository
-	PluginRepo       repository.PluginRepository
+	AdminRepo         repository.AdminRepository
+	AnnouncementRepo  repository.AnnouncementRepository
+	AuditLogRepo      repository.AuditLogRepository
+	BackupRepo        repository.BackupRepository
+	BadgeRepo         repository.BadgeRepository
+	BannedRepo        repository.BannedRepository
+	CheckInRepo       repository.CheckInRepository
+	ConversationRepo  repository.ConversationRepository
+	ContentRepo       repository.ContentRepository
+	CredentialRepo    repository.CredentialRepository
+	DraftRepo         repository.DraftRepository
+	FavoriteRepo      repository.FavoriteRepository
+	FollowRepo        repository.FollowRepository
+	GateRepo          repository.GateRepository
+	GroupRepo         repository.GroupRepository
+	InviteRepo        repository.InviteRepository
+	LikeRepo          repository.LikeRepository
+	MetaRepo          repository.MetaRepository
+	ModerationRepo    repository.ModerationRepository
+	MotionRepo        repository.MotionRepository
+	NotificationRepo  repository.NotificationRepository
+	OAuthRepo         repository.OAuthRepository
+	PluginRepo        repository.PluginRepository
+	SlotRepo          repository.SlotEntryRepository
+	PluginSourceRepo  repository.PluginSourceRepository
+	PluginInstallRepo repository.PluginInstallRepository
 	// 站点自定义层（P1）
 	SnippetRepo    repository.SnippetRepository
 	ThemeTokenRepo repository.ThemeTokenRepository
@@ -120,20 +129,24 @@ type Container struct {
 	OAuthSvc        service.OAuthService
 	PMSvc           service.PMService
 	PluginSvc       service.PluginService
-	CustomizeSvc    service.CustomizeService
-	MCPServerSvc    service.MCPServerService
-	PostSvc         service.PostService
-	ReportSvc       service.ReportService
-	RevisionSvc     service.RevisionService
-	RoleSvc         service.RoleService
-	TagSvc          service.TagService
-	ThemeSvc        service.ThemeService
-	TrustSvc        service.TrustService
-	UploadSvc       service.UploadService
-	UserSvc         service.UserService
-	WatchSvc        service.WatchService
-	UserBlockSvc    service.UserBlockService
-	WebhookSvc      service.WebhookService
+	SlotSvc         service.SlotService
+	// PluginHost 托管 Node 子进程插件。New 只构造对象图，不拉起任何进程；
+	// 真正拉起在 Start（runtime.go）。
+	PluginHost   *plugin.Host
+	CustomizeSvc service.CustomizeService
+	MCPServerSvc service.MCPServerService
+	PostSvc      service.PostService
+	ReportSvc    service.ReportService
+	RevisionSvc  service.RevisionService
+	RoleSvc      service.RoleService
+	TagSvc       service.TagService
+	ThemeSvc     service.ThemeService
+	TrustSvc     service.TrustService
+	UploadSvc    service.UploadService
+	UserSvc      service.UserService
+	WatchSvc     service.WatchService
+	UserBlockSvc service.UserBlockService
+	WebhookSvc   service.WebhookService
 }
 
 // New constructs the object graph. Services must be built in dependency order;
@@ -178,6 +191,9 @@ func New(d Deps) *Container {
 	c.NotificationRepo = repository.NewNotificationRepository(d.Store)
 	c.OAuthRepo = repository.NewOAuthRepository(d.Store)
 	c.PluginRepo = repository.NewPluginRepository(d.Store)
+	c.SlotRepo = repository.NewSlotEntryRepository(d.Store)
+	c.PluginSourceRepo = repository.NewPluginSourceRepository(d.Store)
+	c.PluginInstallRepo = repository.NewPluginInstallRepository(d.Store)
 	c.SnippetRepo = repository.NewSnippetRepository(d.Store)
 	c.ThemeTokenRepo = repository.NewThemeTokenRepository(d.Store)
 	c.NavItemRepo = repository.NewNavItemRepository(d.Store)
@@ -207,11 +223,12 @@ func New(d Deps) *Container {
 	c.InviteSvc = service.NewInviteService(c.InviteRepo)
 	c.RoleSvc = service.NewRoleService(c.RoleRepo)
 	c.DraftSvc = service.NewDraftService(c.DraftRepo)
-	c.PluginSvc = service.NewPluginService(c.PluginRepo)
 	c.ThemeSvc = service.NewThemeService(c.UserPrefRepo)
 	c.LeaderboardSvc = service.NewLeaderboardService(c.UserRepo)
 	c.BadgeSvc = service.NewBadgeService(c.BadgeRepo, c.UserRepo)
 	c.AuditLogSvc = service.NewAuditLogService(c.AuditLogRepo)
+	c.PluginSvc = service.NewPluginService(c.PluginRepo, c.PluginSourceRepo, c.PluginInstallRepo, c.AuditLogSvc)
+	c.SlotSvc = service.NewSlotService(c.SlotRepo, c.AuditLogSvc)
 	c.CustomizeSvc = service.NewCustomizeService(
 		c.SnippetRepo, c.ThemeTokenRepo, c.NavItemRepo, c.HomeModuleRepo, c.CustomPageRepo, c.AuditLogSvc, c.Tx)
 	c.MCPServerSvc = service.NewMCPServerService(c.MCPServerRepo, c.AuditLogSvc)
@@ -319,6 +336,21 @@ func New(d Deps) *Container {
 	)
 	c.AdminSvc = service.NewAdminService(c.AdminRepo, c.UserRepo, c.PostRepo, d.KV, c.SessionSvc, c.PermissionSvc, c.Tx)
 	c.DigestSvc = service.NewDigestService(c.UserPrefRepo, c.UserRepo, c.PostRepo, c.WatchRepo, c.EmailSvc, c.SettingSvc)
+
+	// 插件宿主：只构造，不启动。OnStatus 落库放到 goroutine 里——
+	// 它在 supervisor 的重启 goroutine 上同步执行，同步写库会拖慢退避节奏。
+	c.PluginHost = plugin.NewHostWithOptions(plugin.HostOptions{
+		PluginRoot: "./plugins",
+		OnStatus: func(pluginID, status, lastError string) {
+			go func() {
+				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+				defer cancel()
+				if err := c.PluginSvc.SetRuntimeStatus(ctx, pluginID, status, lastError); err != nil {
+					logrus.WithError(err).Warnf("plugin: 记录 %s 状态 %s 失败", pluginID, status)
+				}
+			}()
+		},
+	})
 
 	return c
 }

@@ -84,3 +84,45 @@ func TestNew_ReusesInjectedServices(t *testing.T) {
 		"container must reuse the injected session store, not construct its own")
 	require.NotNil(t, c.Tx, "one shared transaction manager must be built")
 }
+
+// TestContainerNewConstructsPluginHostWithoutSpawning 钉住「New 只构造、不起进程」。
+//
+// 这条约束很容易被破坏：把 plugin.NewHostWithOptions 换成「顺手拉起已安装插件」，
+// container.New 就不再安全——它在测试里被调用几十次，每次都会 spawn 真进程。
+func TestContainerNewConstructsPluginHostWithoutSpawning(t *testing.T) {
+	store, err := db.New(config.DBConfig{Type: "sqlite", DSN: ":memory:"})
+	require.NoError(t, err)
+	kv := testnats.NewKVStore(t, "container_plugin_test")
+	bus := testnats.NewEventBus(t)
+
+	permSvc := service.NewPermissionService(
+		repository.NewPermissionRepository(store),
+		repository.NewSpaceRolePermissionRepository(store),
+		repository.NewGroupRepository(store),
+		kv,
+	)
+	settingSvc := service.NewSettingService(repository.NewSettingRepository(store), kv)
+	bannedSvc := service.NewBannedService(repository.NewBannedRepository(store), kv, db.NewTransactionManager(store))
+	spaceSvc := service.NewSpaceService(
+		repository.NewSpaceRepository(store),
+		repository.NewPostRepository(store),
+		db.NewTransactionManager(store),
+		kv,
+	)
+
+	c := New(Deps{
+		Config:     config.Config{},
+		Store:      store,
+		KV:         kv,
+		EventBus:   bus,
+		Permission: permSvc,
+		Setting:    settingSvc,
+		Banned:     bannedSvc,
+		Space:      spaceSvc,
+		Sessions:   &recordingSessionStore{},
+	})
+
+	require.NotNil(t, c.PluginHost, "PluginHost 必须在 New 里构造出来")
+	// 没有任何插件在跑：构造阶段不许 spawn。
+	require.False(t, c.PluginHost.Running("anything"), "New 不得拉起任何插件进程")
+}

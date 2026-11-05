@@ -1,0 +1,24 @@
+{
+	"name": "@feedchamber/plugin-cli",
+	"private": true,
+	"version": "0.1.0",
+	"description": "Feed Chamber 插件开发 CLI：脚手架、本地 mock 宿主、打包",
+	"type": "module",
+	"bin": {
+		"fbp": "./dist/index.js"
+	},
+	"main": "./dist/index.js",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsup",
+		"dev": "tsup --watch",
+		"lint": "biome lint ./src",
+		"check": "biome check ./src"
+	},
+	"devDependencies": {
+		"tsup": "^8.4.0",
+		"typescript": "~5.9.3"
+	}
+}

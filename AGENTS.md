@@ -515,7 +515,7 @@ open http://localhost:8080/swagger/
 
 <!-- 由 `node scripts/check-agents-docs.mjs --write-index` 生成，请勿手改。 -->
 
-共 42 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
+共 45 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
 
 | 模块目录 | 文档 | 标题 |
 |----------|------|------|
@@ -536,6 +536,7 @@ open http://localhost:8080/swagger/
 | `app/server/internal/mock/` | [AGENTS.md](app/server/internal/mock/AGENTS.md) | Mock 测试替身 |
 | `app/server/internal/model/` | [AGENTS.md](app/server/internal/model/AGENTS.md) | Model 层 |
 | `app/server/internal/pkg/` | [AGENTS.md](app/server/internal/pkg/AGENTS.md) | Pkg 通用工具包 |
+| `app/server/internal/plugin/` | [AGENTS.md](app/server/internal/plugin/AGENTS.md) | Plugin 子进程插件（`internal/plugin/`） |
 | `app/server/internal/repository/` | [AGENTS.md](app/server/internal/repository/AGENTS.md) | Repository 层 |
 | `app/server/internal/router/` | [AGENTS.md](app/server/internal/router/AGENTS.md) | Router 层 |
 | `app/server/internal/service/` | [AGENTS.md](app/server/internal/service/AGENTS.md) | Service 层 |
@@ -547,6 +548,7 @@ open http://localhost:8080/swagger/
 | `app/web/components/` | [AGENTS.md](app/web/components/AGENTS.md) | Web Components（`components/`） |
 | `app/web/components/admin/` | [AGENTS.md](app/web/components/admin/AGENTS.md) | 后台壳层与准入组件（`components/admin/`） |
 | `app/web/components/markdown-editor/` | [AGENTS.md](app/web/components/markdown-editor/AGENTS.md) | Markdown 编辑器（`components/markdown-editor/`） |
+| `app/web/components/slot/` | [AGENTS.md](app/web/components/slot/AGENTS.md) | 壳层插槽（`components/slot/`） |
 | `app/web/components/ui/` | [AGENTS.md](app/web/components/ui/AGENTS.md) | UI 原语（`components/ui/`） |
 | `app/web/lib/` | [AGENTS.md](app/web/lib/AGENTS.md) | Web Lib（`lib/`） |
 | `app/web/lib/auth/` | [AGENTS.md](app/web/lib/auth/AGENTS.md) | Web Auth（`lib/auth/`） |
@@ -557,6 +559,7 @@ open http://localhost:8080/swagger/
 | `packages/api-client/` | [AGENTS.md](packages/api-client/AGENTS.md) | API Client 前端 API 共享包 |
 | `packages/api-client/src/services/` | [AGENTS.md](packages/api-client/src/services/AGENTS.md) | API Service 模块（`packages/api-client/src/services/`） |
 | `packages/loadtest/` | [AGENTS.md](packages/loadtest/AGENTS.md) | Loadtest 压测（`packages/loadtest/`） |
+| `packages/plugin-cli/` | [AGENTS.md](packages/plugin-cli/AGENTS.md) | 插件开发 CLI（`packages/plugin-cli/`） |
 | `packages/shared-utils/` | [AGENTS.md](packages/shared-utils/AGENTS.md) | Shared Utils 跨前端共享工具 |
 | `packages/sse-client/` | [AGENTS.md](packages/sse-client/AGENTS.md) | SSE Client 框架无关 SSE 客户端 |
 | `packages/tokens/` | [AGENTS.md](packages/tokens/AGENTS.md) | Tokens 视觉设计 Token |

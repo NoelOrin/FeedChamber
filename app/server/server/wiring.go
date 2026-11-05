@@ -43,6 +43,7 @@ func newHandler(c *container.Container) *handler.Handler {
 		Permission:   c.PermissionSvc,
 		PM:           c.PMSvc,
 		Plugin:       c.PluginSvc,
+		Slot:         c.SlotSvc,
 		Customize:    c.CustomizeSvc,
 		MCPServer:    c.MCPServerSvc,
 		MCP:          c.MCP.Handler,

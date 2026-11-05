@@ -52,6 +52,7 @@ type Deps struct {
 	Permission   service.PermissionService
 	PM           service.PMService
 	Plugin       service.PluginService
+	Slot         service.SlotService
 	Customize    service.CustomizeService
 	MCPServer    service.MCPServerService
 	// MCP 是站点对外暴露的 MCP Server 协议入口（P2）。它不是 iris handler，
@@ -115,6 +116,7 @@ type Handler struct {
 	Trash        TrashHandler
 	Theme        ThemeHandler
 	Plugin       PluginHandler
+	Slot         SlotHandler
 	Customize    CustomizeHandler
 	MCPServer    MCPServerHandler
 	MCP          *mcp.Handler
@@ -172,6 +174,7 @@ func New(d *Deps) *Handler {
 		Trash:        newTrashHandler(d.Post, d.Content, d.AuditLog),
 		Theme:        newThemeHandler(d.Theme),
 		Plugin:       newPluginHandler(d.Plugin),
+		Slot:         newSlotHandler(d.Slot, d.Trust),
 		Customize:    newCustomizeHandler(d.Customize, d.Trust),
 		MCPServer:    newMCPServerHandler(d.MCPServer),
 		MCP:          d.MCP,

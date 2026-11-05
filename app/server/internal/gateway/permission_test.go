@@ -4,6 +4,8 @@ import (
 	"net/http"
 	"testing"
 
+	"feedchamber/internal/model"
+
 	"github.com/kataras/iris/v12"
 	"github.com/kataras/iris/v12/httptest"
 	"github.com/stretchr/testify/require"
@@ -518,4 +520,33 @@ func TestPermMiddleware_PMAndPhase2Routes(t *testing.T) {
 	require.Equal(t, "post:create", got["post:create"])
 	require.Equal(t, "post:read", got["post:read"])
 	require.Equal(t, "stats:read", got["stats:read"])
+}
+
+// TestPermMiddleware_PluginReadVsManageSplit 钉住插件后台的读/写权限分离
+// 在**运行时解析**层面成立（而不仅是源码里有那几行）。
+//
+// 背景：网关把 /api/v1/admin/plugins/ 整体挂在 plugin:manage 前缀上，
+// 读接口必须靠精确映射先命中 plugin:read。精确映射的查找在 Middleware
+// 里发生在前缀扫描之前，这条测试就是守住那个顺序——把 exactMap 那段
+// 检查挪到 prefixMap 之后，本测试立刻变红。
+func TestPermMiddleware_PluginReadVsManageSplit(t *testing.T) {
+	// 只持有 plugin:read 的凭证。
+	readOnly := &mockPermChecker{hasPerm: func(_, code string) bool {
+		return code == model.PermPluginRead
+	}}
+	app := setupPermApp(NewPermissionChecker(Deps{Perms: readOnly}), "admin")
+	app.Post("/api/v1/admin/plugins/list", okHandler)
+	app.Post("/api/v1/admin/plugins/sources/list", okHandler)
+	app.Post("/api/v1/admin/plugins/install", okHandler)
+	app.Post("/api/v1/admin/plugins/{id}/delete", okHandler)
+
+	e := httptest.New(t, app)
+
+	// 读接口放行。
+	e.POST("/api/v1/admin/plugins/list").Expect().Status(http.StatusOK)
+	e.POST("/api/v1/admin/plugins/sources/list").Expect().Status(http.StatusOK)
+
+	// 写接口被前缀映射拦下（plugin:manage 未持有）。
+	e.POST("/api/v1/admin/plugins/install").Expect().Status(http.StatusForbidden)
+	e.POST("/api/v1/admin/plugins/alpha/delete").Expect().Status(http.StatusForbidden)
 }

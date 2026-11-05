@@ -48,6 +48,7 @@ func (r *Runtime) Shutdown()                                 // 冲刷浏览量 
 | `weekly_digest` | `DigestSvc.StartWeeklyTicker` |
 | `trust_recompute` | `TrustSvc.StartDailyRecomputeTicker` |
 | `motion_resolver` | `MotionSvc.StartResolveTicker` |
+| `plugin_cron_daily` | `PluginHost.StartDailyHookTicker`（`cron.daily` 没有事件源，必须由 ticker 直接 Dispatch） |
 
 外加通知侧的 `service.SubscribeNotifications(EventBus, NotificationSvc)` 返回的 `NotifDispatcher`，
 以及文章审核的异步消费者 `ModerationSvc.SubscribeAsync(EventBus)`（`moderation_mode=async` 的发帖事件 →

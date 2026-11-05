@@ -72,6 +72,8 @@ export { oauthClientService } from './services/oauth-client';
 export { permissionService } from './services/permission';
 export type { Plugin } from './services/plugin';
 export { pluginService } from './services/plugin';
+export { slotService, SLOT_NAMES, SLOT_KINDS } from './services/slot';
+export type { SlotEntry, SlotEntryInput, SlotName, SlotKind } from './services/slot';
 export { pmService } from './services/pm';
 export { postService } from './services/post';
 export { reportService } from './services/report';

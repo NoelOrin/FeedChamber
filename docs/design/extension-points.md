@@ -26,6 +26,13 @@
 
 订阅方应 **只引用上述常量**，禁止散落字符串字面量。
 
+### 两种订阅语义
+
+- `Subscribe` — 队列订阅（NATS queue group）。**集群内每个事件只被消费一次**，用于通知、Webhook 这类「一次就够」的消费者。
+- `SubscribeBroadcast` — 广播订阅（无 queue group）。**集群内每个订阅方都收到**，用于插件钩子这类「多个消费者都要知道」的场景。
+
+两者互不影响：广播订阅不写入 `handlers`/`subs`，队列订阅的语义保持不变。
+
 ## 如何新增官方模块
 
 1. **model**（如需持久化）  
@@ -39,7 +46,13 @@
 ### 订阅示例
 
 ```go
+// 队列订阅：集群内每个事件只会有一个消费者处理
 bus.Subscribe(eventbus.EventPostCreated, func(e eventbus.Event) {
+    // handle payload
+})
+
+// 广播订阅：集群内每个订阅方都会收到（插件钩子用这个）
+bus.SubscribeBroadcast(eventbus.EventPostCreated, func(e eventbus.Event) {
     // handle payload
 })
 ```
