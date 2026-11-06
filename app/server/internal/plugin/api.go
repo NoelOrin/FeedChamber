@@ -204,7 +204,11 @@ func errUnknownMethod(method string) error {
 // Func 是解码并校验之后的处理函数。
 //
 // **不再是 ipc.Handler**：参数已经由 decodeArgs 解好并校验，handler 不再
-// 接触 json.RawMessage，也就不会出现「忘了 requireFields」或「字段名写错」。
+// 直接解析整个 params 对象，也就不会出现「忘了校验必填字段」或
+// 「在第二处重复声明字段名」（审计侧）的问题。
+//
+// 唯一例外是 FieldObject：它按设计透传原始 JSON，取到后仍需自己 Unmarshal
+// （当前只有 api.slots.set 的 props）。
 type Func func(ctx context.Context, a *Args) (any, error)
 
 // apiSpec 是一个宿主 API 的定义：方法名、所需能力、是否为写类、参数、审计、构造器。
@@ -222,7 +226,10 @@ type apiSpec struct {
 	write bool
 	// params 是参数的唯一声明处：校验、取值、JSON Schema、审计提取全部由它派生。
 	params []Field
-	// audit 零值表示无审计（读类）。写类必须非零，由 TestWriteAPIsAreAudited 钉住。
+	// audit 零值表示无审计（读类）。写类必须非零——由
+	// TestWriteSpecsDeclareAudit 与 TestAuditFieldReferencesExistInParams 钉住。
+	// （TestWriteAPIsAreAudited 只数字节数，漏写 audit 时 adapt 会退化成方法名
+	// 而不报错，因此那一条并不能充当本字段的约束。）
 	audit AuditSpec
 	build func(pluginID string, deps APIDeps) (Func, error)
 }

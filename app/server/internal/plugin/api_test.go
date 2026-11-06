@@ -571,3 +571,44 @@ func TestAuditTargetComesFromParamDeclarations(t *testing.T) {
 	require.Contains(t, audit.records[0], "p1", "审计必须带上 target（来自 post_id）")
 	require.Contains(t, audit.records[0], "pending", "审计必须带上 detail（来自 status）")
 }
+
+// 写类规格必须声明审计，读类必须不声明——这是 adapt 里那个
+// `if action == "" { action = s.method }` 兜底之外唯一的强制约束。
+//
+// 没有这条时，一个漏写 audit 的写类规格仍然会产出一条审计记录，
+// 只是 action 退化成方法名、target 变成空串，而 TestWriteAPIsAreAudited
+// 只数字节数，照样全绿——正是本重构要消灭的那种静默漂移。
+func TestWriteSpecsDeclareAudit(t *testing.T) {
+	for _, s := range apiSpecs {
+		if s.write {
+			require.False(t, s.audit.isZero(),
+				"%s 是写类但 audit 为零值：审计会静默退化成方法名", s.method)
+			require.NotEmpty(t, s.audit.Action, "%s 的 audit.Action 不能为空", s.method)
+			continue
+		}
+		require.True(t, s.audit.isZero(),
+			"%s 不是写类却声明了 audit（读类不应落审计）", s.method)
+	}
+}
+
+// 审计引用的字段必须真实存在于该规格的 params 里。
+//
+// 改了 params 里的字段名却忘了同步 audit.Target/Detail 时，joinArgs 会
+// 取到空串——不报错，只是审计里少了一个标识。这条把它变成编译期之后
+// 第一个会红的东西。
+func TestAuditFieldReferencesExistInParams(t *testing.T) {
+	for _, s := range apiSpecs {
+		declared := make(map[string]bool, len(s.params))
+		for _, f := range s.params {
+			declared[f.Name] = true
+		}
+		for _, name := range s.audit.Target {
+			require.True(t, declared[name],
+				"%s 的 audit.Target 引用了不存在的参数 %q", s.method, name)
+		}
+		for _, name := range s.audit.Detail {
+			require.True(t, declared[name],
+				"%s 的 audit.Detail 引用了不存在的参数 %q", s.method, name)
+		}
+	}
+}
