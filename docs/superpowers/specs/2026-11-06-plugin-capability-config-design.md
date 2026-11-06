@@ -2,7 +2,7 @@
 
 - 日期：2026-11-06
 - 范围：`app/server/internal/plugin` 宿主 API 规格表（`api.go`）
-- 状态：待评审
+- 状态：**已批准**（2026-11-06，用户裁定按推荐方案执行：§5.3 本轮不修，只加可见性）
 - 前置：用户裁定「先做插件化能力，不执着于 MCP」；HTTP/MCP 投影本轮**不做**
 
 ## 1. 问题：同一份参数形状被写了两遍
@@ -180,7 +180,28 @@ CapNotifySend → 1   CapKVRead → 1   CapKVWrite → 1   CapSlotsWrite → 2
 - 存量两条不被静默遗忘，`grep` 白名单就能找到；
 - 修复动作（A 或 B）留给一个明确决定，而不是夹在一个重构提交里。
 
-需要你选 A / B / 本轮不修（建议）。
+**裁定（2026-11-06）：本轮不修，走「只让它可见」。**
+
+白名单机制的具体形态：
+
+```go
+// capabilityWithoutAPI 是「已声明但暂时没有 API 使用」的能力。
+//
+// 存在本身就是缺陷：管理员在装机确认页批准它时，批准的是一条不存在的能力，
+// 插件拿不到任何对应 API。此表只允许变短——新增条目必须同时给出理由与
+// 移除计划，TestEveryCapabilityUsedByAnAPI 会强制每个条目在这里出现。
+//
+// 待裁定：删除（会让已声明它的存量插件重装失败）还是接上真实 API（新能力）。
+// 见 docs/superpowers/specs/2026-11-06-plugin-capability-config-design.md §5.3。
+var capabilityWithoutAPI = map[string]string{
+    "posts:read":    "从未有过宿主 API；待裁定（§5.3）",
+    "comments:read": "从未有过宿主 API；待裁定（§5.3）",
+}
+```
+
+测试语义：对 `KnownCapabilities()` 的每一项，要么被 ≥1 个 `apiSpec` 使用，要么在 `capabilityWithoutAPI` 里。两条都是空的能力（即表中列出但无人使用、且不在白名单里的能力）会让测试变红。
+
+**这张表只许变短。** 若将来有人想让某个新能力先「占位」再实现 API，正确做法是不声明该能力，而不是往这张表里加条目。
 
 ## 6. 改动清单
 
