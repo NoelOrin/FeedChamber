@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"encoding/json"
+	"fmt"
 
 	"github.com/sirupsen/logrus"
 )
@@ -9,6 +10,8 @@ import (
 // schemaType 把 FieldType 映射成 JSON Schema 的 type。
 func schemaType(t FieldType) string {
 	switch t {
+	case FieldString:
+		return "string"
 	case FieldInt:
 		return "integer"
 	case FieldObject:
@@ -16,7 +19,11 @@ func schemaType(t FieldType) string {
 	case FieldBool:
 		return "boolean"
 	default:
-		return "string"
+		// 新增 FieldType 而忘了同步这里时直接 panic，而不是静默当成 string。
+		// decodeArgs 的 default 分支会把它当字符串校验，于是「文档写 string、
+		// 实际也拒绝非字符串」错得一致且无声——那正是这套重构要消灭的漂移。
+		// APISchemas() 遍历全部规格，因此 TestAPISchemasCoverAllMethods 立刻变红。
+		panic(fmt.Sprintf("plugin: 未映射的 FieldType %d（schema 与 decodeArgs 必须同步）", int(t)))
 	}
 }
 
@@ -26,8 +33,8 @@ func schemaType(t FieldType) string {
 // 因此文档不会与实际校验漂移。这是把参数从 Go 代码变成数据的直接收益：
 // 重构前插件作者要调 api.posts.setStatus，只能读 Go 源码。
 //
-// 字段名为空时 panic：schema 与取值器都按名索引，空名会让两者同时静默失效，
-// 而这是**注册期**就该发现的编程错误，不是运行期输入问题。
+// 字段名为空时 panic：schema 与取值器都按名索引，空名会让两者同时静默失效。
+// 这是构建 schema 时（由 APISchemas 触发）就该暴露的编程错误，不是运行期输入问题。
 func schemaFor(fields []Field) map[string]any {
 	props := make(map[string]any, len(fields))
 	required := make([]string, 0, len(fields))
