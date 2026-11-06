@@ -146,7 +146,8 @@ func decodeArgs(params json.RawMessage, fields []Field) (*Args, error) {
 	return a, nil
 }
 
-// String 返回 TrimSpace 后的字符串参数。字段不存在时返回空串。
+// String 返回 TrimSpace 后的字符串参数（Field.NoTrim 为 true 时原样返回，不 trim）。
+// 字段不存在时返回空串。
 func (a *Args) String(name string) string {
 	if a == nil {
 		return ""

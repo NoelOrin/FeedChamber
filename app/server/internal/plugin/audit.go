@@ -23,7 +23,12 @@ type AuditSpec struct {
 	// Target / Detail 是参数名，按序拼接。
 	Target []string
 	Detail []string
-	Scope  AuditScope
+	// Scope 决定 target 是否要再做一次变换（零值 = 原样）。
+	//
+	// AuditScopePluginKV 会**覆盖**整个 joinArgs 的结果：target 变成
+	// Target[0] 经 pluginKVKey 加过前缀的全键。因此它要求 len(Target) == 1——
+	// 声明了两个以上字段时，除第一个以外的都会被静默丢弃。
+	Scope AuditScope
 }
 
 // isZero 报告这是否是「无审计」。只有读类 API 应为 true。
@@ -51,16 +56,17 @@ func (s AuditSpec) extract(pluginID string, a *Args) (action, target, detail str
 	return action, target, detail
 }
 
-// joinArgs 按字段名顺序取值，跳过空名。
+// joinArgs 按字段名顺序取值，用空格拼接。
+//
+// 不做别的过滤：空名不是需要在这里兜住的输入——audit.Target/Detail 是
+// Go 字面量，写错了由 TestAuditFieldReferencesExistInParams 直接报红，
+// 而不是让这里静默跳过一段、产出一个少了一截的 target。
 func joinArgs(a *Args, names []string) string {
 	if len(names) == 0 {
 		return ""
 	}
 	parts := make([]string, 0, len(names))
 	for _, n := range names {
-		if n == "" {
-			continue
-		}
 		parts = append(parts, a.String(n))
 	}
 	return strings.Join(parts, " ")

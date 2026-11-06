@@ -177,6 +177,14 @@ func invokeAPIAs(t *testing.T, pluginID string, caps CapabilitySet, deps APIDeps
 	return err
 }
 
+// mustJSON 把参数对象编码成 json.RawMessage（喂 decodeArgs 用）。
+func mustJSON(t *testing.T, v any) json.RawMessage {
+	t.Helper()
+	raw, err := json.Marshal(v)
+	require.NoError(t, err)
+	return raw
+}
+
 // ---- capability 校验 ----
 
 func TestRegisterAPIsRejectsUndeclaredCapability(t *testing.T) {
@@ -431,6 +439,41 @@ func TestKVCapabilitiesAreIndependent(t *testing.T) {
 		"api.kv.set", map[string]string{"key": "k", "value": "v"}), "kv:read 不隐含 kv:write")
 }
 
+// 省略 value 等价于空串（清空这个键），这是重构前的行为，不得收紧。
+//
+// 重构前 kv.set 从不调 requireFields，{"key":"c"} 会存下 ""。把 value 标成
+// Required 后同一个调用变成「参数缺失: value」——清空一个键这个合法语义
+// 被参数校验挡住了。
+func TestKVSetWithoutValueStoresEmpty(t *testing.T) {
+	kv := newFakeKV()
+	deps := APIDeps{KV: kv, Audit: &fakeAudit{}}
+	err := invokeAPIAs(t, "alpha", CapabilitySet{"kv:write": {}}, deps, "api.kv.set",
+		map[string]any{"key": "c"})
+	require.NoError(t, err, "省略 value 必须合法")
+	require.Equal(t, []string{"plugin:alpha:c"}, kv.sets)
+	require.Equal(t, "", kv.data["plugin:alpha:c"], "省略 value 必须存成空串")
+}
+
+// 端到端：带空白的 key 必须仍被 pluginKVKey 拒绝（证明 NoTrim 真的生效）。
+//
+// 这条与 TestNoTrimFlagsArePinned 是一对：那条钉声明，这条钉**行为**。
+// 只钉声明时，把 decodeArgs 里 `if !f.NoTrim` 的判断删掉仍会全绿。
+func TestKVKeyWhitespaceStillRejected(t *testing.T) {
+	for _, method := range []string{"api.kv.get", "api.kv.set"} {
+		kv := newFakeKV()
+		deps := APIDeps{KV: kv, Audit: &fakeAudit{}}
+		params := map[string]any{"key": " k"}
+		if method == "api.kv.set" {
+			params["value"] = "v"
+		}
+		err := invokeAPIAs(t, "alpha", CapabilitySet{"kv:write": {}, "kv:read": {}}, deps, method, params)
+		require.Error(t, err, "%s 必须拒绝首尾空白的 key", method)
+		require.Contains(t, err.Error(), "空白")
+		require.Empty(t, kv.sets)
+		require.Empty(t, kv.gets)
+	}
+}
+
 // ---- 未知方法 ----
 
 func TestLookupAPIUnknownMethod(t *testing.T) {
@@ -557,21 +600,75 @@ func TestCapabilityErrorsAreIdentifiable(t *testing.T) {
 	require.ErrorIs(t, err, ErrCapabilityDenied)
 }
 
-// 审计里的 target 必须来自**同一份**参数声明，而不是第二份匿名 struct。
+// 每个写类规格的审计三元组必须**逐字**符合预期。
 //
-// 这条钉住本轮重构的核心收益：重构前 build 与 audit 各自 Unmarshal 一次同一个
-// JSON，改了字段名不会报错，只会让审计目标变成空串。
-func TestAuditTargetComesFromParamDeclarations(t *testing.T) {
-	posts := &fakePostWriter{}
-	audit := &fakeAudit{}
-	deps := APIDeps{Posts: posts, Audit: audit}
+// 只检查「audit 非零」与「字段名存在」抓不住这些错：Target/Detail 对调、
+// Action 拼错、KV Scope 忘了加——它们都能让审计落一条格式正确但内容错位的
+// 记录，而 TestWriteAPIsAreAudited 只数条数，全都照绿。
+//
+// 同样重要的是这里走**真实路径**：样例参数先过 decodeArgs（证明它自身合法），
+// 再由 spec.audit.extract 取三元组，与 adapt 落审计用的是同一条代码路径。
+func TestAuditTriplesAreExact(t *testing.T) {
+	want := map[string]struct{ action, target, detail string }{
+		"api.posts.setStatus":    {"post.setStatus", "p1", "pending"},
+		"api.posts.addTag":       {"post.addTag", "p1", "auto"},
+		"api.comments.setStatus": {"comment.setStatus", "c1", "pending"},
+		"api.notifications.send": {"notification.send", "u1", "t"},
+		// KV 的 target 是**加过前缀的全键**（AuditScopePluginKV），detail 为空。
+		"api.kv.set":       {"kv.set", "plugin:test-plugin:k", ""},
+		"api.slots.set":    {"slot.set", "sidebar.top", "text"},
+		"api.slots.delete": {"slot.delete", "sidebar.top", ""},
+	}
 
-	err := invokeAPI(t, CapabilitySet{"posts:write": {}}, deps,
-		"api.posts.setStatus", map[string]string{"post_id": "p1", "status": "pending"})
-	require.NoError(t, err)
-	require.Len(t, audit.records, 1)
-	require.Contains(t, audit.records[0], "p1", "审计必须带上 target（来自 post_id）")
-	require.Contains(t, audit.records[0], "pending", "审计必须带上 detail（来自 status）")
+	// 表必须与写类清单**恰好**同集：新增写类规格时忘了补一行，
+	// 它会在这里直接报错，而不是悄悄逃出审计口径的覆盖范围。
+	writeMethods := writeAPIMethods()
+	require.Len(t, want, len(writeMethods),
+		"预期表必须与 writeAPIMethods() 一一对应：%v", writeMethods)
+	for _, method := range writeMethods {
+		_, ok := want[method]
+		require.True(t, ok, "%s 是写类但预期表里没有它", method)
+	}
+
+	for method, exp := range want {
+		spec, ok := findAPI(method)
+		require.True(t, ok, "%s 必须存在", method)
+		require.True(t, spec.write, "%s 必须是写类", method)
+
+		a, err := decodeArgs(mustJSON(t, writeAPISampleParams(method)), spec.params)
+		require.NoError(t, err, "%s 的样例参数必须能通过自身校验", method)
+
+		action, target, detail := spec.audit.extract("test-plugin", a)
+		require.Equal(t, exp.action, action, "%s 的审计 action", method)
+		require.Equal(t, exp.target, target, "%s 的审计 target", method)
+		require.Equal(t, exp.detail, detail, "%s 的审计 detail", method)
+	}
+}
+
+// NoTrim 必须落在且只落在这四个字段上。
+//
+// 少了 kv 的 key，pluginKVKey 的 `trimmed != key` 空白拒绝就被静默绕过 ——
+// " k" 会被 trim 成 "k" 从而被接受，等于放宽 KV 命名空间隔离。
+func TestNoTrimFlagsArePinned(t *testing.T) {
+	want := map[string][]string{
+		"api.kv.get":             {"key"},
+		"api.kv.set":             {"key", "value"},
+		"api.notifications.send": {"body"},
+	}
+	for method, fields := range want {
+		spec, ok := findAPI(method)
+		require.True(t, ok)
+		got := map[string]bool{}
+		for _, f := range spec.params {
+			if f.NoTrim {
+				got[f.Name] = true
+			}
+		}
+		for _, name := range fields {
+			require.True(t, got[name], "%s 的 %s 必须 NoTrim", method, name)
+		}
+		require.Len(t, got, len(fields), "%s 不应有额外的 NoTrim 字段", method)
+	}
 }
 
 // 写类规格必须声明审计，读类必须不声明——这是 adapt 里那个

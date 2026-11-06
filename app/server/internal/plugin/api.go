@@ -212,7 +212,8 @@ var ErrCapabilityDenied = errors.New("capability denied")
 //
 // 与 ErrCapabilityDenied 分开：前者该找管理员要权限，后者是宿主的装配问题。
 // 两者都必须**明确报错而不是 panic**——handler 跑在 IPC 的 dispatch
-// goroutine 里，一次 panic 就是整个后端进程崩溃。
+// goroutine 里，一次 panic 会让每次调用都返回「宿主内部错误」
+// （adapt 与 ipc 各有一道 recover）。
 var errAPINotWired = errors.New("host API not wired")
 
 // errUnknownMethod 是未知方法的标准错误（与 ipc.go 的文案保持同形）。
@@ -418,7 +419,10 @@ var apiSpecs = []apiSpec{
 		params: []Field{
 			{Name: "key", Type: FieldString, Required: true, NoTrim: true, Desc: "键名（原样传递，自动加 plugin:<id>: 前缀）"},
 			// value 是**唯一**允许为空串的字段："清空这个键"是合法语义。
-			{Name: "value", Type: FieldString, Required: true, AllowEmpty: true, NoTrim: true, Desc: "值（原样存储，允许空串）"},
+			// 因此它**不是**必填：省略 value 等价于空串（重构前的行为就是
+			// 不调 requireFields，直接存 ""）。加回 Required 会把"清空"这个
+			// 合法动作变成参数错误——回归网 TestKVSetWithoutValueStoresEmpty。
+			{Name: "value", Type: FieldString, AllowEmpty: true, NoTrim: true, Desc: "值（原样存储，允许空串；省略等价于空串）"},
 		},
 		audit: AuditSpec{Action: "kv.set", Target: []string{"key"}, Scope: AuditScopePluginKV},
 		build: func(pluginID string, deps APIDeps) (Func, error) {

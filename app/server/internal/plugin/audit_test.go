@@ -22,8 +22,27 @@ func TestAuditSpecExtractsDeclaredFields(t *testing.T) {
 	require.Equal(t, "pending", detail)
 }
 
-// 多个字段按声明顺序拼接。
+// 多个字段按声明顺序拼接，分隔符是单个空格。
+//
+// 两侧**都**要至少两个字段：此前两处都只有一个元素，" 拼接"这件事
+// 完全没有被执行到——把 joinArgs 改成 strings.Join(parts, "") 或 "," 仍是全绿。
 func TestAuditSpecJoinsMultipleFields(t *testing.T) {
+	a, err := decodeArgs(json.RawMessage(`{"slot":"header","kind":"text","zone":"top","mode":"dark"}`), []Field{
+		{Name: "slot", Type: FieldString, Required: true},
+		{Name: "kind", Type: FieldString, Required: true},
+		{Name: "zone", Type: FieldString, Required: true},
+		{Name: "mode", Type: FieldString, Required: true},
+	})
+	require.NoError(t, err)
+
+	spec := AuditSpec{Action: "slot.set", Target: []string{"slot", "zone"}, Detail: []string{"kind", "mode"}}
+	_, target, detail := spec.extract("test-plugin", a)
+	require.Equal(t, "header top", target, "多字段按声明顺序用空格拼接")
+	require.Equal(t, "text dark", detail, "Detail 同样按序拼接")
+}
+
+// 单字段时拼接不引入任何多余字符（与多字段形成对照）。
+func TestAuditSpecSingleFieldHasNoSeparator(t *testing.T) {
 	a, err := decodeArgs(json.RawMessage(`{"slot":"header","kind":"text"}`), []Field{
 		{Name: "slot", Type: FieldString, Required: true},
 		{Name: "kind", Type: FieldString, Required: true},
