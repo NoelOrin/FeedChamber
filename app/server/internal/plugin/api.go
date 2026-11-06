@@ -201,9 +201,15 @@ func errUnknownMethod(method string) error {
 // API 规格表
 // ---------------------------------------------------------------------------
 
-// apiSpec 是一个宿主 API 的定义：方法名、所需能力、是否为写类、构造器。
+// Func 是解码并校验之后的处理函数。
 //
-// 把这三件事放在**同一行**上，是这套设计的核心：
+// **不再是 ipc.Handler**：参数已经由 decodeArgs 解好并校验，handler 不再
+// 接触 json.RawMessage，也就不会出现「忘了 requireFields」或「字段名写错」。
+type Func func(ctx context.Context, a *Args) (any, error)
+
+// apiSpec 是一个宿主 API 的定义：方法名、所需能力、是否为写类、参数、审计、构造器。
+//
+// 把这几件事放在**同一行**上，是这套设计的核心：
 //
 //	方法 → 能力 的映射分散在 switch 的 case 里时，「新增 API 忘了写校验」
 //	是一个纯手工纪律问题；放进结构体字段后，缺字段会被
@@ -212,14 +218,13 @@ func errUnknownMethod(method string) error {
 type apiSpec struct {
 	method string
 	cap    string
-	// write 为 true 时，调用成功后**统一**由 wrap 落审计；handler 自己
-	// 不写审计，也就不可能漏写（handler 里根本没有审计调用点）。
+	// write 为 true 时，调用成功后**统一**由 wrap 落审计；handler 自己不写审计。
 	write bool
-	build func(pluginID string, deps APIDeps) (Handler, error)
-	// audit 在 write=true 时必填：从参数里提取 (action, target, detail)。
-	// 拿不到就返回空串——目标对象缺失的写请求在 handler 里已经被拒了，
-	// 走不到这里。
-	audit func(pluginID string, p json.RawMessage) (action, target, detail string)
+	// params 是参数的唯一声明处：校验、取值、JSON Schema、审计提取全部由它派生。
+	params []Field
+	// audit 零值表示无审计（读类）。写类必须非零，由 TestWriteAPIsAreAudited 钉住。
+	audit AuditSpec
+	build func(pluginID string, deps APIDeps) (Func, error)
 }
 
 // apiSpecs 是全部宿主 API。**顺序即注册顺序**（不使用 map，输出确定）。
@@ -231,122 +236,79 @@ var apiSpecs = []apiSpec{
 		method: "api.posts.setStatus",
 		cap:    CapPostsWrite,
 		write:  true,
-		build: func(_ string, deps APIDeps) (Handler, error) {
+		params: []Field{
+			{Name: "post_id", Type: FieldString, Required: true, Desc: "帖子 ID"},
+			{Name: "status", Type: FieldString, Required: true, Desc: "目标状态",
+				Enum: []string{"approved", "pending", "rejected", "closed"}},
+		},
+		audit: AuditSpec{Action: "post.setStatus", Target: []string{"post_id"}, Detail: []string{"status"}},
+		build: func(_ string, deps APIDeps) (Func, error) {
 			if deps.Posts == nil {
 				return nil, errAPINotWired
 			}
-			return func(ctx context.Context, p json.RawMessage) (any, error) {
-				var in struct {
-					PostID string `json:"post_id"`
-					Status string `json:"status"`
-				}
-				if err := decodeParams(p, &in); err != nil {
-					return nil, err
-				}
-				if err := requireFields(map[string]string{"post_id": in.PostID, "status": in.Status}); err != nil {
-					return nil, err
-				}
-				if err := deps.Posts.SetStatus(ctx, strings.TrimSpace(in.PostID), strings.TrimSpace(in.Status)); err != nil {
+			return func(ctx context.Context, a *Args) (any, error) {
+				if err := deps.Posts.SetStatus(ctx, a.String("post_id"), a.String("status")); err != nil {
 					return nil, err
 				}
 				return okResult(), nil
 			}, nil
-		},
-		audit: func(_ string, p json.RawMessage) (string, string, string) {
-			var in struct {
-				PostID string `json:"post_id"`
-				Status string `json:"status"`
-			}
-			_ = json.Unmarshal(p, &in)
-			return "post.setStatus", strings.TrimSpace(in.PostID), strings.TrimSpace(in.Status)
 		},
 	},
 	{
 		method: "api.posts.addTag",
 		cap:    CapPostsWrite,
 		write:  true,
-		build: func(_ string, deps APIDeps) (Handler, error) {
+		params: []Field{
+			{Name: "post_id", Type: FieldString, Required: true, Desc: "帖子 ID"},
+			{Name: "tag", Type: FieldString, Required: true, Desc: "标签名"},
+		},
+		audit: AuditSpec{Action: "post.addTag", Target: []string{"post_id"}, Detail: []string{"tag"}},
+		build: func(_ string, deps APIDeps) (Func, error) {
 			if deps.Posts == nil {
 				return nil, errAPINotWired
 			}
-			return func(ctx context.Context, p json.RawMessage) (any, error) {
-				var in struct {
-					PostID string `json:"post_id"`
-					Tag    string `json:"tag"`
-				}
-				if err := decodeParams(p, &in); err != nil {
-					return nil, err
-				}
-				if err := requireFields(map[string]string{"post_id": in.PostID, "tag": in.Tag}); err != nil {
-					return nil, err
-				}
-				if err := deps.Posts.AddTag(ctx, strings.TrimSpace(in.PostID), strings.TrimSpace(in.Tag)); err != nil {
+			return func(ctx context.Context, a *Args) (any, error) {
+				if err := deps.Posts.AddTag(ctx, a.String("post_id"), a.String("tag")); err != nil {
 					return nil, err
 				}
 				return okResult(), nil
 			}, nil
-		},
-		audit: func(_ string, p json.RawMessage) (string, string, string) {
-			var in struct {
-				PostID string `json:"post_id"`
-				Tag    string `json:"tag"`
-			}
-			_ = json.Unmarshal(p, &in)
-			return "post.addTag", strings.TrimSpace(in.PostID), strings.TrimSpace(in.Tag)
 		},
 	},
 	{
 		method: "api.comments.setStatus",
 		cap:    CapCommentsWrite,
 		write:  true,
-		build: func(_ string, deps APIDeps) (Handler, error) {
+		params: []Field{
+			{Name: "comment_id", Type: FieldString, Required: true, Desc: "评论 ID"},
+			{Name: "status", Type: FieldString, Required: true, Desc: "目标状态",
+				Enum: []string{"approved", "pending", "rejected", "closed"}},
+		},
+		audit: AuditSpec{Action: "comment.setStatus", Target: []string{"comment_id"}, Detail: []string{"status"}},
+		build: func(_ string, deps APIDeps) (Func, error) {
 			if deps.Comments == nil {
 				return nil, errAPINotWired
 			}
-			return func(ctx context.Context, p json.RawMessage) (any, error) {
-				var in struct {
-					CommentID string `json:"comment_id"`
-					Status    string `json:"status"`
-				}
-				if err := decodeParams(p, &in); err != nil {
-					return nil, err
-				}
-				if err := requireFields(map[string]string{"comment_id": in.CommentID, "status": in.Status}); err != nil {
-					return nil, err
-				}
-				if err := deps.Comments.SetStatus(ctx, strings.TrimSpace(in.CommentID), strings.TrimSpace(in.Status)); err != nil {
+			return func(ctx context.Context, a *Args) (any, error) {
+				if err := deps.Comments.SetStatus(ctx, a.String("comment_id"), a.String("status")); err != nil {
 					return nil, err
 				}
 				return okResult(), nil
 			}, nil
 		},
-		audit: func(_ string, p json.RawMessage) (string, string, string) {
-			var in struct {
-				CommentID string `json:"comment_id"`
-				Status    string `json:"status"`
-			}
-			_ = json.Unmarshal(p, &in)
-			return "comment.setStatus", strings.TrimSpace(in.CommentID), strings.TrimSpace(in.Status)
-		},
 	},
 	{
 		method: "api.posts.getLevel",
 		cap:    CapUsersRead,
-		build: func(_ string, deps APIDeps) (Handler, error) {
+		params: []Field{
+			{Name: "user_id", Type: FieldString, Required: true, Desc: "用户 ID"},
+		},
+		build: func(_ string, deps APIDeps) (Func, error) {
 			if deps.Users == nil {
 				return nil, errAPINotWired
 			}
-			return func(ctx context.Context, p json.RawMessage) (any, error) {
-				var in struct {
-					UserID string `json:"user_id"`
-				}
-				if err := decodeParams(p, &in); err != nil {
-					return nil, err
-				}
-				if err := requireFields(map[string]string{"user_id": in.UserID}); err != nil {
-					return nil, err
-				}
-				lv, err := deps.Users.GetLevel(ctx, strings.TrimSpace(in.UserID))
+			return func(ctx context.Context, a *Args) (any, error) {
+				lv, err := deps.Users.GetLevel(ctx, a.String("user_id"))
 				if err != nil {
 					return nil, err
 				}
@@ -357,21 +319,15 @@ var apiSpecs = []apiSpec{
 	{
 		method: "api.users.getEmail",
 		cap:    CapUsersRead,
-		build: func(_ string, deps APIDeps) (Handler, error) {
+		params: []Field{
+			{Name: "user_id", Type: FieldString, Required: true, Desc: "用户 ID"},
+		},
+		build: func(_ string, deps APIDeps) (Func, error) {
 			if deps.Users == nil {
 				return nil, errAPINotWired
 			}
-			return func(ctx context.Context, p json.RawMessage) (any, error) {
-				var in struct {
-					UserID string `json:"user_id"`
-				}
-				if err := decodeParams(p, &in); err != nil {
-					return nil, err
-				}
-				if err := requireFields(map[string]string{"user_id": in.UserID}); err != nil {
-					return nil, err
-				}
-				email, err := deps.Users.GetEmail(ctx, strings.TrimSpace(in.UserID))
+			return func(ctx context.Context, a *Args) (any, error) {
+				email, err := deps.Users.GetEmail(ctx, a.String("user_id"))
 				if err != nil {
 					return nil, err
 				}
@@ -383,55 +339,37 @@ var apiSpecs = []apiSpec{
 		method: "api.notifications.send",
 		cap:    CapNotifySend,
 		write:  true,
-		build: func(_ string, deps APIDeps) (Handler, error) {
+		params: []Field{
+			{Name: "user_id", Type: FieldString, Required: true, Desc: "收件用户 ID"},
+			{Name: "title", Type: FieldString, Required: true, Desc: "通知标题"},
+			{Name: "body", Type: FieldString, Required: true, NoTrim: true, Desc: "通知正文（原样入库，不 trim）"},
+		},
+		audit: AuditSpec{Action: "notification.send", Target: []string{"user_id"}, Detail: []string{"title"}},
+		build: func(_ string, deps APIDeps) (Func, error) {
 			if deps.Notifications == nil {
 				return nil, errAPINotWired
 			}
-			return func(ctx context.Context, p json.RawMessage) (any, error) {
-				var in struct {
-					UserID string `json:"user_id"`
-					Title  string `json:"title"`
-					Body   string `json:"body"`
-				}
-				if err := decodeParams(p, &in); err != nil {
-					return nil, err
-				}
-				if err := requireFields(map[string]string{
-					"user_id": in.UserID, "title": in.Title, "body": in.Body,
-				}); err != nil {
-					return nil, err
-				}
-				if err := deps.Notifications.Send(ctx, strings.TrimSpace(in.UserID),
-					strings.TrimSpace(in.Title), in.Body); err != nil {
+			return func(ctx context.Context, a *Args) (any, error) {
+				if err := deps.Notifications.Send(ctx, a.String("user_id"),
+					a.String("title"), a.String("body")); err != nil {
 					return nil, err
 				}
 				return okResult(), nil
 			}, nil
 		},
-		audit: func(_ string, p json.RawMessage) (string, string, string) {
-			var in struct {
-				UserID string `json:"user_id"`
-				Title  string `json:"title"`
-			}
-			_ = json.Unmarshal(p, &in)
-			return "notification.send", strings.TrimSpace(in.UserID), strings.TrimSpace(in.Title)
-		},
 	},
 	{
 		method: "api.kv.get",
 		cap:    CapKVRead,
-		build: func(pluginID string, deps APIDeps) (Handler, error) {
+		params: []Field{
+			{Name: "key", Type: FieldString, Required: true, NoTrim: true, Desc: "键名（原样传递，自动加 plugin:<id>: 前缀）"},
+		},
+		build: func(pluginID string, deps APIDeps) (Func, error) {
 			if deps.KV == nil {
 				return nil, errAPINotWired
 			}
-			return func(ctx context.Context, p json.RawMessage) (any, error) {
-				var in struct {
-					Key string `json:"key"`
-				}
-				if err := decodeParams(p, &in); err != nil {
-					return nil, err
-				}
-				scoped, err := pluginKVKey(pluginID, in.Key)
+			return func(ctx context.Context, a *Args) (any, error) {
+				scoped, err := pluginKVKey(pluginID, a.String("key"))
 				if err != nil {
 					return nil, err
 				}
@@ -447,109 +385,78 @@ var apiSpecs = []apiSpec{
 		method: "api.kv.set",
 		cap:    CapKVWrite,
 		write:  true,
-		build: func(pluginID string, deps APIDeps) (Handler, error) {
+		params: []Field{
+			{Name: "key", Type: FieldString, Required: true, NoTrim: true, Desc: "键名（原样传递，自动加 plugin:<id>: 前缀）"},
+			// value 是**唯一**允许为空串的字段："清空这个键"是合法语义。
+			{Name: "value", Type: FieldString, Required: true, AllowEmpty: true, NoTrim: true, Desc: "值（原样存储，允许空串）"},
+		},
+		audit: AuditSpec{Action: "kv.set", Target: []string{"key"}, Scope: AuditScopePluginKV},
+		build: func(pluginID string, deps APIDeps) (Func, error) {
 			if deps.KV == nil {
 				return nil, errAPINotWired
 			}
-			return func(ctx context.Context, p json.RawMessage) (any, error) {
-				var in struct {
-					Key   string `json:"key"`
-					Value string `json:"value"`
-				}
-				if err := decodeParams(p, &in); err != nil {
-					return nil, err
-				}
-				// value 允许为空串（"清空这个键"是合法语义），key 不允许。
-				scoped, err := pluginKVKey(pluginID, in.Key)
+			return func(ctx context.Context, a *Args) (any, error) {
+				scoped, err := pluginKVKey(pluginID, a.String("key"))
 				if err != nil {
 					return nil, err
 				}
-				if err := deps.KV.Set(ctx, scoped, in.Value); err != nil {
+				if err := deps.KV.Set(ctx, scoped, a.String("value")); err != nil {
 					return nil, err
 				}
 				return okResult(), nil
 			}, nil
-		},
-		audit: func(pluginID string, p json.RawMessage) (string, string, string) {
-			var in struct {
-				Key string `json:"key"`
-			}
-			_ = json.Unmarshal(p, &in)
-			// target 落**加过前缀的全键**：审计里出现 "counter" 无法定位到某个插件。
-			scoped, err := pluginKVKey(pluginID, in.Key)
-			if err != nil {
-				return "kv.set", in.Key, ""
-			}
-			return "kv.set", scoped, ""
 		},
 	},
 	{
 		method: "api.slots.set",
 		cap:    CapSlotsWrite,
 		write:  true,
-		build: func(_ string, deps APIDeps) (Handler, error) {
+		params: []Field{
+			{Name: "slot", Type: FieldString, Required: true, Desc: "插槽名"},
+			{Name: "kind", Type: FieldString, Required: true, Desc: "槽位类型"},
+			{Name: "props", Type: FieldObject, Desc: "任意属性对象，原样透传"},
+			{Name: "sort", Type: FieldInt, Desc: "排序值"},
+		},
+		audit: AuditSpec{Action: "slot.set", Target: []string{"slot"}, Detail: []string{"kind"}},
+		build: func(_ string, deps APIDeps) (Func, error) {
 			if deps.Slots == nil {
 				return nil, errAPINotWired
 			}
-			return func(ctx context.Context, p json.RawMessage) (any, error) {
-				var in struct {
-					Slot  string         `json:"slot"`
-					Kind  string         `json:"kind"`
-					Props map[string]any `json:"props"`
-					Sort  int            `json:"sort"`
+			return func(ctx context.Context, a *Args) (any, error) {
+				// props 缺省时传 nil（不是空 map）：与重构前 in.Props 的零值一致。
+				var props map[string]any
+				if raw := a.Raw("props"); len(raw) > 0 {
+					props = map[string]any{}
+					if err := json.Unmarshal(raw, &props); err != nil {
+						return nil, fmt.Errorf("参数类型错误: props 必须是对象")
+					}
 				}
-				if err := decodeParams(p, &in); err != nil {
-					return nil, err
-				}
-				if err := requireFields(map[string]string{"slot": in.Slot, "kind": in.Kind}); err != nil {
-					return nil, err
-				}
-				if err := deps.Slots.Set(ctx, strings.TrimSpace(in.Slot), strings.TrimSpace(in.Kind),
-					in.Props, in.Sort); err != nil {
+				if err := deps.Slots.Set(ctx, a.String("slot"), a.String("kind"),
+					props, a.Int("sort")); err != nil {
 					return nil, err
 				}
 				return okResult(), nil
 			}, nil
-		},
-		audit: func(_ string, p json.RawMessage) (string, string, string) {
-			var in struct {
-				Slot string `json:"slot"`
-				Kind string `json:"kind"`
-			}
-			_ = json.Unmarshal(p, &in)
-			return "slot.set", strings.TrimSpace(in.Slot), strings.TrimSpace(in.Kind)
 		},
 	},
 	{
 		method: "api.slots.delete",
 		cap:    CapSlotsWrite,
 		write:  true,
-		build: func(_ string, deps APIDeps) (Handler, error) {
+		params: []Field{
+			{Name: "slot", Type: FieldString, Required: true, Desc: "插槽名"},
+		},
+		audit: AuditSpec{Action: "slot.delete", Target: []string{"slot"}},
+		build: func(_ string, deps APIDeps) (Func, error) {
 			if deps.Slots == nil {
 				return nil, errAPINotWired
 			}
-			return func(ctx context.Context, p json.RawMessage) (any, error) {
-				var in struct {
-					Slot string `json:"slot"`
-				}
-				if err := decodeParams(p, &in); err != nil {
-					return nil, err
-				}
-				if err := requireFields(map[string]string{"slot": in.Slot}); err != nil {
-					return nil, err
-				}
-				if err := deps.Slots.Delete(ctx, strings.TrimSpace(in.Slot)); err != nil {
+			return func(ctx context.Context, a *Args) (any, error) {
+				if err := deps.Slots.Delete(ctx, a.String("slot")); err != nil {
 					return nil, err
 				}
 				return okResult(), nil
 			}, nil
-		},
-		audit: func(_ string, p json.RawMessage) (string, string, string) {
-			var in struct {
-				Slot string `json:"slot"`
-			}
-			_ = json.Unmarshal(p, &in)
-			return "slot.delete", strings.TrimSpace(in.Slot), ""
 		},
 	},
 }
@@ -606,18 +513,12 @@ func findAPI(method string) (apiSpec, bool) {
 
 // lookupAPI 把 method 解析成处理函数，并做 capability 校验。
 //
-// # 校验放在查找阶段，而不是 handler 内部
+// 返回的仍是 ipc.Handler（ipc.go 的类型不变），但内部已经把
+// 「解码一次 → 校验 → 执行业务 → 按声明提取审计」封好了。
 //
-// 这是刻意选择的、**更难被后来者弄错**的形态：
-//
-//   - handler 里写 `if !grants(cap) { return err }` 是「每个 handler 各自记得
-//     检查」，新增 API 时漏写一行就变成越权，且没有任何东西会提醒你；
-//   - 放在 lookupAPI 里之后，handler 的构造**只有这一条路径**，而这条路径
-//     的第一个动作就是查表。漏写校验不再是一个可能的错误——没有地方可漏。
-//
-// 未授予时返回的不是业务 handler，而是 denyHandler：它**不持有 deps**，
+// 未授予能力时返回的不是业务 handler，而是 denyHandler：它**不持有 deps**，
 // 内部没有任何 service 调用。因此即便有人把 denyHandler 里的判定删掉，
-// 也不可能执行到业务代码——它附近根本没有可执行的东西。
+// 也不可能执行到业务代码。
 func lookupAPI(method, pluginID string, caps CapabilitySet, deps APIDeps) (Handler, bool) {
 	spec, ok := findAPI(method)
 	if !ok {
@@ -626,7 +527,7 @@ func lookupAPI(method, pluginID string, caps CapabilitySet, deps APIDeps) (Handl
 	if !caps.grants(spec.cap) {
 		return denyHandler(pluginID, spec.method, spec.cap), true
 	}
-	build, err := spec.build(pluginID, deps)
+	fn, err := spec.build(pluginID, deps)
 	if err != nil {
 		// 能力有、接线没有：明确报错。绝不能返回 nil handler——那会让
 		// 插件等到 IPC 超时，日志里什么都看不到。
@@ -634,7 +535,60 @@ func lookupAPI(method, pluginID string, caps CapabilitySet, deps APIDeps) (Handl
 			return nil, fmt.Errorf("%s: %w（插件 %s）", spec.method, err, pluginID)
 		}, true
 	}
-	return spec.wrap(pluginID, deps, build), true
+	return spec.adapt(pluginID, deps, fn), true
+}
+
+// adapt 把 Func 适配成 ipc.Handler：解码一次 → 校验 → 执行 → 审计。
+//
+// 审计在这里统一落，**handler 内部没有审计调用点**——「写类 API 忘审计」
+// 不可能发生。新增写 API 只要 write:true + audit 非零，
+// TestWriteAPIsAreAudited 自动纳入覆盖。
+func (s apiSpec) adapt(pluginID string, deps APIDeps, fn Func) Handler {
+	return func(ctx context.Context, params json.RawMessage) (res any, err error) {
+		// handler 跑在 ipc.go 的 dispatch goroutine 里，一次 panic 就是整个
+		// 后端进程崩溃。插件能控制的输入必须在这里兜住。
+		defer func() {
+			if r := recover(); r != nil {
+				logrus.Errorf("plugin: %s 调用 %s 时 panic: %v", pluginID, s.method, r)
+				res, err = nil, fmt.Errorf("%s: 宿主内部错误", s.method)
+			}
+		}()
+
+		a, err := decodeArgs(params, s.params)
+		if err != nil {
+			return nil, err
+		}
+
+		res, err = fn(ctx, a)
+		if err != nil {
+			return res, err
+		}
+		if !s.write {
+			return res, nil
+		}
+
+		action, target, detail := s.audit.extract(pluginID, a)
+		if action == "" {
+			// 不该发生（TestWriteAPIsAreAudited 保证写类都有 action）。
+			// 仍落一条可辨认的记录，而不是静默跳过——「一次写没有审计」
+			// 比「审计字段不好看」严重得多。
+			action = s.method
+		}
+		if deps.Audit == nil {
+			logrus.Errorf("plugin: %s 的 %s 已执行但 Audit 未接线，审计缺失", pluginID, s.method)
+			return res, nil
+		}
+		if aErr := deps.Audit.RecordPluginAction(ctx, pluginID, action, target, detail); aErr != nil {
+			// 业务动作已经生效，不能因为审计失败把结果翻成失败：
+			// 插件会重试，而重试会**再执行一次**业务动作。
+			logrus.WithError(aErr).WithFields(logrus.Fields{
+				"plugin": pluginID,
+				"api":    s.method,
+				"action": action,
+			}).Error("plugin: 审计落库失败（业务动作已生效，不翻转结果）")
+		}
+		return res, nil
+	}
 }
 
 // denyHandler 是「能力未授予」的拒绝桩。
@@ -654,66 +608,13 @@ func denyHandler(pluginID, method, cap string) Handler {
 	}
 }
 
-// wrap 给业务 handler 套上三件事：panic 兜底、审计（写类）、原样透传结果。
+// RegisterAPIs 为插件注册全部宿主 API。
 //
-// 审计放在这里而不是每个 handler 里，是「所有写类 API 必须落审计」这条
-// 约束唯一的可靠实现：handler 内部没有审计调用点，漏写是不可能的。
-func (s apiSpec) wrap(pluginID string, deps APIDeps, h Handler) Handler {
-	return func(ctx context.Context, p json.RawMessage) (res any, err error) {
-		// handler 跑在 ipc.go 的 dispatch goroutine 里，一次 panic 就是整个
-		// 后端进程崩溃。插件能控制的输入（任意 JSON、任意 key）必须在这里兜住。
-		defer func() {
-			if r := recover(); r != nil {
-				logrus.Errorf("plugin: %s 调用 %s 时 panic: %v", pluginID, s.method, r)
-				res, err = nil, fmt.Errorf("%s: 宿主内部错误", s.method)
-			}
-		}()
-
-		res, err = h(ctx, p)
-		if err != nil {
-			return res, err
-		}
-		if !s.write {
-			return res, nil
-		}
-
-		action, target, detail := "", "", ""
-		if s.audit != nil {
-			action, target, detail = s.audit(pluginID, p)
-		}
-		if s.audit == nil || action == "" {
-			// 不该发生（TestEveryAPIMethodDeclaresACapability 保证 write 规格
-			// 都带 audit，解析不出 action 的输入已在 handler 里被拒）。
-			// 仍然落一条可辨认的记录，而不是静默跳过——「一次写没有审计」
-			// 比「审计字段不好看」严重得多。
-			action = s.method
-		}
-		if deps.Audit == nil {
-			logrus.Errorf("plugin: %s 的 %s 已执行但 Audit 未接线，审计缺失", pluginID, s.method)
-			return res, nil
-		}
-		if aErr := deps.Audit.RecordPluginAction(ctx, pluginID, action, target, detail); aErr != nil {
-			// 业务动作已经生效，不能因为审计失败把结果翻成失败：
-			// 插件会重试，而重试会**再执行一次**业务动作。
-			logrus.WithError(aErr).WithFields(logrus.Fields{
-				"plugin": pluginID,
-				"api":    s.method,
-				"action": action,
-			}).Error("plugin: 写操作审计记录失败（业务动作已生效）")
-		}
-		return res, nil
-	}
-}
-
-// RegisterAPIs 把宿主 API 挂到插件连接上。
+// 遍历规格表本身（不查 map），因此注册顺序确定。
 //
-// 注册规则：
-//   - 能力已授予 → 注册真实 handler（内部仍会再查一次能力，纵深防御）；
-//   - 能力未授予 → 注册 denyHandler（只有拒绝逻辑，不持有任何依赖）；
-//   - 未知方法名 → 根本不注册，插件的调用会得到 ipc.go 的 unknown method。
-//
-// 因此注册进 Conn 的 handler 与「该插件被允许做什么」严格一一对应，
-// 不存在「注册了但靠 handler 自己记得检查」的中间态。
+// 闭包内仍调 lookupAPI：它是**能力校验的唯一入口**。把能力判断提到注册期
+// 虽然更快，却会让「未授予能力」从一次可测的拒绝变成一次注册决策，
+// 而 TestRegisterAPIsDoesNotHandleUndeclaredCapability 正是钉后者的。
 func RegisterAPIs(conn *Conn, pluginID string, caps CapabilitySet, deps APIDeps) {
 	if conn == nil {
 		return
@@ -733,54 +634,13 @@ func RegisterAPIs(conn *Conn, pluginID string, caps CapabilitySet, deps APIDeps)
 }
 
 // ---------------------------------------------------------------------------
-// 参数校验
+// 返回值
 // ---------------------------------------------------------------------------
 
-// decodeParams 解出参数对象，并把 JSON 错误包成读得懂的中文错误。
-//
-// 不做 DisallowUnknownFields：插件多传字段（比如把整个 post 对象透传回来）
-// 应当被容忍，收紧它只会在协议演进时制造兼容性事故。
-func decodeParams(p json.RawMessage, dst any) error {
-	if len(p) == 0 {
-		return fmt.Errorf("参数缺失：需要 JSON 对象")
-	}
-	if err := json.Unmarshal(p, dst); err != nil {
-		return fmt.Errorf("参数不是合法 JSON 对象: %w", err)
-	}
-	return nil
-}
-
-// requireFields 校验必填字符串字段非空。
-//
-// 为什么必须有：插件传 `{}` 时，struct 字段全是零值，直接交给 service 就是
-// 「用空 postID 执行 SetStatus」——那可能命中一条空主键记录，也可能在
-// service 层变成一个看不懂的 SQL 错误。校验在这里，错误信息才能指名
-// **哪个字段**缺了，插件作者一眼能改。
-//
-// 只校验「非空」，不校验取值域（例如 status 是否属于 approved/pending…）：
-// 合法取值定义在 internal/model 里，而本包 MUST NOT 引入 model（它依赖
-// gorm）。取值域的校验属于 Task 7 的 service 适配层。
-func requireFields(fields map[string]string) error {
-	// 排序后报错：同一个请求永远得到同一条错误文案，测试可逐字断言。
-	names := make([]string, 0, len(fields))
-	for name := range fields {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-
-	var missing []string
-	for _, name := range names {
-		if strings.TrimSpace(fields[name]) == "" {
-			missing = append(missing, name)
-		}
-	}
-	if len(missing) > 0 {
-		return fmt.Errorf("参数缺失: %s", strings.Join(missing, ", "))
-	}
-	return nil
-}
-
 // okResult 是写类 API 成功时的固定返回。
+//
+// 参数校验/取值已由 args.go 的 decodeArgs 在 adapt 里统一完成，
+// 本文件不再有 decodeParams / requireFields。
 func okResult() any { return map[string]bool{"ok": true} }
 
 // ---------------------------------------------------------------------------

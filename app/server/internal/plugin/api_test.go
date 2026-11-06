@@ -92,7 +92,10 @@ type fakeAudit struct {
 }
 
 func (f *fakeAudit) RecordPluginAction(ctx context.Context, pluginID, action, target, detail string) error {
-	f.records = append(f.records, pluginID+"|"+action+"|"+target)
+	// 记录里带上 detail：既有断言只看前缀 "test-plugin|" 与 target 子串，
+	// 追加一段不改变任何已断言的语义；而 TestAuditTargetComesFromParamDeclarations
+	// 需要看到 detail 才能钉住「审计字段来自同一份参数声明」。
+	f.records = append(f.records, pluginID+"|"+action+"|"+target+"|"+detail)
 	return f.err
 }
 
@@ -550,4 +553,21 @@ func TestCapabilityErrorsAreIdentifiable(t *testing.T) {
 	err := invokeAPI(t, CapabilitySet{"posts:read": {}}, APIDeps{Posts: &fakePostWriter{}, Audit: &fakeAudit{}},
 		"api.posts.setStatus", map[string]string{"post_id": "p1", "status": "pending"})
 	require.ErrorIs(t, err, ErrCapabilityDenied)
+}
+
+// 审计里的 target 必须来自**同一份**参数声明，而不是第二份匿名 struct。
+//
+// 这条钉住本轮重构的核心收益：重构前 build 与 audit 各自 Unmarshal 一次同一个
+// JSON，改了字段名不会报错，只会让审计目标变成空串。
+func TestAuditTargetComesFromParamDeclarations(t *testing.T) {
+	posts := &fakePostWriter{}
+	audit := &fakeAudit{}
+	deps := APIDeps{Posts: posts, Audit: audit}
+
+	err := invokeAPI(t, CapabilitySet{"posts:write": {}}, deps,
+		"api.posts.setStatus", map[string]string{"post_id": "p1", "status": "pending"})
+	require.NoError(t, err)
+	require.Len(t, audit.records, 1)
+	require.Contains(t, audit.records[0], "p1", "审计必须带上 target（来自 post_id）")
+	require.Contains(t, audit.records[0], "pending", "审计必须带上 detail（来自 status）")
 }
