@@ -101,8 +101,14 @@ MUST NOT 插进现有审核链中间。
 | `supervisor_test.go` | 内部测试（`package plugin`）：白名单重建/空值跳过/白名单本身无敏感名、退避阶梯、默认值、拉起握手、**子进程 env 端到端**、退避重启与超限停止、**Stop 解开卡死写** |
 | `hooks.go` | **`dispatcher`**（插件注册表 + 钩子分发）：`PluginCaller`、`newDispatcher`、`RegisterPlugin`（收 `*Supervisor`）/`RegisterPluginWithCaller`/`UnregisterPlugin`、`Dispatch`/`dispatchHooks`、`SubscribeEvents`、`Broadcaster`/`TraceBroadcaster` 接缝、`invertHookEvents`、`supervisorCaller` |
 | `hooks_test.go` | 分发契约（内部测试 `package plugin`）：fan-out 全员收到、非订阅者不调用、失败隔离、重复声明去重、摘除、**Dispatch 不阻塞**、**每调用超时**、**不继承调用方取消**、倒排索引、`content.created→comment.created`、**`user.registered` 双发只投一次**（fake + 真 eventbus 两条）、**换代后走新连接**、真实 IPC 往返、并发注册/分发 |
-| `api.go` | **宿主 API**：9 个 capability 常量与白名单、`KnownCapabilities()`（**已排序**）、`IsKnownCapability`、`CapabilitySet`、`CapabilitySetFromNames`、7 个接缝接口（`PostWriter` 等）、`APIDeps`、`apiSpecs` 规格表、`lookupAPI`（查找即校验）、`RegisterAPIs`、`pluginKVKey`（KV 命名空间）、`requireFields` |
-| `api_test.go` | 宿主 API 契约（内部测试 `package plugin`）：未声明能力被拒、已声明能力放行、**nil/空能力集拒绝每一个写类 API**、**写类 API 全部审计**、审计失败不翻转结果、缺字段不触达 service、**KV 键逃逸拒绝**（`../`、绝对路径、冒充他人命名空间）、**KV 按插件隔离**、`kv:read`/`kv:write` 互不蕴含、`CapabilitySetFromNames` 能直接喂 `Manifest.Validate` |
+| `api.go` | **宿主 API**：9 个 capability 常量与白名单、`capabilityWithoutAPI`（空能力白名单，只许变短）、`KnownCapabilities()`（**已排序**）、`IsKnownCapability`、`CapabilitySet`、`CapabilitySetFromNames`、7 个接缝接口（`PostWriter` 等）、`APIDeps`、**`Func`**（解码后的处理函数）、`apiSpecs` 规格表（params + AuditSpec 声明式）、`lookupAPI`（查找即校验）、**`adapt`**（解码→校验→执行→审计，取代旧的 `wrap`）、`RegisterAPIs`、`pluginKVKey`（KV 命名空间） |
+| `args.go` | **参数声明与解码**：`FieldType`（`FieldString`/`FieldInt`/`FieldObject`/`FieldBool`，零值必须是 `string`）、`Field`（`Name`/`Type`/`Required`/`AllowEmpty`/`NoTrim`/`Enum`/`Desc`）、`Args`（`String` 统一 TrimSpace、`Int`、`Raw`、`Has`）、`decodeArgs`（**全部宿主 API 的唯一解码入口**，原先在 api.go 里重复的取参/校验逻辑已并入这里）。错误文案：必填缺失与坏 JSON 的文案不变；类型错误文案改为「参数类型错误: <字段> 必须是<类型>」；字段名匹配由大小写不敏感改为精确匹配 |
+| `audit.go` | **审计声明**：`AuditScope`（`AuditScopePlain`/`AuditScopePluginKV`）、`AuditSpec`（`Action`/`Target`/`Detail` 是**参数名**，不是第二份 Unmarshal 闭包）、`isZero`、`extract`、`joinArgs` |
+| `schema.go` | **JSON Schema 派生产物**：`schemaType`（对未映射的 `FieldType` panic）、`schemaFor`（由同一份 `[]Field` 生成，空 `Field.Name` panic）、`APISchemas()`（方法名 → schema，序列化失败跳过而非让调用失败） |
+| `api_test.go` | 宿主 API 契约（内部测试 `package plugin`）：未声明能力被拒、已声明能力放行、**nil/空能力集拒绝每一个写类 API**、**写类 API 全部审计**、**写类规格必须声明 audit、audit 字段必须存在于 params、且每个写类的审计三元组逐字精确**（这三条才是审计口径的真正担保，`TestWriteAPIsAreAudited` 只数字节数）、审计失败不翻转结果、缺字段不触达 service、**KV 键逃逸拒绝**（`../`、绝对路径、冒充他人命名空间）、**KV 按插件隔离**、`kv:read`/`kv:write` 互不蕴含、**省略 `kv.set.value` 等价于空串**、**`NoTrim` 四个字段逐个钉住且带空白的 key 端到端仍被拒**、`CapabilitySetFromNames` 能直接喂 `Manifest.Validate`、**反向校验空能力**（`TestEveryCapabilityUsedByAnAPI` + 白名单 key set 上界）、`status` 枚举字面量与 `model.PostStatus*` 对齐 |
+| `args_test.go` | 参数解码（`package plugin`）：缺必填、纯空白算缺失、缺失名排序、`AllowEmpty` 放行、`String` 统一 trim、未知字段容忍、空 params 合法、坏 JSON、类型错误、**`NoTrim` 保留原值**、**`NoTrim` 仍拒纯空白**、`Int`/`Raw` 存值、`FieldType` 零值是 string |
+| `audit_test.go` | 审计提取（`package plugin`）：按声明字段取三元组、**多字段按空格拼接**（两侧各两个字段，分隔符本身被断言）、单字段不引入分隔符、空 `Detail`、**`AuditScopePluginKV` 落全键**、`pluginKVKey` 失败时保留原值、`isZero` 判定 |
+| `schema_test.go` | schema 与 `params` 同源（`package plugin`）：覆盖全部方法、`required` 与声明一致、无必填时不写 `required`、`Enum` 进文档、类型映射、根为 object 且带 description、可序列化、空字段名 panic、**未映射 `FieldType` panic** |
 | `pluginevent/broadcast.go` | `pluginevent.Broadcaster(*eventbus.EventBus)`：把 eventbus 广播适配成 `plugin.Broadcaster`+`TraceBroadcaster`。**独立成包是为了不让 eventbus 的 gorm 依赖进入 `internal/plugin`**，见「分层与事件接缝」 |
 | `pluginevent/broadcast_test.go` | 适配语义（`package pluginevent_test`）：type/payload 透传、实现 `TraceBroadcaster` 且 ctx 非 nil、nil bus/handler 安全空操作 |
 
@@ -414,38 +420,98 @@ Windows 需要 Job Object，且与 `exec.CommandContext` 的取消语义有交�
 后者只有一个地方会错，且那个地方的第一个动作就是查表——所以选它。
 `RegisterAPIs` 里仍有第二道 `lookupAPI` 复查（纵深防御），但那不是主防线。
 
-### `apiSpecs` 规格表：方法名、能力、是否写类在同一行
+### `apiSpecs` 规格表：方法名、能力、参数、审计在同一行
 
 ```go
 type apiSpec struct {
     method string
     cap    string          // 所需能力；漏写 → 该 API 不可调用（fail closed）
-    write  bool            // true → 成功后**统一**由 wrap 落审计
-    build  func(pluginID string, deps APIDeps) (Handler, error)
-    audit  func(pluginID string, p json.RawMessage) (action, target, detail string)
+    write  bool            // true → 成功后**统一**由 adapt 落审计
+    params []Field         // 参数的唯一声明处
+    audit  AuditSpec       // 零值 = 无审计（读类）
+    build  func(pluginID string, deps APIDeps) (Func, error)
 }
+
+type Func func(ctx context.Context, a *Args) (any, error)
 ```
+
+`params []Field` 是**唯一**的参数声明处，同时产出三样东西：
+
+| 产物 | 实现 | 谁用 |
+|------|------|------|
+| 运行期校验 | `args.go` 的 `decodeArgs` | 每次调用 |
+| 取值器 | `Args.String` / `Int` / `Raw` / `Has`（`String` 统一 TrimSpace） | handler 内部 |
+| JSON Schema | `schema.go` 的 `schemaFor` / `APISchemas()` | 安装确认页、插件作者（当前尚无生产调用方；首个消费方见 spec §4 第 6 条） |
+
+重构前的形态是每个方法写两份匿名 struct：`build` 里一份、`audit` 里再 `json.Unmarshal` 一份
+（共 17 处匿名 struct + 7 个 audit 闭包；**每个 audit 闭包各 Unmarshal 一次，合计 7 次重复解码**）。
+**改一个字段名只改一处不报错**——audit 按旧名解析得到零值，写操作照常生效、审计目标变成空串。
+现在字段名只出现在 `params` 里。
+
+`AuditSpec` 把审计落点声明成**字段引用**，而不是提取闭包：
+
+```go
+audit: AuditSpec{Action: "post.setStatus", Target: []string{"post_id"}, Detail: []string{"status"}}
+```
+
+`api.kv.set` 需要把 target 落成**加过前缀的全键**，用 `Scope: AuditScopePluginKV` 表达，
+由统一提取器调 `pluginKVKey`——不再为它单开一个闭包。`pluginKVKey` 失败时保留原值
+（业务调用大概率也已失败，但审计仍应记下插件试图访问的键）。
 
 三处收益，都是「让错误更难犯」而不是「少写几行」：
 
 - `apiMethodNames()` / `writeAPIMethods()` / `apiCapabilities()` 全部**从规格表推导**，
   不再维护第二份手写字面量清单（brief 里的清单与 switch 是两份数据，少一条＝该方法永远 unknown method，不编译报错）。
-- 审计在 `wrap` 里统一落，**handler 内部没有审计调用点**——「写类 API 忘审计」不可能发生。
-  新增写 API 只要 `write: true`，`TestWriteAPIsAreAudited` 自动纳入覆盖。
+- 审计在 `adapt` 里统一落，**handler 内部没有审计调用点**——「写类 API 忘审计」不可能发生。
 - `TestEveryAPIMethodDeclaresACapability` 要求每个方法都登记已知能力：`cap` 漏写在这一层就被拦。
+
+**「写类必须有审计」的真正担保是三条，不是一条。** `TestWriteSpecsDeclareAudit`（写类 `audit`
+非零、读类为零）、`TestAuditFieldReferencesExistInParams`（`audit.Target`/`Detail` 引用的
+名字必须真在 `params` 里）与 `TestAuditTriplesAreExact`（每个写类的
+action/target/detail **逐字**精确）在**静态规格表**上做全量断言；`TestWriteAPIsAreAudited` 只负责数
+「每个写类各多了一条记录」，它查不出 `action` 退化成方法名——那是 `adapt` 里 `action == ""`
+时用方法名兜底的代码路径，能落一条记录，所以只数条数会全绿。
+
+前两条**单独存在时并不足够**：它们只保证 `audit` 非零、字段名存在，抓不到 Target/Detail 对调、
+`Action` 拼错、KV `Scope` 漏加——这些错都能落一条格式正确但内容错位的审计记录。第三条才是
+把「值」钉住的那一层。
+
+`Field.NoTrim` 存在的唯一理由：`api.kv.get.key` / `api.kv.set.key` / `api.kv.set.value` /
+`api.notifications.send.body` **必须原样传递**。`pluginKVKey` 用 `trimmed != key` 拒绝首尾空白，
+预先把 `" k"` trim 成 `"k"` 会让它静默接受，等于削弱 KV 命名空间隔离。注意**必填非空仍用
+trim 后的值判定**（纯空白 key 仍算缺失），`NoTrim` 只影响存储与传递。
 
 **审计失败不翻转结果。** 业务动作已经生效，把 error 返回给插件只会让它重试，而重试会**再执行一次**写操作。
 因此只记 error 日志（含 plugin/api/action 字段），返回成功。反过来，`deps.Audit == nil`（漏接线）
-也只记 error 不 panic——handler 跑在 ipc 的 dispatch goroutine 里，panic 就是整个后端崩溃。
+也只记 error 不 panic——handler 跑在 ipc 的 dispatch goroutine 里，**未捕获的** panic 才是灾难；
+`adapt` 自己的 `recover` 与 ipc 的 `callHandlerSafely` 各是一道网（两层都要留），
+一次 panic 的后果是每次调用都返回「宿主内部错误」，不是进程崩溃。
 
-### 参数校验：只查非空，不查取值域
+### 参数校验：只查必填 / 空串 / 类型，不查取值域
 
-`requireFields` 拒绝缺失/纯空白的必填字段（错误里**点名**哪个字段），但不校验 `status` 是否属于
-`approved/pending/...`——合法取值定义在 `internal/model`，而本包 MUST NOT 引入它（依赖 gorm）。
-取值域校验属于 Task 7/8 的 service 适配层。
+`decodeArgs`（`args.go`）拒绝缺失或纯空白的必填字段（错误里**点名**哪个字段，按名排序），
+按 `Field.Type` 校验类型，但不校验 `status` 是否属于 `approved/pending/...`。
 
-空值绝不能透传到 service：`{}` 解出来全是零值，`SetStatus("", "")` 可能命中一条空主键记录，
-也可能在 service 层变成一句看不懂的 SQL 错误。`value`（kv.set）是**唯一**允许为空串的字段。
+两条刻意的边界：
+
+1. **取值域不在本包校验。** 权威定义在 service 层（`post.go` / `content.go` 的
+   `isValidPostStatus`）。在插件层再校验一遍会产生第二个事实来源：加枚举值时
+   改 service 忘了改这里，症状是「文档说支持、实际被拒」。
+   `Field.Enum` **只写进 JSON Schema 供文档展示，运行期不校验**。
+2. **枚举字面量的重复由测试钉住。** 生产代码不能 import `internal/model`
+   （会把 5 个 gorm 包带进来），所以 `Enum` 只能是字面量；
+   `TestStatusEnumMatchesModelConstants` 用**内部测试包**把它与 `model.PostStatus*`
+   常量对齐。这条测试 import `internal/model` 不影响 `go list -deps` 的 gorm 计数
+   （该命令只算非测试构建图）。
+
+空值绝不能透传到 service：`{}` 解出来全是零值。`SetStatus("", "")` 可能命中一条空主键记录，
+也可能在 service 层变成一句看不懂的 SQL 错误。`value`（kv.set）是**唯一**允许为空串的字段
+（`Field.AllowEmpty`）。
+
+错误文案是**契约**，重构不得改变：坏 JSON 仍是「参数不是合法 JSON 对象: …」，
+缺字段仍是「参数缺失: a, b」（按名排序，同一请求永远得到同一条文案）。
+`decodeArgs` 刻意**不** panic：它跑在每次插件调用的热路径上，把编程错误变成每个调用
+都返回「宿主内部错误」，比在构建期炸掉难排查得多。
 
 ### 接缝：`APIDeps` 只暴露业务动作
 
@@ -570,6 +636,20 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 | `TestKnownCapabilitiesAreSortedAndKnown` | `KnownCapabilities()` **排序**（连取 20 次比对，抓未排序）、内容与 9 个常量逐一对应、重复项为零 |
 | `TestCapabilitySetFromNamesFeedsManifestValidate` | `CapabilitySet` 能**直接**喂 `Manifest.Validate`；未知能力仍报错；nil/空 knownCaps 仍拒绝 |
 | `TestCapabilityErrorsAreIdentifiable` | 权限拒绝可被 `errors.Is(err, ErrCapabilityDenied)` 识别（插件据此区分「没申请」与「宿主出错」） |
+| `TestAuditTriplesAreExact` | **每个写类规格的审计三元组逐字精确**：表驱动覆盖全部写类，断言 `extract()` 返回的 action/target/detail 与预期完全一致。只查「audit 非零」+「字段名存在」抓不住 Target/Detail 对调、Action 拼错、KV Scope 漏加 |
+| `TestAuditTargetComesFromParamDeclarations` | 已被 `TestAuditTriplesAreExact` 取代（原来的 `require.Contains` 子串断言只覆盖一个规格，四种存活变异全部照绿） |
+| `TestWriteSpecsDeclareAudit` | **写类规格的 `audit` 必须非零、`Action` 非空；读类必须为零**。这才是「写类必须有审计」的担保，`TestWriteAPIsAreAudited` 只数条数，查不出 `action` 退化成方法名 |
+| `TestAuditFieldReferencesExistInParams` | `audit.Target`/`Detail` 引用的名字必须真实存在于该规格的 `params` 里（改字段名忘了同步 audit 时，`joinArgs` 只会静默取到空串） |
+| `TestNoTrimFlagsArePinned` | **`NoTrim` 恰好落在且只落在四个字段上**（`api.kv.get.key`、`api.kv.set.key`/`value`、`api.notifications.send.body`）。删掉 kv 的 `key` 那条，`pluginKVKey` 的空白拒绝被静默绕过 |
+| `TestKVKeyWhitespaceStillRejected` | **端到端行为**：`kv.get`/`kv.set` 对 `" k"` 仍报「空白」错误、存储零调用。与上一条互为声明/行为两层，只钉声明抓不到 `decodeArgs` 里判断被删 |
+| `TestKVSetWithoutValueStoresEmpty` | 省略 `value` 等价于空串（清空这个键是合法语义，重构前就是这样）。把 `value` 加回 `Required` 即红 |
+| `TestEveryCapabilityUsedByAnAPI` | **反向校验**：每个已声明能力都被 ≥1 个 API 使用；空能力必须在 `capabilityWithoutAPI` 白名单里。此前 `posts:read`/`comments:read` 一直是空的，安装确认页批准的是不存在的能力 |
+| `TestCapabilityWithoutAPIListIsAccurate` | 白名单不得含已被使用的能力、不得是幽灵条目；**key set 是 `{posts:read, comments:read}` 的子集**——用 `require.Subset` 而非 `ElementsMatch`，因为收缩无需改测试、扩张必须显式改断言 |
+| `TestStatusEnumMatchesModelConstants` | 插件侧 `status` 枚举字面量与 `model.PostStatus*` 常量一致（内部测试 import model，不影响 `go list -deps` 的 gorm 计数——它只算非测试构建图） |
+| `TestAPISchemasCoverAllMethods` / `TestSchema*` | schema 与 `params` 同源：覆盖全部方法、`required` 与声明一致、无必填时不写 `required`、`Enum` 进文档、类型映射、根是 object 且带 description、结果可序列化 |
+| `TestSchemaTypePanicsOnUnmappedFieldType` | 新增 `FieldType` 忘了同步 `schemaType` 时 panic。这条只能单独测：`apiSpecs` 里每个类型都有显式 case，`TestAPISchemasCoverAllMethods` 永远走不到 default 分支 |
+| `TestDecodeArgsNoTrimPreservesValue` / `TestDecodeArgsNoTrimStillRejectsBlank` | `NoTrim` 字段的**值**原样保留（`" k"` 不变成 `"k"`，否则 `pluginKVKey` 的空白拒绝被绕过）；但**纯空白仍算缺失**——`NoTrim` 只影响存储与传递，不影响校验 |
+| `TestArgsIntStoresValue` / `TestArgsRawStoresObject` | `FieldInt` 真的落进 `Args.Int`、`FieldObject` 真的落进 `Args.Raw`（取值器全覆盖，不只是 `String`） |
 
 `TestDispatcherDispatchDoesNotBlockOnSlowPlugin` 有一个刻意的设计：它用 `time.AfterFunc`
 在 1s 后无条件释放插件。**没有这个兜底，把 `go func` 改成同步调用会让测试永久挂住**，
@@ -608,16 +688,33 @@ supervisor 的测试**分两层**，缺一层就有盲区：`buildPluginEnv`/`ba
   插件侧的语义名可以更自然，传输侧不必跟着改。
 - 新增 capability：在 `api.go` 的 `knownCapabilities` 登记，并在后台的能力清单里展示——插件安装前
   管理员看的就是这份清单。**同时必须让至少一个 `apiSpec` 要求它**，否则它会出现在安装确认页
-  却没有任何 API 使用（`TestEveryAPIMethodDeclaresACapability` 只查反方向：每个 API 都登记已知能力）。
-- 新增宿主 API：**只加 `apiSpecs` 一行**（method / cap / write / build / audit），不要再去维护
-  `apiMethodNames()` 之类的字面量清单——它们全部从规格表推导。测试里补一条
-  `writeAPISampleParams`（写类）与审计断言，`TestWriteAPIsAreAudited` 会自动纳入覆盖。
+  却没有任何 API 使用（`TestEveryAPIMethodDeclaresACapability` 查的是反方向：每个 API 都登记了已知能力；
+  `TestEveryCapabilityUsedByAnAPI` 查这一方向）。
+  真想先声明后实现，只能把能力加进 `capabilityWithoutAPI` 白名单——**那张表只许变短**，
+  增长必须同步改 `TestCapabilityWithoutAPIListIsAccurate` 的 `require.Subset` 断言并说明理由。
+- 新增宿主 API：**只加 `apiSpecs` 一条**（method / cap / write / params / audit / build）。
+  参数写进 `params []Field`，审计写进 `AuditSpec`——**不要再写第二个匿名 struct 或
+  `json.Unmarshal` 提取审计字段**，那正是 2026-11-06 重构消掉的失效模式。
+  `apiMethodNames()` 之类的字面量清单全部从规格表推导，不要手工维护。
+  测试里补一条 `writeAPISampleParams`（写类），`TestWriteAPIsAreAudited` 会自动纳入覆盖；
+  `TestWriteSpecsDeclareAudit` 与 `TestAuditFieldReferencesExistInParams` 会自动校验新规格的审计口径，
+  **并且必须在 `TestAuditTriplesAreExact` 的预期表里补一行**——那张表与 `writeAPIMethods()` 同集校验，
+  漏补会直接报错，而不是让新规格逃出「审计值正确」的覆盖。
+- 不要给 `Field.Enum` 补运行期校验。取值域的权威定义在 service 层（`isValidPostStatus`），
+  在插件层再校验一遍会制造第二个事实来源：加枚举值时改 service 忘了改这里，
+  症状是「文档说支持、实际被拒」。`Enum` 只进 JSON Schema（见「参数校验」一节）。
+- 给字段加 `NoTrim` 前先确认它真的需要原值。目前只有 KV 的 `key`/`value` 与
+  通知的 `body` 需要：`pluginKVKey` 靠 `trimmed != key` 拒绝首尾空白，
+  预修剪会让 `" k"` 静默通过，等于放宽 KV 命名空间隔离。
+- 新增 `FieldType` 时必须**同时**改 `schema.go` 的 `schemaType` 与 `decodeArgs` 的 switch：
+  `schemaType` 对未映射类型 panic（构建期暴露），`decodeArgs` 静默退化成字符串校验。
+  两者不同步的症状是「文档写 object、实际拒绝非字符串」——错得一致且无声。
 - 放宽 `pluginKVKey` 的任何一条拒绝规则都等于放宽插件 KV 隔离：`..` / 空段 / 绝对路径 / 含 `:`
   这四类放开后，一个插件能读到另一个插件的键。改前先加测试再改实现。
 - 把能力校验从 `lookupAPI` 挪进某个 handler 是本文件最反对的改动：那会把
   「一个地方会错」变成「每个 handler 都可能错」。若确需在 handler 内二次校验，
   只能作为**额外的**纵深防御，不能删掉 `lookupAPI` 里那道。
-- 写类 API 的审计只在 `apiSpec.wrap` 里落。若新增一条绕过 `wrap` 的注册路径，
+- 写类 API 的审计只在 `apiSpec.adapt` 里落。若新增一条绕过 `adapt` 的注册路径，
   「所有写类 API 必须审计」这条 spec 就失去唯一保证。
 - 提升协议版本：`ProtocolVersion1` 是**唯一**可接受值，没有「兼容旧版本」分支。真要加 v2，
   必须同时定义 v1 的兼容策略，否则所有存量插件的 manifest 会在升级瞬间全部被拒。
@@ -642,7 +739,11 @@ supervisor 的测试**分两层**，缺一层就有盲区：`buildPluginEnv`/`ba
 - 钩子清单增减、**钩子→事件映射变化**、协议版本策略变化
 - `entry` 校验规则变化（放行/拒绝哪些路径形态）
 - capability 校验语义变化（哪一半报错、哪一半丢弃）
-- **新增/删除宿主 API 方法**（`apiSpecs` 一行即一处契约；插件安装确认页与审计动作名都会变）
+- **新增/删除宿主 API 方法**（`apiSpecs` 一条即一处契约；插件安装确认页、JSON Schema 与审计动作名都会变）
+- **`Field` / `Args` / `decodeArgs` 的语义变化**（必填判定、`AllowEmpty`、`NoTrim`、错误文案）
+- **`AuditSpec` 的形态变化**（字段引用 vs 提取闭包、`AuditScope` 取值、target/detail 的拼接方式）
+- **`APISchemas()` 的输出变化**（字段名、类型映射、`required` 与 `enum` 的呈现）
+- **`capabilityWithoutAPI` 增减**（空能力清单是管理员装机确认页的事实来源）
 - **KV 命名空间规则变化**（前缀形态 `plugin:<id>:`、拒绝的 key 形态、pluginID 校验）
 - **写类 API 的审计口径变化**（在哪一层落、失败是否翻转结果、`action`/`target` 的取值）
 - 安全边界表述变化（同用户运行、环境变量白名单）

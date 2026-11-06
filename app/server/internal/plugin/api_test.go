@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"feedchamber/internal/model"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -92,7 +94,10 @@ type fakeAudit struct {
 }
 
 func (f *fakeAudit) RecordPluginAction(ctx context.Context, pluginID, action, target, detail string) error {
-	f.records = append(f.records, pluginID+"|"+action+"|"+target)
+	// 记录里带上 detail：既有断言只看前缀 "test-plugin|" 与 target 子串，
+	// 追加一段不改变任何已断言的语义；而 TestAuditTargetComesFromParamDeclarations
+	// 需要看到 detail 才能钉住「审计字段来自同一份参数声明」。
+	f.records = append(f.records, pluginID+"|"+action+"|"+target+"|"+detail)
 	return f.err
 }
 
@@ -170,6 +175,14 @@ func invokeAPIAs(t *testing.T, pluginID string, caps CapabilitySet, deps APIDeps
 	}
 	_, err = fn(context.Background(), raw)
 	return err
+}
+
+// mustJSON 把参数对象编码成 json.RawMessage（喂 decodeArgs 用）。
+func mustJSON(t *testing.T, v any) json.RawMessage {
+	t.Helper()
+	raw, err := json.Marshal(v)
+	require.NoError(t, err)
+	return raw
 }
 
 // ---- capability 校验 ----
@@ -426,6 +439,41 @@ func TestKVCapabilitiesAreIndependent(t *testing.T) {
 		"api.kv.set", map[string]string{"key": "k", "value": "v"}), "kv:read 不隐含 kv:write")
 }
 
+// 省略 value 等价于空串（清空这个键），这是重构前的行为，不得收紧。
+//
+// 重构前 kv.set 从不调 requireFields，{"key":"c"} 会存下 ""。把 value 标成
+// Required 后同一个调用变成「参数缺失: value」——清空一个键这个合法语义
+// 被参数校验挡住了。
+func TestKVSetWithoutValueStoresEmpty(t *testing.T) {
+	kv := newFakeKV()
+	deps := APIDeps{KV: kv, Audit: &fakeAudit{}}
+	err := invokeAPIAs(t, "alpha", CapabilitySet{"kv:write": {}}, deps, "api.kv.set",
+		map[string]any{"key": "c"})
+	require.NoError(t, err, "省略 value 必须合法")
+	require.Equal(t, []string{"plugin:alpha:c"}, kv.sets)
+	require.Equal(t, "", kv.data["plugin:alpha:c"], "省略 value 必须存成空串")
+}
+
+// 端到端：带空白的 key 必须仍被 pluginKVKey 拒绝（证明 NoTrim 真的生效）。
+//
+// 这条与 TestNoTrimFlagsArePinned 是一对：那条钉声明，这条钉**行为**。
+// 只钉声明时，把 decodeArgs 里 `if !f.NoTrim` 的判断删掉仍会全绿。
+func TestKVKeyWhitespaceStillRejected(t *testing.T) {
+	for _, method := range []string{"api.kv.get", "api.kv.set"} {
+		kv := newFakeKV()
+		deps := APIDeps{KV: kv, Audit: &fakeAudit{}}
+		params := map[string]any{"key": " k"}
+		if method == "api.kv.set" {
+			params["value"] = "v"
+		}
+		err := invokeAPIAs(t, "alpha", CapabilitySet{"kv:write": {}, "kv:read": {}}, deps, method, params)
+		require.Error(t, err, "%s 必须拒绝首尾空白的 key", method)
+		require.Contains(t, err.Error(), "空白")
+		require.Empty(t, kv.sets)
+		require.Empty(t, kv.gets)
+	}
+}
+
 // ---- 未知方法 ----
 
 func TestLookupAPIUnknownMethod(t *testing.T) {
@@ -550,4 +598,203 @@ func TestCapabilityErrorsAreIdentifiable(t *testing.T) {
 	err := invokeAPI(t, CapabilitySet{"posts:read": {}}, APIDeps{Posts: &fakePostWriter{}, Audit: &fakeAudit{}},
 		"api.posts.setStatus", map[string]string{"post_id": "p1", "status": "pending"})
 	require.ErrorIs(t, err, ErrCapabilityDenied)
+}
+
+// 每个写类规格的审计三元组必须**逐字**符合预期。
+//
+// 只检查「audit 非零」与「字段名存在」抓不住这些错：Target/Detail 对调、
+// Action 拼错、KV Scope 忘了加——它们都能让审计落一条格式正确但内容错位的
+// 记录，而 TestWriteAPIsAreAudited 只数条数，全都照绿。
+//
+// 同样重要的是这里走**真实路径**：样例参数先过 decodeArgs（证明它自身合法），
+// 再由 spec.audit.extract 取三元组，与 adapt 落审计用的是同一条代码路径。
+func TestAuditTriplesAreExact(t *testing.T) {
+	want := map[string]struct{ action, target, detail string }{
+		"api.posts.setStatus":    {"post.setStatus", "p1", "pending"},
+		"api.posts.addTag":       {"post.addTag", "p1", "auto"},
+		"api.comments.setStatus": {"comment.setStatus", "c1", "pending"},
+		"api.notifications.send": {"notification.send", "u1", "t"},
+		// KV 的 target 是**加过前缀的全键**（AuditScopePluginKV），detail 为空。
+		"api.kv.set":       {"kv.set", "plugin:test-plugin:k", ""},
+		"api.slots.set":    {"slot.set", "sidebar.top", "text"},
+		"api.slots.delete": {"slot.delete", "sidebar.top", ""},
+	}
+
+	// 表必须与写类清单**恰好**同集：新增写类规格时忘了补一行，
+	// 它会在这里直接报错，而不是悄悄逃出审计口径的覆盖范围。
+	writeMethods := writeAPIMethods()
+	require.Len(t, want, len(writeMethods),
+		"预期表必须与 writeAPIMethods() 一一对应：%v", writeMethods)
+	for _, method := range writeMethods {
+		_, ok := want[method]
+		require.True(t, ok, "%s 是写类但预期表里没有它", method)
+	}
+
+	for method, exp := range want {
+		spec, ok := findAPI(method)
+		require.True(t, ok, "%s 必须存在", method)
+		require.True(t, spec.write, "%s 必须是写类", method)
+
+		a, err := decodeArgs(mustJSON(t, writeAPISampleParams(method)), spec.params)
+		require.NoError(t, err, "%s 的样例参数必须能通过自身校验", method)
+
+		action, target, detail := spec.audit.extract("test-plugin", a)
+		require.Equal(t, exp.action, action, "%s 的审计 action", method)
+		require.Equal(t, exp.target, target, "%s 的审计 target", method)
+		require.Equal(t, exp.detail, detail, "%s 的审计 detail", method)
+	}
+}
+
+// NoTrim 必须落在且只落在这四个字段上。
+//
+// 少了 kv 的 key，pluginKVKey 的 `trimmed != key` 空白拒绝就被静默绕过 ——
+// " k" 会被 trim 成 "k" 从而被接受，等于放宽 KV 命名空间隔离。
+func TestNoTrimFlagsArePinned(t *testing.T) {
+	want := map[string][]string{
+		"api.kv.get":             {"key"},
+		"api.kv.set":             {"key", "value"},
+		"api.notifications.send": {"body"},
+	}
+	for method, fields := range want {
+		spec, ok := findAPI(method)
+		require.True(t, ok)
+		got := map[string]bool{}
+		for _, f := range spec.params {
+			if f.NoTrim {
+				got[f.Name] = true
+			}
+		}
+		for _, name := range fields {
+			require.True(t, got[name], "%s 的 %s 必须 NoTrim", method, name)
+		}
+		require.Len(t, got, len(fields), "%s 不应有额外的 NoTrim 字段", method)
+	}
+}
+
+// 写类规格必须声明审计，读类必须不声明——这是 adapt 里那个
+// `if action == "" { action = s.method }` 兜底之外唯一的强制约束。
+//
+// 没有这条时，一个漏写 audit 的写类规格仍然会产出一条审计记录，
+// 只是 action 退化成方法名、target 变成空串，而 TestWriteAPIsAreAudited
+// 只数字节数，照样全绿——正是本重构要消灭的那种静默漂移。
+func TestWriteSpecsDeclareAudit(t *testing.T) {
+	for _, s := range apiSpecs {
+		if s.write {
+			require.False(t, s.audit.isZero(),
+				"%s 是写类但 audit 为零值：审计会静默退化成方法名", s.method)
+			require.NotEmpty(t, s.audit.Action, "%s 的 audit.Action 不能为空", s.method)
+			continue
+		}
+		require.True(t, s.audit.isZero(),
+			"%s 不是写类却声明了 audit（读类不应落审计）", s.method)
+	}
+}
+
+// 审计引用的字段必须真实存在于该规格的 params 里。
+//
+// 改了 params 里的字段名却忘了同步 audit.Target/Detail 时，joinArgs 会
+// 取到空串——不报错，只是审计里少了一个标识。这条把它变成编译期之后
+// 第一个会红的东西。
+func TestAuditFieldReferencesExistInParams(t *testing.T) {
+	for _, s := range apiSpecs {
+		declared := make(map[string]bool, len(s.params))
+		for _, f := range s.params {
+			declared[f.Name] = true
+		}
+		for _, name := range s.audit.Target {
+			require.True(t, declared[name],
+				"%s 的 audit.Target 引用了不存在的参数 %q", s.method, name)
+		}
+		for _, name := range s.audit.Detail {
+			require.True(t, declared[name],
+				"%s 的 audit.Detail 引用了不存在的参数 %q", s.method, name)
+		}
+	}
+}
+
+// 反向校验：每个已声明能力都必须被 ≥1 个 API 使用。
+//
+// 重构前只有正向（每个 API 都有已知能力）。缺少反向的后果是真实的：
+// posts:read 与 comments:read 一直是空的——管理员在装机确认页批准它们时，
+// 批准的是一条不存在的能力，插件拿不到任何对应 API。
+//
+// 白名单里的是已知的空能力，待裁定删除还是接上真实 API
+// （见 docs/superpowers/specs/2026-11-06-plugin-capability-config-design.md §5.3）。
+// **这张表只许变短**：新增条目等于给"先声明后实现"开口子。
+func TestEveryCapabilityUsedByAnAPI(t *testing.T) {
+	used := make(map[string]bool)
+	for _, cap := range apiCapabilities() {
+		used[cap] = true
+	}
+
+	for _, cap := range KnownCapabilities() {
+		if used[cap] {
+			continue
+		}
+		_, allowed := capabilityWithoutAPI[cap]
+		require.True(t, allowed,
+			"能力 %q 没有被任何 API 使用，且不在 capabilityWithoutAPI 白名单里。"+
+				"要么给它接上 API，要么从 knownCapabilities 删除它", cap)
+	}
+}
+
+// 白名单本身不得包含已被使用的能力——那会让上面那条测试失去意义。
+func TestCapabilityWithoutAPIListIsAccurate(t *testing.T) {
+	used := make(map[string]bool)
+	for _, cap := range apiCapabilities() {
+		used[cap] = true
+	}
+	for cap := range capabilityWithoutAPI {
+		require.False(t, used[cap],
+			"%q 已经在被 API 使用，应从 capabilityWithoutAPI 移除", cap)
+		require.True(t, IsKnownCapability(cap),
+			"%q 不在 knownCapabilities 里，白名单出现幽灵条目", cap)
+	}
+
+	// 白名单只许变短：keys 必须是 {CapPostsRead, CapCommentsRead} 的子集。
+	//
+	// 不钉住时白名单可以静默扩张——把某个已用能力指向别的 cap 再加进白名单，
+	// 全套测试仍然全绿（TestEveryCapabilityUsedByAnAPI 只查「未被使用的能力
+	// 是否在白名单里」，查不出「白名单里多了新条目」）。
+	//
+	// 用 Subset 而不是 ElementsMatch：收缩（修掉 §5.3）应当无需改测试，
+	// 只有扩张才需要显式改这里并说明理由。
+	keys := make([]string, 0, len(capabilityWithoutAPI))
+	for cap := range capabilityWithoutAPI {
+		keys = append(keys, cap)
+	}
+	require.Subset(t,
+		[]string{CapPostsRead, CapCommentsRead}, keys,
+		"capabilityWithoutAPI 只许变短：新增条目必须同步修改本断言并说明理由")
+}
+
+// 插件侧的状态枚举字面量与 service 层权威常量必须一致。
+//
+// 生产代码不能 import internal/model（会把 gorm 带进来），所以 Enum 只能是
+// 字符串字面量。这条测试用**内部测试包**（package plugin）把它钉回去：
+// service 层加了新状态而这里忘了同步时，测试变红。
+//
+// 实测：package plugin 的 _test.go import internal/model 后，
+// go list -deps ./internal/plugin 的 gorm 计数仍为 0（它只算非测试构建图）。
+func TestStatusEnumMatchesModelConstants(t *testing.T) {
+	want := []string{
+		model.PostStatusApproved,
+		model.PostStatusPending,
+		model.PostStatusRejected,
+		model.PostStatusClosed,
+	}
+
+	for _, m := range []string{"api.posts.setStatus", "api.comments.setStatus"} {
+		spec, ok := findAPI(m)
+		require.True(t, ok, "%s 必须存在", m)
+
+		var got []string
+		for _, f := range spec.params {
+			if f.Name == "status" {
+				got = f.Enum
+			}
+		}
+		require.NotEmpty(t, got, "%s 的 status 必须声明 Enum（供文档展示）", m)
+		require.Equal(t, want, got, "%s 的 status 枚举与 model 常量不一致", m)
+	}
 }
