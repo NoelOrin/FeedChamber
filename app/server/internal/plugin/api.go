@@ -45,6 +45,19 @@ var knownCapabilities = map[string]struct{}{
 	CapSlotsWrite:    {},
 }
 
+// capabilityWithoutAPI 是「已声明但暂时没有 API 使用」的能力。
+//
+// 存在本身就是缺陷：管理员在装机确认页批准它时，批准的是一条不存在的能力，
+// 插件拿不到任何对应 API。此表只允许变短——新增条目必须同时给出理由与
+// 移除计划，TestEveryCapabilityUsedByAnAPI 会强制每个条目在这里出现。
+//
+// 待裁定：删除（会让已声明它的存量插件重装失败）还是接上真实 API（新能力）。
+// 见 docs/superpowers/specs/2026-11-06-plugin-capability-config-design.md §5.3。
+var capabilityWithoutAPI = map[string]string{
+	CapPostsRead:    "从未有过宿主 API；待裁定（§5.3）",
+	CapCommentsRead: "从未有过宿主 API；待裁定（§5.3）",
+}
+
 // KnownCapabilities 返回全部合法 capability（**已排序**，供 manifest 校验与后台展示）。
 //
 // 排序不是为了好看：这份清单会被写进安装确认页、审计与测试断言，

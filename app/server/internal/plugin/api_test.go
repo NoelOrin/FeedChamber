@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"feedchamber/internal/model"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -610,5 +612,76 @@ func TestAuditFieldReferencesExistInParams(t *testing.T) {
 			require.True(t, declared[name],
 				"%s 的 audit.Detail 引用了不存在的参数 %q", s.method, name)
 		}
+	}
+}
+
+// 反向校验：每个已声明能力都必须被 ≥1 个 API 使用。
+//
+// 重构前只有正向（每个 API 都有已知能力）。缺少反向的后果是真实的：
+// posts:read 与 comments:read 一直是空的——管理员在装机确认页批准它们时，
+// 批准的是一条不存在的能力，插件拿不到任何对应 API。
+//
+// 白名单里的是已知的空能力，待裁定删除还是接上真实 API
+// （见 docs/superpowers/specs/2026-11-06-plugin-capability-config-design.md §5.3）。
+// **这张表只许变短**：新增条目等于给"先声明后实现"开口子。
+func TestEveryCapabilityUsedByAnAPI(t *testing.T) {
+	used := make(map[string]bool)
+	for _, cap := range apiCapabilities() {
+		used[cap] = true
+	}
+
+	for _, cap := range KnownCapabilities() {
+		if used[cap] {
+			continue
+		}
+		_, allowed := capabilityWithoutAPI[cap]
+		require.True(t, allowed,
+			"能力 %q 没有被任何 API 使用，且不在 capabilityWithoutAPI 白名单里。"+
+				"要么给它接上 API，要么从 knownCapabilities 删除它", cap)
+	}
+}
+
+// 白名单本身不得包含已被使用的能力——那会让上面那条测试失去意义。
+func TestCapabilityWithoutAPIListIsAccurate(t *testing.T) {
+	used := make(map[string]bool)
+	for _, cap := range apiCapabilities() {
+		used[cap] = true
+	}
+	for cap := range capabilityWithoutAPI {
+		require.False(t, used[cap],
+			"%q 已经在被 API 使用，应从 capabilityWithoutAPI 移除", cap)
+		require.True(t, IsKnownCapability(cap),
+			"%q 不在 knownCapabilities 里，白名单出现幽灵条目", cap)
+	}
+}
+
+// 插件侧的状态枚举字面量与 service 层权威常量必须一致。
+//
+// 生产代码不能 import internal/model（会把 gorm 带进来），所以 Enum 只能是
+// 字符串字面量。这条测试用**内部测试包**（package plugin）把它钉回去：
+// service 层加了新状态而这里忘了同步时，测试变红。
+//
+// 实测：package plugin 的 _test.go import internal/model 后，
+// go list -deps ./internal/plugin 的 gorm 计数仍为 0（它只算非测试构建图）。
+func TestStatusEnumMatchesModelConstants(t *testing.T) {
+	want := []string{
+		model.PostStatusApproved,
+		model.PostStatusPending,
+		model.PostStatusRejected,
+		model.PostStatusClosed,
+	}
+
+	for _, m := range []string{"api.posts.setStatus", "api.comments.setStatus"} {
+		spec, ok := findAPI(m)
+		require.True(t, ok, "%s 必须存在", m)
+
+		var got []string
+		for _, f := range spec.params {
+			if f.Name == "status" {
+				got = f.Enum
+			}
+		}
+		require.NotEmpty(t, got, "%s 的 status 必须声明 Enum（供文档展示）", m)
+		require.Equal(t, want, got, "%s 的 status 枚举与 model 常量不一致", m)
 	}
 }
