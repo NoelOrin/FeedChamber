@@ -116,6 +116,10 @@ func decodeArgs(params json.RawMessage, fields []Field) (*Args, error) {
 				a.ints[f.Name] = 1
 			}
 		default: // FieldString
+			// 注意：这里与 schema.go 的 schemaType 是一对必须同步的 switch。
+			// schemaType 对未映射的类型 panic（构建期可控）；这里刻意**不** panic ——
+			// decodeArgs 跑在每次插件调用的 IPC dispatch goroutine 上，
+			// 在那里 panic 等于让一个类型错误打崩整个后端进程。
 			var s string
 			if err := json.Unmarshal(val, &s); err != nil {
 				return nil, fmt.Errorf("参数类型错误: %s 必须是字符串", f.Name)

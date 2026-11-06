@@ -22,7 +22,10 @@ func schemaType(t FieldType) string {
 		// 新增 FieldType 而忘了同步这里时直接 panic，而不是静默当成 string。
 		// decodeArgs 的 default 分支会把它当字符串校验，于是「文档写 string、
 		// 实际也拒绝非字符串」错得一致且无声——那正是这套重构要消灭的漂移。
-		// APISchemas() 遍历全部规格，因此 TestAPISchemasCoverAllMethods 立刻变红。
+		//
+		// 这条 panic 由 TestSchemaTypePanicsOnUnmappedFieldType 钉住，
+		// 而不是 TestAPISchemasCoverAllMethods —— 后者只比对键集合，
+		// 而 apiSpecs 里的每个 FieldType 都有显式 case，永远走不到这里。
 		panic(fmt.Sprintf("plugin: 未映射的 FieldType %d（schema 与 decodeArgs 必须同步）", int(t)))
 	}
 }
