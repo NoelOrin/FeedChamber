@@ -91,8 +91,8 @@ func TestAPISchemasMarshalToValidJSON(t *testing.T) {
 	}
 }
 
-// 非法字段名在注册期就该被拦住：schema 与取值器都按名索引，
-// 空名会让两者同时静默失效。
+// 非法字段名在构建 schema 时（APISchemas 触发）就该被拦住：
+// schema 与取值器都按名索引，空名会让两者同时静默失效。
 func TestSchemaRejectsEmptyFieldName(t *testing.T) {
 	require.Panics(t, func() {
 		schemaFor([]Field{{Name: "", Type: FieldString}})
