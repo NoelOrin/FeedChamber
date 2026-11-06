@@ -653,6 +653,22 @@ func TestCapabilityWithoutAPIListIsAccurate(t *testing.T) {
 		require.True(t, IsKnownCapability(cap),
 			"%q 不在 knownCapabilities 里，白名单出现幽灵条目", cap)
 	}
+
+	// 白名单只许变短：keys 必须是 {CapPostsRead, CapCommentsRead} 的子集。
+	//
+	// 不钉住时白名单可以静默扩张——把某个已用能力指向别的 cap 再加进白名单，
+	// 全套测试仍然全绿（TestEveryCapabilityUsedByAnAPI 只查「未被使用的能力
+	// 是否在白名单里」，查不出「白名单里多了新条目」）。
+	//
+	// 用 Subset 而不是 ElementsMatch：收缩（修掉 §5.3）应当无需改测试，
+	// 只有扩张才需要显式改这里并说明理由。
+	keys := make([]string, 0, len(capabilityWithoutAPI))
+	for cap := range capabilityWithoutAPI {
+		keys = append(keys, cap)
+	}
+	require.Subset(t,
+		[]string{CapPostsRead, CapCommentsRead}, keys,
+		"capabilityWithoutAPI 只许变短：新增条目必须同步修改本断言并说明理由")
 }
 
 // 插件侧的状态枚举字面量与 service 层权威常量必须一致。

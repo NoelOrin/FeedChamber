@@ -48,8 +48,18 @@ var knownCapabilities = map[string]struct{}{
 // capabilityWithoutAPI 是「已声明但暂时没有 API 使用」的能力。
 //
 // 存在本身就是缺陷：管理员在装机确认页批准它时，批准的是一条不存在的能力，
-// 插件拿不到任何对应 API。此表只允许变短——新增条目必须同时给出理由与
-// 移除计划，TestEveryCapabilityUsedByAnAPI 会强制每个条目在这里出现。
+// 插件拿不到任何对应 API。此表只允许变短——新增条目必须同时修改
+// TestCapabilityWithoutAPIListIsAccurate 里的 key-set 断言，从而进入 review 视野。
+//
+// 两个方向的约束来自**两条不同的测试**，别指望一条兜住全部：
+//   - TestEveryCapabilityUsedByAnAPI：每个「已知但无人使用」的能力必须在这里，
+//     否则变红。它管的是**漏登记**（某个空能力忘了写进白名单）。
+//   - TestCapabilityWithoutAPIListIsAccurate 的 key-set 断言：这里不许**多**出条目，
+//     否则变红。它管的是**白名单扩张**——这一半只能靠钉住 key 集合的上界，
+//     因为「新增一个能力 + 把它写进白名单」在语义上与存量两条无法区分。
+//
+// 钉的是 key 集合而非整张 map：**缩短**（按 §5.3 删除某条能力，或给它接上真实
+// API）只改本表即可，不必再动测试；**增长**则必须显式改断言。
 //
 // 待裁定：删除（会让已声明它的存量插件重装失败）还是接上真实 API（新能力）。
 // 见 docs/superpowers/specs/2026-11-06-plugin-capability-config-design.md §5.3。
