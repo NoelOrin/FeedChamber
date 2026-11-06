@@ -245,7 +245,7 @@ type Func func(ctx context.Context, a *Args) (any, error)
 type apiSpec struct {
 	method string
 	cap    string
-	// write 为 true 时，调用成功后**统一**由 wrap 落审计；handler 自己不写审计。
+	// write 为 true 时，调用成功后**统一**由 adapt 落审计；handler 自己不写审计。
 	write bool
 	// params 是参数的唯一声明处：校验、取值、JSON Schema、审计提取全部由它派生。
 	params []Field
@@ -571,12 +571,16 @@ func lookupAPI(method, pluginID string, caps CapabilitySet, deps APIDeps) (Handl
 // adapt 把 Func 适配成 ipc.Handler：解码一次 → 校验 → 执行 → 审计。
 //
 // 审计在这里统一落，**handler 内部没有审计调用点**——「写类 API 忘审计」
-// 不可能发生。新增写 API 只要 write:true + audit 非零，
-// TestWriteAPIsAreAudited 自动纳入覆盖。
+// 不可能发生。新增写 API 只要 write:true + audit 非零；后者由
+// TestWriteSpecsDeclareAudit 与 TestAuditFieldReferencesExistInParams 强制，
+// TestWriteAPIsAreAudited 只负责数「写类各多了一条记录」，不能替代它们。
 func (s apiSpec) adapt(pluginID string, deps APIDeps, fn Func) Handler {
 	return func(ctx context.Context, params json.RawMessage) (res any, err error) {
-		// handler 跑在 ipc.go 的 dispatch goroutine 里，一次 panic 就是整个
-		// 后端进程崩溃。插件能控制的输入必须在这里兜住。
+		// handler 跑在 ipc.go 的 dispatch goroutine 里，插件能控制的输入
+		// 必须在这里兜住：**未捕获的** panic 会终结整个后端进程。
+		// 下面的 recover 把它降级成一次失败调用，ipc.go 的 callHandlerSafely
+		// 还有第二道同样的网——两处都不能删，它们各管一层（本层知道
+		// pluginID 与 method，日志可定位；那层对所有入站 handler 生效）。
 		defer func() {
 			if r := recover(); r != nil {
 				logrus.Errorf("plugin: %s 调用 %s 时 panic: %v", pluginID, s.method, r)
@@ -599,7 +603,7 @@ func (s apiSpec) adapt(pluginID string, deps APIDeps, fn Func) Handler {
 
 		action, target, detail := s.audit.extract(pluginID, a)
 		if action == "" {
-			// 不该发生（TestWriteAPIsAreAudited 保证写类都有 action）。
+			// 不该发生：TestWriteSpecsDeclareAudit 要求写类的 audit.Action 非空。
 			// 仍落一条可辨认的记录，而不是静默跳过——「一次写没有审计」
 			// 比「审计字段不好看」严重得多。
 			action = s.method
