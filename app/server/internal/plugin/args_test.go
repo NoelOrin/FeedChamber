@@ -86,7 +86,47 @@ func TestDecodeArgsRejectsWrongType(t *testing.T) {
 	fields := []Field{{Name: "sort", Type: FieldInt}}
 	_, err := decodeArgs(json.RawMessage(`{"sort":"abc"}`), fields)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "sort")
+	require.Contains(t, err.Error(), "必须是整数")
+}
+
+// NoTrim 字段保留原始值（首尾空白不丢），用于 KV key 与通知正文。
+func TestDecodeArgsNoTrimPreservesValue(t *testing.T) {
+	fields := []Field{{Name: "key", Type: FieldString, Required: true, NoTrim: true}}
+	a, err := decodeArgs(json.RawMessage(`{"key":" k "}`), fields)
+	require.NoError(t, err)
+	require.Equal(t, " k ", a.String("key"), "NoTrim 必须原样保留")
+}
+
+// NoTrim 不影响「必填非空」判定：纯空白仍然算缺失。
+func TestDecodeArgsNoTrimStillRejectsBlank(t *testing.T) {
+	fields := []Field{{Name: "key", Type: FieldString, Required: true, NoTrim: true}}
+	_, err := decodeArgs(json.RawMessage(`{"key":"   "}`), fields)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "key")
+}
+
+// Int 的 happy path：整数真的被存进 map。
+func TestArgsIntStoresValue(t *testing.T) {
+	fields := []Field{
+		{Name: "sort", Type: FieldInt},
+		{Name: "name", Type: FieldString},
+	}
+	a, err := decodeArgs(json.RawMessage(`{"sort":7,"name":"x"}`), fields)
+	require.NoError(t, err)
+	require.Equal(t, 7, a.Int("sort"))
+	require.True(t, a.Has("sort"))
+}
+
+// Raw 的 happy path：对象字段的原始 JSON 被保留。
+func TestArgsRawStoresObject(t *testing.T) {
+	fields := []Field{{Name: "props", Type: FieldObject}}
+	a, err := decodeArgs(json.RawMessage(`{"props":{"text":"hi"}}`), fields)
+	require.NoError(t, err)
+
+	var got map[string]string
+	require.NoError(t, json.Unmarshal(a.Raw("props"), &got))
+	require.Equal(t, map[string]string{"text": "hi"}, got)
+	require.True(t, a.Has("props"))
 }
 
 // 缺省值：Type 为零值 FieldString 时按字符串处理（不 panic）。
