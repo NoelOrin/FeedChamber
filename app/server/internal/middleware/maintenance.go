@@ -40,6 +40,15 @@ func MaintenanceGate(settings pkg.SettingReader) iris.Handler {
 			return
 		}
 
+		// SSE streams are long-lived reads delivered over POST. Blocking them
+		// silently kills the notification bell / realtime channel during
+		// maintenance: the SSE client only surfaces error codes in (0, 5000),
+		// so a 5005 here is retried in the background until the client gives up.
+		if strings.HasSuffix(path, "/stream") {
+			ctx.Next()
+			return
+		}
+
 		// RPC-style reads (POST .../list|search|...) should stay available.
 		if isMaintenanceReadRPC(path) {
 			ctx.Next()

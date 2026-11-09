@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"feedchamber/internal/metrics"
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
 	"feedchamber/internal/pkg/eventbus"
@@ -62,6 +63,16 @@ func (s *notificationService) Create(ctx context.Context, userID, notifType, con
 		if blocked, err := s.blockSvc.IsBlocked(ctx, userID, senderID); err == nil && blocked {
 			return nil
 		}
+	}
+	// Reconcile the cache with the DB BEFORE inserting the new row. The cached
+	// unread count carries a 5-minute TTL; CountUnread honours it (Get ->
+	// isExpired -> DB fallback + re-Set), while IncrBy reads the raw JetStream
+	// value and does NOT check the TTL marker. Without this call, a notification
+	// arriving after the TTL expired but before any read purged the stale value
+	// would be pushed to SSE as stale+1. Reconciling before the insert keeps the
+	// subsequent CAS-based IncrBy as exactly "+1 for this new row".
+	if _, err := s.CountUnread(ctx, userID); err != nil {
+		logrus.Warnf("notification: cache reconcile before create failed: %v", err)
 	}
 	n := model.NewNotification(userID, notifType, content, referenceID, senderID)
 	if err := s.repo.Create(ctx, n); err != nil {
@@ -227,6 +238,22 @@ func newNotifDispatcher(svc NotificationService) *NotifDispatcher {
 	}
 }
 
+// enqueue hands a task to the worker pool without ever blocking the caller.
+// The caller is an EventBus worker shared by every subscriber; if notification
+// creation is slow (DB/KV backpressure), a blocking send would stall unrelated
+// event types too. Overflow is shed and made visible via a counter + log.
+// Shutdown closes d.ch, so enqueue must only be called before Shutdown.
+func (d *NotifDispatcher) enqueue(task notifyTask) {
+	select {
+	case d.ch <- task:
+	default:
+		metrics.NotifDispatcherDroppedTotal.WithLabelValues(task.notifType).Inc()
+		logrus.WithField("type", task.notifType).
+			WithField("user_id", task.userID).
+			Warn("notif: dispatcher queue full, dropping notification task")
+	}
+}
+
 func (d *NotifDispatcher) start(workers int) {
 	for i := 0; i < workers; i++ {
 		d.wg.Add(1)
@@ -362,14 +389,14 @@ func SubscribeNotifications(bus *eventbus.EventBus, notifSvc NotificationService
 		} else {
 			msg = senderName + " 评论了你的帖子《" + postTitle + "》"
 		}
-		d.ch <- notifyTask{
+		d.enqueue(notifyTask{
 			ctx:         e.Ctx,
 			userID:      userID,
 			notifType:   "comment",
 			content:     msg,
 			referenceID: postID,
 			senderID:    senderID,
-		}
+		})
 	})
 
 	bus.Subscribe(eventbus.EventContentLiked, func(e eventbus.Event) {
@@ -382,14 +409,14 @@ func SubscribeNotifications(bus *eventbus.EventBus, notifSvc NotificationService
 			postID, _ = e.Payload["content_id"].(string)
 		}
 
-		d.ch <- notifyTask{
+		d.enqueue(notifyTask{
 			ctx:         e.Ctx,
 			userID:      userID,
 			notifType:   "like",
 			content:     senderName + " 赞了你的评论",
 			referenceID: postID,
 			senderID:    senderID,
-		}
+		})
 	})
 
 	bus.Subscribe(eventbus.EventUserFollowed, func(e eventbus.Event) {
@@ -398,14 +425,14 @@ func SubscribeNotifications(bus *eventbus.EventBus, notifSvc NotificationService
 		senderName, _ := e.Payload["sender_name"].(string)
 		followerID, _ := e.Payload["follower_id"].(string)
 
-		d.ch <- notifyTask{
+		d.enqueue(notifyTask{
 			ctx:         e.Ctx,
 			userID:      userID,
 			notifType:   "follow",
 			content:     senderName + " 关注了你",
 			referenceID: followerID,
 			senderID:    senderID,
-		}
+		})
 	})
 
 	bus.Subscribe(eventbus.EventUserMentioned, func(e eventbus.Event) {
@@ -419,14 +446,14 @@ func SubscribeNotifications(bus *eventbus.EventBus, notifSvc NotificationService
 		if snippet != "" {
 			msg = senderName + " 提到了你: " + snippet
 		}
-		d.ch <- notifyTask{
+		d.enqueue(notifyTask{
 			ctx:         e.Ctx,
 			userID:      userID,
 			notifType:   "mention",
 			content:     msg,
 			referenceID: postID,
 			senderID:    senderID,
-		}
+		})
 	})
 
 	bus.Subscribe(eventbus.EventContentWatched, func(e eventbus.Event) {
@@ -440,14 +467,14 @@ func SubscribeNotifications(bus *eventbus.EventBus, notifSvc NotificationService
 		if postTitle != "" {
 			msg = senderName + " 更新了你关注的话题《" + postTitle + "》"
 		}
-		d.ch <- notifyTask{
+		d.enqueue(notifyTask{
 			ctx:         e.Ctx,
 			userID:      userID,
 			notifType:   "watch",
 			content:     msg,
 			referenceID: postID,
 			senderID:    senderID,
-		}
+		})
 	})
 
 	// ── 社区自治动议（motion）───────────────────────────────────────────────
@@ -462,13 +489,13 @@ func SubscribeNotifications(bus *eventbus.EventBus, notifSvc NotificationService
 		if initiatorID == "" {
 			return
 		}
-		d.ch <- notifyTask{
+		d.enqueue(notifyTask{
 			ctx:         e.Ctx,
 			userID:      initiatorID,
 			notifType:   "motion",
 			content:     "你的" + motionTypeLabel(motionType) + "动议已公示，等待社区表决",
 			referenceID: motionID,
-		}
+		})
 		_ = targetID
 	})
 
@@ -484,13 +511,13 @@ func SubscribeNotifications(bus *eventbus.EventBus, notifSvc NotificationService
 		if status == "passed" {
 			result = "已通过"
 		}
-		d.ch <- notifyTask{
+		d.enqueue(notifyTask{
 			ctx:         e.Ctx,
 			userID:      initiatorID,
 			notifType:   "motion",
 			content:     "你发起的" + motionTypeLabel(motionType) + "动议" + result,
 			referenceID: motionID,
-		}
+		})
 	})
 
 	d.start(defaultNotifWorker)

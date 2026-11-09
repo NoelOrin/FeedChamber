@@ -105,7 +105,13 @@ func (s *watchService) NotifyWatchers(ctx context.Context, postID, authorID, sen
 	if s.repo == nil || s.bus == nil || postID == "" {
 		return
 	}
+	// seen is the shared cross-step dedup set; newRecipients holds only the
+	// watchers THIS step discovered. Publishing must iterate newRecipients, not
+	// seen: the latter also contains the post author and @-mentioned users that
+	// earlier fan-out steps already notified, and re-publishing for them would
+	// produce a second notification for a single comment.
 	seen := notified
+	newRecipients := make([]string, 0)
 	add := func(ids []string) {
 		for _, id := range ids {
 			if id == "" || id == authorID {
@@ -115,6 +121,7 @@ func (s *watchService) NotifyWatchers(ctx context.Context, postID, authorID, sen
 				continue
 			}
 			seen[id] = struct{}{}
+			newRecipients = append(newRecipients, id)
 		}
 	}
 
@@ -134,7 +141,7 @@ func (s *watchService) NotifyWatchers(ctx context.Context, postID, authorID, sen
 		}
 	}
 
-	for userID := range seen {
+	for _, userID := range newRecipients {
 		s.bus.Publish(eventbus.Event{
 			Type: eventbus.EventContentWatched,
 			Ctx:  ctx,

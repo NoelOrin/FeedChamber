@@ -208,6 +208,10 @@ func (eb *EventBus) enqueue(event Event) {
 		metrics.EventbusQueueDepth.Set(float64(len(eb.ch)))
 	default:
 		metrics.EventbusDroppedTotal.WithLabelValues(event.Type).Inc()
+		// A full buffer silently loses an event. Emit a warn as well as the
+		// metric so a burst is visible in the logs, not only on a dashboard
+		// someone has to already be watching.
+		logrus.WithField("event", event.Type).Warn("eventbus: dispatch queue full, dropping event")
 	}
 }
 
