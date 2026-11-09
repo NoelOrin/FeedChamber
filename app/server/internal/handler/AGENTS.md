@@ -40,7 +40,7 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 | admin.go | AdminHandler | GetStats, Dashboard, Search, GetUserActivities, BatchUsers, BatchPosts, BatchComments, ReconcileCounters |
 | gate.go | GateHandler | 门控规则 CRUD、能力域默认动作、后台「以用户试算」与元数据（域/字段/操作符/动作/窗口指标）。整段挂 `gate:manage` |
 | trust.go | TrustHandler | 等级 CRUD（ListLevels/SaveLevel/DeleteLevel）、XP 规则与连续签到阶梯、全量重算、用户 XP 指标分解与人工调整（GetUserXP/AdjustXP/ListAdjustments/DeleteAdjustment）、公开等级表（GetPublicLevels → `GET /levels`）。管理路由挂 `level:manage` |
-| setting.go | SettingHandler | Get, GetAll, GetPublic, Set, BatchSet, Delete |
+| setting.go | SettingHandler | Get, GetAll, GetPublic, Set, BatchSet, Delete, SendEmailTest |
 | announcement.go | AnnouncementHandler | List, Create, Update, Delete, Publish, Unpublish, Get, ListPublished |
 | oauth.go | OAuthHandler | GetAllProviderConfigs, GetProviderConfig, GetAuthURL, HandleCallback, GetLinkedAccounts, LinkAccount, UnlinkAccount |
 | checkin.go | CheckInHandler | CheckIn, GetStatus, GetHistory |
@@ -105,3 +105,10 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 
 `plugin.go` 增 `Preview`（`POST /admin/plugins/preview`，不落库）、`ListVersions`（`POST /admin/plugins/versions/list`，body 传 `plugin_id`）、`Rollback`（`POST /admin/plugins/{id}/rollback`，body 传 `version_id`）。
 **版本列表刻意用 body 传 id 而不是路径参数**：网关的前缀映射先于 pattern，`/{id}/versions` 会被 `plugin:manage` 前缀吞掉，只读凭证就拿不到历史；`versions/list` 能走 exact 映射到 `plugin:read`。
+
+## 浏览记录 / 续读位置（2026-11-09）
+
+- 新增 `history.go` 的 `HistoryHandler`（`List` / `Delete` / `Clear`），`post.go` 增 `RecordView`；`handler.go` 只加 `History` 字段并用 `newHistoryHandler(d.Post)` 接线——**复用 PostService，没有新 service**（因此 `Deps` 不加字段、`server/wiring.go` 无需改）。
+- `viewerCtx(ctx iris.Context)` 是本包共享辅助：`WithViewerID` + `WithViewerRole` 把会话 id 与角色灌进 service ctx（等级/版面可见性据此判定）。浏览记录的访问者只能是 ctx 里的这个人，身份绝不经路径或 body 参数传递（越权写口）。
+- `POST /history/list` **必须容忍空 body**：`ReadJSON` 无 body 返回 `io.EOF`，直接 `Fail(INVALID_PARAMS)` 会把「默认分页的合法请求」打成 400（见上文「列表接口必须容忍空 body」）；分页字段用规范的 `page`/`pageSize`（`pkg.NormalizePagination`），`Delete` 幂等。
+- 新增 `history_test.go`（HTTP 层）。

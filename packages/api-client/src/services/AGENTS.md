@@ -6,7 +6,7 @@
 
 ## 文件清单（按后端域）
 
-`admin` `announcement` `gate` `api-key` `auth` `backup` `badge` `banned` `checkin` `content` `dashboard` `draft` `favorite` `follow` `group` `invite` `leaderboard` `like` `mfa` `moderation` `motion` `notification` `oauth` `oauth-client` `permission` `plugin` `pm` `post` `report` `revision` `role` `security` `session` `setting` `space` `tag` `theme` `trust` `upload` `user` `user_block` `watch` `webhook`
+`admin` `announcement` `gate` `api-key` `auth` `backup` `badge` `banned` `checkin` `content` `dashboard` `draft` `favorite` `follow` `group` `history` `invite` `leaderboard` `like` `mfa` `moderation` `motion` `notification` `oauth` `oauth-client` `permission` `plugin` `pm` `post` `report` `revision` `role` `security` `session` `setting` `space` `tag` `theme` `trust` `upload` `user` `user_block` `watch` `webhook`
 
 ## 模块形状
 
@@ -99,3 +99,16 @@ export const postService = {
 ## 插件服务（2026-11-05）
 
 `plugin.ts` 覆盖 `/admin/plugins/{list,sources/list,installs/list,install,preview,versions/list,{id}/rollback,sources/create,sources/{id}/approve,sources/{id}/reject,{id}/update,{id}/status,{id}/uninstall,{id}/delete}`；类型与常量在同目录 `plugin.test.ts` 有契约测试（vitest，mock `post` 断言 URL/方法/body）。不提供单插件详情方法（见 `app/web/app/admin/AGENTS.md` 的说明）。
+
+## 浏览记录 / 续读游标（2026-11-09）
+
+新增 `history.ts`（文件清单已加 `history`）：导出 `historyService` 并从 `src/index.ts` re-export。三个端点都是 POST 且带动词后缀：
+
+| 方法 | 端点 | 说明 |
+|------|------|------|
+| `list({ page, pageSize })` | `POST /history/list` | `postPaginated<PostListItem[]>`；分页字段用规范 `page` / `pageSize`（**不是**旧的 `ListParams.page_size`） |
+| `delete(postId)` | `POST /history/{postId}/delete` | 幂等，本就没有这条也返回成功 |
+| `clear()` | `POST /history/clear` | 只清当前用户自己的记录 |
+
+- **actor 由后端从会话派生，三个方法都不传 user id**（不越权写口）；列表只含访问者当前还看得见的帖子——可见性谓词在 SQL 里（与列表 / 详情同一套），故条数小于历史总数属正常。
+- `post.ts` 的 `recordView(id, lastContentId?)` → `POST /posts/{id}/view` 是**另一条写路径**，**不要与 `markRead`（`POST /posts/{id}/read`）混淆**：`markRead` 表示「读完 / 标记已读」（写 `last_read_at`，驱动 `list_view=new` / `has_new` 筛选），`recordView` 只表示「看过 / 读到哪条评论」（写 `last_viewed_at` + `last_content_id` 续读游标），两者在 `topic_read_states` 里写不同列、语义不可互换。`PostListItem` 类型因此新增 `last_content_id?` 与 `last_viewed_at?: string \| null`。

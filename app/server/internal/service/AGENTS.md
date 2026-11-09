@@ -73,7 +73,7 @@
 | token_blacklist_iface.go | — | TokenBlacklist 接口 |
 | role.go | RoleService | RoleRepository |
 | role_iface.go | — | RoleService 接口定义 |
-| email.go | EmailService | Mailer, KV (code 存储与验证) |
+| email.go | EmailService | Mailer, KV (code 存储与验证)、SettingService（`BuildMailerConfig` 每次发送重读）；含后台自测 `SendTest` |
 | email_iface.go | — | EmailService 接口定义 |
 | oauth.go | OAuthService | UserRepository, OAuthRepository, SettingService, KV |
 | checkin.go | CheckInService | CheckInRepository, UserRepository |
@@ -135,6 +135,14 @@
 `NewWatchService` 的 `postRepo` 入参也随之摘掉（它当时只为从 post 取 `SpaceID`，去掉 space 分支后成了纯多余的依赖）。
 `watch_test.go` 用 `assert.False(validTargetType("space"))` 钉住这条收口。
 
+## 通知链路修复（2026-11-09）
+
+三处都落在 `notification.go` / `watch.go`，均有对应测试钉住：
+
+- **一条评论只产生一条通知**：`NotifyWatchers` 的发布循环 MUST 只遍历「本次调用新加入的关注者」（`newRecipients`），不能遍历共享 `notified` 集合。后者还含帖子作者与 @提及者（更早扇出步骤已通知），遍历它会给这些人再发一条 `content.watched`。`watch_test.go` 的 `TestNotifyWatchers_SkipsAlreadyNotifiedRecipients` 钉住。
+- **dispatcher 入队不阻塞 EventBus worker**：`NotifDispatcher.enqueue` 用 `select/default` 非阻塞入队，队列满则丢弃并记 `feedchamber_notif_dispatcher_dropped_total{type}` + warn 日志。EventBus worker 是所有订阅共用的，慢 DB/KV 不能拖住无关事件。`notification_dispatcher_test.go` 钉住。
+- **未读缓存 TTL 与 DB 对账**：`Create` 落库前先调 `CountUnread` 校准缓存。`CountUnread`（`Get`）会判 5min TTL 并回源 DB，而 `IncrBy` 读 JetStream 原值、**不判 TTL**；TTL 到期且无人读过时直接 `IncrBy` 会把「过期脏值 +1」推给 SSE。校准放在落库前，使后续 `IncrBy` 恰好是「为新行 +1」。`notification_cache_ttl_test.go` 钉住。
+
 ## 可见性与门控（2026-10-29 P2/P3）
 
 - `visibility.go` 是内容可见性的**单一谓词**：`BuildVisibilityIndex` 把版面 `visibility`(public/login/level) 沿祖先链解析成有效策略（level > login > public，level 取链上最大 `min_level`）；`VisibleSpaceIDs(level, loggedIn)` 供 SQL 过滤，`PostRequiredLevel` 合并帖子 `min_level` 覆盖。游客一律按 TL0、`is_anonymous` 单独保留。
@@ -144,6 +152,20 @@
 - `gate.go` 是门控规则引擎：固定谓词集 + 4 个动作（allow/deny/require_review/rate_limit），按 `priority` 降序**首个命中**，无命中走 `gate_domain_defaults` 的显式默认；配置内存快照 30s + `gate:sync` Pub/Sub 失效；每次判定写带 trace 的结构化日志（命中规则 id / 默认动作），后台 `Simulate` 与线上共用 `Evaluate`。
 - 发帖在 `post_create` 域、评论在 `comment_create` 域；两者只要正文含外链就额外进 `external_link` 域（只在含链接时求值，避免 deny 默认误伤纯文本）；`require_review` 会落 pending 并留痕 `strategy=gate`，`rate_limit` 按 `rl:gate:<domain>:u:<id>` / `lvl:<level>` 键执行。
 - seed：外链域默认 deny + TL0 deny 规则（priority 100）+ 等级 ≥1 allow 规则（priority 50）；不 seed 发帖强制待审。
+
+## 邮件诊断（2026-11-06）
+
+`emailService.SendTest(ctx, to)` 是后台「发送测试邮件」的实现：
+用**当前已保存**的配置真发一封，返回 `MailTestReport`（provider/host/port/tls_mode/from/
+email_enabled/elapsed_ms/error/notice）。
+
+- 配置错误与投递失败**都写进 report（`ok=false`），err 返回 nil**——这条路径存在的意义就是
+  把原因交给管理员，打成 500 只会显示「Internal Server Error」。只有收件人非法才回
+  `*pkg.AppError(INVALID_PARAMS)`。
+- 报告结构体刻意不含凭据字段，密码/API Key 不可能被序列化出去
+  （`email_test.go` 的 `TestSendTest_ReportNeverContainsCredentials` 钉住）。
+- `email_enabled` 只拦用户侧验证码流程；自测照跑，但会在 `notice` 里说明「用户侧仍被拦截」。
+- `provider=log` 时 `ok=true` 但带提示「只写日志、收件人不会收到」——否则管理员会误判成真发成功。
 
 ## 读穿缓存（readcache）
 
@@ -198,3 +220,14 @@
 - `HashPluginDir` 计算目录内容 sha256（排除 `node_modules` / `.git`），落 `plugin_installs.checksum` 与版本历史。
 - `Preview` 返回能力/依赖清单（临时目录拉一份读 `package.json`，用完即删），**不落库、不起进程**。
 - `ListVersions` / `RollbackAs`：每次安装/升级落一条 `plugin_versions`（note = install/upgrade/rollback）；回滚按历史 manifest 与来源重装。
+
+## 浏览记录 / 续读位置（2026-11-09）
+
+四个新方法 `RecordView(ctx, postID, cursor)` / `ListHistory(ctx, page, pageSize)` / `DeleteHistory(ctx, postID)` / `ClearHistory(ctx)` **都长在 `postService`（`PostService` 接口）里，没有新建 service**；`handler/history.go` 直接复用 `d.Post`。
+
+- **actor 一律从 ctx 取**：四个出口用 `WithViewerID`（私有出口再叠 `viewerOrFail` → 401），**不接受 userID 参数**。这些接口写的都是「谁读过什么」，把 userID 做成参数迟早变成越权读写别人阅读历史的口子。`ListHistory` 的可见性与状态过滤全部交给 SQL（`applyVisibility` + `StatusIn`），不在 Go 里筛。
+- **`recordBrowse` 是 `GetDetail` 与 `GetByID` 两个公开详情出口共用的钩子**：可见性已在调用方判过后直接写 `RecordView`（不再多查一次 `FindByID`）；匿名无归属主体跳过，写失败只 `Warnf` 降级，不能让读详情因读状态表抖动而 500。
+- `checkCursorForPost` 校验 `content.RootID == post.ContentID`（帖子↔评论唯一关联，与 `content.go` 同源）：少了它，拿别人帖子里的评论 id 就能盲写读状态并顺带探测评论存在性。
+- `EnrichWithReadState` 现在回填 `LastContentID`，并在 `LastReadAt == nil` 时**短路** `has_new` 与 `CountUnreadByRoot`——「有行」不再等于「标过已读」，否则一次点开就熄灭全站角标；游标则照常回传（只点开过也要能续读）。
+- `MarkRead` 不再 fallback 写 `post.ContentID` 当游标：主楼不代表任何阅读进度，反会把已有的评论级位置抹回开头；留空即保持原游标。
+- 新增 `history_test.go`。`ListHistory` 分页走 `pkg.Offset(page, pageSize)`，字段是 `page`/`pageSize`。

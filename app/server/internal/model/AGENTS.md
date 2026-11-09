@@ -56,3 +56,9 @@
 
 - `plugin_install.go`：`PluginInstall` 增 `Checksum`（插件目录内容 sha256，排除 node_modules/.git）。
 - `plugin_version.go`：`PluginVersion` 是安装/升级/回滚的历史快照（Manifest 原文 + Caps 快照 + Checksum + ActorID + Note）。与 `PluginInstall` 的分工是「当前这一份」vs「历次装过什么」。
+
+## 浏览记录 / 续读位置（2026-11-09）
+
+- `topic_read.go` 的 `TopicReadState` 现在一行承载**三个事实、三条互不相干的写入路径**：`LastViewedAt`（被动打开，详情出口自动写）、`LastReadAt`（**可空**，只有显式「标记已读」写）、`LastContentID`（评论级续读游标）。把它们并成一列是这模块最容易出事的地方：被动浏览若顺手写了 `last_read_at`，「有新回复」角标与 `list_view=new`（「没读过」）筛选当场失真。
+- **`LastReadAt` 可空是整套语义的支点**：NULL = 「看过但没标记读完」，该行不参与 read/unread/new 三档比较，`has_new` 与未读数只在读标记非空时才算。`TopicReadState` 本就在 AutoMigrate 里，`server/iris.go` 无需改动，两列自动补齐；存量行（升级前只有读标记、`last_viewed_at` 为 NULL）由 `COALESCE(last_viewed_at, last_read_at)` 排序兼容。
+- `post.go` 的 `PostListItem` 增 `LastContentID` 与 `LastViewedAt` 两个字段：**后者只由「浏览记录」出口（`POST /history/list`）填充**，其它列表出口留空（`omitempty` 不出现），别把内部读状态当帖子属性往外带。

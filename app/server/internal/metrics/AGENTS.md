@@ -15,6 +15,7 @@ Prometheus 指标埋点模块，独立于 Iris 框架的指标注册表。
 | gateway.go | 限流拒绝与 fail-open `{name}`；唯一埋点调用方是 `internal/pkg/ratelimit.Check`，`name` 为端点名或常量 `global` |
 | permission.go | 权限判定 `{scope,result}`；`ObservePermission()` |
 | sse.go | `feedchamber_sse_connections{channel}` gauge + `feedchamber_sse_write_failures_total{channel}`；两族在 `init()` seed 两个静态 channel |
+| notification.go | `feedchamber_notif_dispatcher_dropped_total{type}`：通知 dispatcher 有界队列满时被丢弃的创建任务（见 `NotifDispatcher.enqueue`） |
 | auth.go | `feedchamber_login_failures_total{reason}`（三值常量） |
 | nats.go | `feedchamber_nats_connected{client}` gauge + `_disconnects_total` / `_reconnects_total`；`client` 静态两值 `kv` / `eventbus` |
 | webhook.go | 投递结果/耗时/积压（积压取真实 `COUNT(*)`，非批大小） |

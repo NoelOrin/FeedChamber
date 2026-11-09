@@ -82,3 +82,8 @@ lib/*.ts         theme / i18n / settings / seo / pagination / toast / icons / ut
 
 - `qk.admin.plugins` 增加 `sources` / `installs` / `versions(pluginId)` 子键，与 `list` 共用 `all` 前缀以便一次 invalidate 全部刷新；版本历史按插件 ID 单独成 key（弹窗关闭即停发）。
 - `lib/admin/auth/route-access.ts` 的 `/admin/plugins` 改为 `anyOf: ['plugin:read','plugin:manage']`（只读管理员可进页面，写操作由后端 403）；`access.ts` 的准入白名单登记 `plugin:read`。
+
+## 浏览记录 / 续读（2026-11-09）
+
+- `qk` 新增 `history.all` / `history.list(params)`（`lib/query/keys.ts`，仍遵守「全站唯一 key 来源」；组件删除/清空后 `invalidateQueries({ queryKey: qk.history.all })` 一次刷掉整组）。
+- `pagination.ts` 新增 `toPage(value)`：把 `searchParams` 的 `?page=` 归一成合法页号（缺失/非数字/≤0 → 1）。它原先是 `components/user/queries.ts` 里的本地实现，现下沉到 `lib/pagination.ts`，`components/user/queries.ts` 改为 `export { toPage } from '~/lib/pagination'` 的再导出；新的私有列表页（`/user/history`）与旧用户页共用同一份，不要再复制。

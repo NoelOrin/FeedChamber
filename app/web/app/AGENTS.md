@@ -34,6 +34,7 @@ vinext（Next App Router 的 Vite 实现）路由树。**只放路由骨架与�
 | `/spaces` `/spaces/{slug}` | `spaces/page.tsx`、`spaces/[slug]/page.tsx` + `space-home.tsx` | `requireAuthBySetting('space_view_auth_required')`；单版首页=面包屑 + 头部卡 + **直接子版面胶囊**（有子版时）+ 帖子列表，无「关注版面」（2026-10-28 移除）。帖子列表按 `space_id` + `include_sub` **递归聚合子版面**（父版显示子版内容），不再按 `space_slug` 过滤；子版胶囊来自版面树的 `node.children`，可再下钻到孙版 |
 | `/spaces/{slug}/post` | `spaces/[slug]/post/page.tsx` | 发帖，结构性私有 |
 | `/user` + `{posts,notifications,follow,favorites}` | `user/*` | 自身主页，结构性私有 |
+| `/user/history` | `user/history/page.tsx` | 结构性私有（用户中心子页），**页面内** `requireAuth('/user/history')` 守；`proxy.ts` 只挡精确的 `/user` |
 | `/user/{userId}` | `user/[userId]/page.tsx` | 他人主页，`requireAuthBySetting('user_profile_auth_required')` |
 | `/messages` `/messages/{id}` | `messages/*` | 结构性私有 |
 | `/home` | `home/page.tsx` | 结构性私有（聚合首页） |
@@ -97,3 +98,7 @@ export default async function Page() {
 ## 站点自定义注入（2026-10-30）
 
 `app/layout.tsx` 不再自己按 kind 分组片段：容器选择收敛到 `lib/customization/emit.ts`（css→`<style>`、js→`<script>`、html→容器 `<div>`，html 恒落 body_end），布局只渲染 `emitSnippets(...)` 的结果。html 片段塞进 `<script>` 会变成语法错误——这是此前的真实缺陷之一。根布局同时 `setQueryData(qk.customization, …)`，避免首屏客户端组件先返回 null 再补发请求。
+
+## 浏览记录路由（2026-11-09）
+
+`(app)/user/history/page.tsx` 是 RSC 首屏：`requireAuth('/user/history')` → `toPage(searchParams.page)` → `prefetchQuery(historyListOptions(...))` → `HydrationBoundary` 包 `components/history/history-page.tsx`，并 `import '~/lib/api/adapter'` 让 SSR 带上 cookie。它属**结构性私有**路径，但按现行两层登录墙约定**由页面内 `requireAuth` 守**——`proxy.ts` 只挡精确的 `/user`，不覆盖 `/user/history` 这类用户中心子页；`(app)/layout.tsx` 也不兜底鉴权。页面清单已登记该行。

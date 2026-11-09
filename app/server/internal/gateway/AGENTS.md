@@ -104,6 +104,7 @@ protected.Use(gw.Enforce())
 - **封禁返回 404 而非 403** 是刻意的：探测者无法区分「被禁」与「资源不存在」。改这个状态码等于改安全契约。
 - **吊销是一次性的，不能被缓存写回复活**。`sess:<sid>` 是 read-through 缓存，写入方（`Create` / `Lookup` 未命中路径 / `Touch` / `Extend`）都持有调用方快照，若无条件写回，并发请求就会把已吊销的会话重新塞回 KV，凭证在整个 TTL（最长 7 天）内继续有效。现约束：`revokeRow` **先删行、再删缓存**；`Touch` / `Extend` 以 `UPDATE` 的 `RowsAffected` 作为「行仍存在」的证明，为 0 时只删缓存不回写；`Lookup` 未命中路径写完缓存后再 `sessionExists` 复核，行已消失就丢弃并以 `ErrSessionNotFound` 返回。`session_store_test.go` 的 `TestSessionStore_RevokedSessionStaysDead*` 逐条钉住这些路径。
 - 新增测试优先用 `kvstub_test.go` 里的 KV 替身，别连真 NATS。
+- **链式中间件里 `pkg.Fail` 之后必须 `return`**。`SecurityCheck` 由 `enforce` 在 permission 之后**内联调用**（不是 `app.Use`），少了 `return` 就会继续走到 `ctx.Next()`：客户端收到 403 状态码，响应体却是「403 信封 + handler 信封」两个 JSON 对象拼接，而**副作用已经执行**（后台自助发信、写操作照常落库）。2026-11-06 修的就是这个（IP 封禁与用户锁定两处）。`TestSecurityManager_SecurityCheck_BlockedIPStopsPipeline` 断言「handler 未被执行」，不只是断言状态码——只测状态码的用例漏掉了它整整一年。
 
 ## 本文件何时更新
 
@@ -138,3 +139,9 @@ protected.Use(gw.Enforce())
 
 `initRouteMap` 追加：`preview` → `plugin:manage`（exact）、`versions/list` → `plugin:read`（exact）、`{id}/rollback` → `plugin:manage`（pattern）。
 版本列表必须用 exact 的 `versions/list` 而不是 `{id}/versions`：前缀扫描先于 pattern，后者会被 `plugin:manage` 前缀吞掉。
+
+## 浏览记录 / 续读位置（2026-11-09）
+
+`initRouteMap` 新增**四条**映射：`/api/v1/history/list`、`/api/v1/history/clear`（exact）与 `/api/v1/history/{postId}/delete`（pattern）→ `favorite:self`（与 watches/favorites 同族「自助数据」）；`/api/v1/posts/{id}/view`（pattern）→ `post:read`（只改自己的读状态，与 `/{id}/read` 同档）。
+
+**再次钉死规则**：未映射的 protected 路由一律默认拒绝，新增任何受保护端点 MUST 同时补 `initRouteMap`，否则实测 403（`permission_test.go` 会扫源码对比 router 注册表）。这四条的作用域由 ctx 里的会话用户决定，接口本身不收别人的 id，所以权限码只需「自助」这一档。

@@ -10,7 +10,8 @@ Web 和 Dashboard 共同依赖，封装所有后端 API 调用。
 | types.ts | 所有 API 响应类型定义（`User`, `PostListItem`, `ContentListItem`, `AdminStats`, `SearchResults`, `EntitySearchResult<T>` 等） |
 | constants.ts | 类型化常量（`ErrorCode`, `PermissionCode`, `SettingKey`, `ModerationMode`, `RoleName`, `PostStatus`, `STATUS_FILTER_ALL`, `API_BASE_URL`）。`ModerationMode`（`off` / `async` / `external` / `manual`）与后端 `model.ModerationMode*` 一一对应，**默认 `async`** |
 | services/auth.ts | 认证 API |
-| services/post.ts | 帖子 API (含 listByIds 批量查询、setFeatured 精华) |
+| services/post.ts | 帖子 API (含 listByIds 批量查询、setFeatured 精华、recordView 浏览/续读游标) |
+| services/history.ts | 浏览记录 API（`POST /history/list` / `POST /history/{postId}/delete` / `POST /history/clear`） |
 | services/content.ts | 评论 API |
 | services/user.ts | 用户 API |
 | services/admin.ts | 管理后台 API |
@@ -49,3 +50,9 @@ Web 和 Dashboard 共同依赖，封装所有后端 API 调用。
 `services/plugin.ts` 已对齐后端 v2：`PluginSource` / `PluginInstall` / `PluginInstallInput` / `PluginUpdateInput` 类型 + `listSources` / `createSource` / `approveSource` / `rejectSource` / `install` / `uninstall` / `listInstalls`。`install` 入参是 `PluginInstallInput`（**不是** `Partial<Plugin>`），`update` 的 `PluginUpdateInput.enabled` 必填且 body 恒带 `enabled`（漏传后端会按零值禁用插件）。`PermissionCode` 新增 `PLUGIN_READ` / `PLUGIN_MANAGE`。
 
 2026-11-05 追加三个端点：`preview(input: PluginInstallInput)` → `PluginPreview`（能力 / 依赖 / 钩子 / 来源地址 / `already_installed`，**不落库不起进程**）、`listVersions(pluginId)` → `PluginVersion[]`（body `{plugin_id}`，`note ∈ install|upgrade|rollback`）、`rollback(id, versionId)` → `null`（body `{version_id}`，后端停进程→重新拉取→重启）。三者都是 POST 且带动词后缀。
+
+## 浏览记录 / 续读游标（2026-11-09）
+
+- 新增 `services/history.ts` 的 `historyService`，`src/index.ts` 已导出。三条端点均为 POST + 动词后缀：`list({page,pageSize})` → `/history/list`、`delete(postId)` → `/history/{postId}/delete`（**幂等**）、`clear()` → `/history/clear`（**仅清自己**）。分页用规范 `page`/`pageSize`（不是旧的 `ListParams.page_size`）；actor 由后端从会话取，**不传 user id**。列表只含访问者当前仍可见的帖子（可见性在 SQL 里过滤）。
+- `types.ts` 的 `PostListItem` 新增 `last_content_id?`（评论级续读游标）与 `last_viewed_at?: string | null`（被动浏览时间，区别于 `last_read_at` 的「读完」标记）。
+- `services/post.ts` 新增 `recordView(id, lastContentId?)` → `POST /posts/{id}/view`，**务必与 `markRead` 区分**：`markRead` → `POST /posts/{id}/read` 表示「读完 / 标记已读」（驱动 `list_view=new` 等筛选），`recordView` 只表示「看过 / 读到哪条评论」并写续读游标，两者写入 `topic_read_states` 的不同列，不可互相替代。

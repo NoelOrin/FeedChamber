@@ -30,7 +30,7 @@
 | `PathBodyLimit(default, overrides)` | middleware.go | 超限返回 413 + JSON 信封（拦截 `MaxBytesReader` 错误，Iris 默认会写成 400）。无覆盖表版本 `BodyLimit(n)` 已于 2026-10-27 删除——唯一调用方是 `PathBodyLimit` |
 | `RequestTimeout(d)` | request_timeout.go | 软超时，只设 deadline 不强杀；`*/stream`（SSE）自动跳过 |
 | `RateLimit(limiter, name, limit, window)` | ratelimit.go | 命名端点的每 IP 预算，用于 register 5/min、login 10/min、mfa_verify 20/min、pm_message 60/min 等 12 处。与 `internal/gateway` 的全局每 IP 上限**共用 `internal/pkg/ratelimit.Limiter.Check`**（同一算法、同一指标与日志发出点），差别只在策略来源：这里在路由注册处声明，那里由 `rate_limit_enabled` 开关；两者的计数器键与配额互相独立 |
-| `MaintenanceGate(settings)` | maintenance.go | `site_maintenance=true` 时拦截非管理员的写类 RPC，返回 `503 {"code":5005,...}`；挂在 v1 层 `gw.Preflight()` 之后以便识别角色 |
+| `MaintenanceGate(settings)` | maintenance.go | `site_maintenance=true` 时拦截非管理员的写类 RPC，返回 `503 {"code":5005,...}`；挂在 v1 层 `gw.Preflight()` 之后以便识别角色。**放行读类**：只读 GET、读 RPC 白名单（`isMaintenanceReadRPC`），以及所有 `*/stream` SSE 长连接（POST 承载的读）。SSE 必须放行——否则维护期通知铃/实时流被 5005 静默掐断，`SSEClient` 只对 (0,5000) 段上报错误，用户看不到任何提示 |
 | `AuthGate(deps, settingKey)` | auth.go | 设置项为 `"true"` 时要求已登录 |
 | `SpaceAuthGate(deps)` | auth.go | 按版面 `AuthRequired` 决定是否要求登录 |
 | `RequirePermission(deps, code)` | auth.go | 路由级权限码；实际只用于 `/permission/*`(8) 与 `/admin/backups`、`/admin/webhooks`，其余受保护路由靠网关的 path→permission 映射兜住 |

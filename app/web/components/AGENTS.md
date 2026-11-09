@@ -4,7 +4,7 @@ Web 前端的全部 UI 实现。按域分目录，**每个域一个目录**；�
 
 > 上级：[app/web/AGENTS.md](../AGENTS.md) · 相邻：[app](../app/AGENTS.md)、[lib](../lib/AGENTS.md) · 子域：[ui](ui/AGENTS.md)、[admin](admin/AGENTS.md)、[markdown-editor](markdown-editor/AGENTS.md)
 
-实测规模：138 个文件 / 21 个目录（含 3 个顶层文件：`providers.tsx`、`query-hydration.tsx`、`aside/sidebar*.tsx` 所属的 `aside/`）。
+实测规模：140 个文件 / 22 个目录（含 3 个顶层文件：`providers.tsx`、`query-hydration.tsx`、`aside/sidebar*.tsx` 所属的 `aside/`）。新增 `history/` 域（1 目录 / 2 文件）。
 
 ## 分层：谁可以依赖谁
 
@@ -39,6 +39,7 @@ lib/                      跨域基础设施（auth / query / api adapter / seo 
 | `aside/` | 2 | 侧栏与侧栏内容 | 本文件 |
 | `space/` | 2 | 版面卡片、版面图标 | 本文件 |
 | `leaderboard/` | 2 | 排行榜面板 + `queries.ts` | 本文件 |
+| `history/` | 2 | 浏览记录列表页（客户端）+ `queries.ts`（RSC/客户端共用取数契约） | [history/AGENTS.md](history/AGENTS.md) |
 | `checkin/` | 1 | 签到面板 | 本文件 |
 | `home/` | 1 | 聚合首页 feed | 本文件 |
 | `error/` | 1 | 前台 `ErrorFallback` / 分区错误边界 | 本文件 |
@@ -103,3 +104,7 @@ lib/                      跨域基础设施（auth / query / api adapter / seo 
 ## 首页自定义模块（2026-10-30）
 
 `home/home-modules.tsx` 的 `latest` / `hot` 模块**渲染真实帖子**（`postListInfiniteOptions` + `postsOf`，`config.limit` 真正生效），不再是「只有一条链接」的桩。三态齐全（骨架 / 读失败 / 空列表）。
+
+## 浏览记录 / 评论级续读游标（2026-11-09）
+
+新增 `history/` 域（见 [history/AGENTS.md](history/AGENTS.md)），并新增一条跨三域的续读游标链：`post/post-detail.tsx` 把 `post.last_content_id` 作为 `resumeFrom` 与一份 `cursorRef` 传给 `content/comment-list.tsx`，后者用 IntersectionObserver（`rootMargin` 底部 -40%）盯阅读区最低楼层、1.2s 防抖上报 `postService.recordView`，**只在真实用户输入（wheel/touchmove/keydown，`userEngaged` ref）后才上报**，避免 observer 首帧回调把服务端已存游标「悄悄回退」到续读锚渲染之前；进入时仅在 `userScrolled` ref 为假且锚点已渲染时滚动 `resumeFrom` 一次。`content/content-item.tsx` 的 `resumeHere` 在该楼层上方画「上次读到这里」分隔线，楼层 DOM id 是 `comment-${content.id}`，必须与 `comment-list.tsx` 的 `FLOOR_ID_PREFIX` 常量保持一致。`post-detail.tsx` 的 `markRead` 上报取 `cursorRef.current || post?.last_content_id || undefined`。`comment-list.tsx` 的 observer effect 刻意多依赖 `items.length`（分页追加后需重新登记被观察楼层，带 `biome-ignore`），不要按 lint 提示删掉。后端 `GET /posts/{id}` 与 `/posts/{id}/detail` 对登录访客自动记浏览（匿名跳过），历史列表不依赖前端配合即可填充。

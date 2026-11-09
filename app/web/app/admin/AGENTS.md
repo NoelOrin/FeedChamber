@@ -84,6 +84,7 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 - **片段页**（`customize/snippets`）：高风险提示条按列表数据判定（`data.some(...)`），不是弹窗表单状态；kind=html 时注入位置固定展示 body_end 且禁用选择。
 - **首页模块页**（`customize/home`）：html 模块的 config 形如 `{"html":"<div>…</div>"}`，占位符必须给 JSON，否则照提示填会稳定 400。
 - **设置页**：`settingsConfig.ts` 是声明式白名单，新增设置 key（如 `mcp_enabled` / `mcp_disabled_tools` / `mcp_max_result_bytes`）必须同时登记到这里，否则后台根本改不到。
+  邮件服务组末尾的「邮件发送自测」面板由 `footer: 'email-test'` 声明，页面按标识渲染 `modules/email-test-panel.tsx`（不是硬编码在设置组里）。后端 `POST /admin/settings/email/test` 投递失败回 **HTTP 200 + `ok=false`**，所以面板必须按 `report.ok` 分流提示，**不能靠 catch 判断成败**。该面板用「已保存」的配置发信——改完配置不点保存直接测，测的是旧配置（文案已提示）。
 
 ## 列表页的错误态（2026-10-30）
 

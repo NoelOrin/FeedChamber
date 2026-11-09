@@ -33,8 +33,8 @@
 ### Post (public, 可选登录 + 动态门控)
 - `POST /api/v1/posts/list` — 帖子列表
 - `POST /api/v1/posts/search` — 搜索帖子
-- `GET /api/v1/posts/{id}` — 获取帖子
-- `GET /api/v1/posts/{id}/detail` — 帖子详情
+- `GET /api/v1/posts/{id}` — 获取帖子（已登录访问会记一条浏览记录）
+- `GET /api/v1/posts/{id}/detail` — 帖子详情（已登录访问会记一条浏览记录；响应含 `last_content_id` 续读游标）
 - `POST /api/v1/posts/{postId}/contents/list` — 评论列表
 - `POST /api/v1/posts/{postId}/tags` — 帖子标签
 
@@ -69,7 +69,14 @@
 - `/{postId}/contents/{id}/delete` (perm:comment:create) — service 层所有权检查
 - `/{postId}/favorite`
 - `/{postId}/favorite/status`
+- `/{id}/read` (perm:post:read) — 标记已读，可带 `last_content_id` 记下读到哪条评论
+- `/{id}/view` (perm:post:read) — 上报阅读位置／浏览记录，body `{ last_content_id? }`；只写浏览时间与游标，**不改已读标记**
 - `/comments/list` (perm:comment:delete) — 全局评论列表
+
+### History (`POST /api/v1/history`)
+- `/list` (perm:favorite:self) — 我的浏览记录，body `{ page, pageSize }`；按最近浏览倒序，只回传访问者当前仍可看见的帖子，含每篇的 `last_content_id` 续读游标
+- `/{postId}/delete` (perm:favorite:self) — 删除单条（幂等）
+- `/clear` (perm:favorite:self) — 清空本人的全部记录
 
 ### User (`POST /api/v1/user`)
 - `/profile` (GET) — 获取/更新资料
@@ -197,6 +204,7 @@
 - `/settings/{key}` — 获取设置
 - `/settings/{key}/update` — 更新设置
 - `/settings/{key}/delete` — 删除设置
+- `/settings/email/test` — 发送测试邮件（`setting:manage`；投递失败回 `ok:false` 而非 5xx）
 
 ### SEO / 爬虫（app 根，**不在** `/api/v1` 下）
 

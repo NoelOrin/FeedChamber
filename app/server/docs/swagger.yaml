@@ -550,7 +550,18 @@ definitions:
         type: string
       last_active_at:
         type: string
+      last_content_id:
+        description: |-
+          LastContentID 是该访问者在这个帖子里最后读到的那条评论（续读游标）。
+          它此前只写不读——字段躺在 topic_read_states 里，没有任何出口带回前端，
+          「精确到评论位置」因此一直是死数据。
+        type: string
       last_read_at:
+        type: string
+      last_viewed_at:
+        description: |-
+          LastViewedAt 仅由「浏览记录」出口填充（POST /history/list）；
+          其它列表出口留空即序列化时不出现，避免把内部读状态当成帖子属性。
         type: string
       like_count:
         type: integer
@@ -608,7 +619,18 @@ definitions:
         type: string
       last_active_at:
         type: string
+      last_content_id:
+        description: |-
+          LastContentID 是该访问者在这个帖子里最后读到的那条评论（续读游标）。
+          它此前只写不读——字段躺在 topic_read_states 里，没有任何出口带回前端，
+          「精确到评论位置」因此一直是死数据。
+        type: string
       last_read_at:
+        type: string
+      last_viewed_at:
+        description: |-
+          LastViewedAt 仅由「浏览记录」出口填充（POST /history/list）；
+          其它列表出口留空即序列化时不出现，避免把内部读状态当成帖子属性。
         type: string
       like_count:
         type: integer
@@ -1264,6 +1286,30 @@ definitions:
       purpose:
         type: string
       transport:
+        type: string
+    type: object
+  service.MailTestReport:
+    properties:
+      elapsed_ms:
+        type: integer
+      email_enabled:
+        type: boolean
+      error:
+        type: string
+      from:
+        type: string
+      host:
+        type: string
+      notice:
+        type: string
+      ok:
+        type: boolean
+      port:
+        type: integer
+      provider:
+        type: string
+      tls_mode:
+        description: implicit | starttls，非 SMTP 为空
         type: string
     type: object
   service.NavItemInput:
@@ -3759,6 +3805,50 @@ paths:
       summary: 批量设置系统设置
       tags:
       - 系统设置
+  /admin/settings/email/test:
+    post:
+      consumes:
+      - application/json
+      description: 用当前已保存的邮件配置向指定地址投递一封测试邮件，返回生效通道与失败原因（不返回任何凭据）
+      parameters:
+      - description: 收件人邮箱
+        in: body
+        name: body
+        required: true
+        schema:
+          properties:
+            to:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/service.MailTestReport'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 发送测试邮件
+      tags:
+      - 系统设置
   /admin/slots/{id}/delete:
     post:
       consumes:
@@ -5861,6 +5951,94 @@ paths:
       summary: 健康检查
       tags:
       - 系统
+  /history/{postId}/delete:
+    post:
+      consumes:
+      - application/json
+      description: 删除当前用户对某主题的浏览记录；记录本就不存在时同样返回成功（幂等）
+      parameters:
+      - description: 主题 ID
+        in: path
+        name: postId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 删除一条浏览记录
+      tags:
+      - 浏览记录
+  /history/clear:
+    post:
+      consumes:
+      - application/json
+      description: 清空当前用户的全部浏览记录；不影响主题本身，也不影响其他用户
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 清空浏览记录
+      tags:
+      - 浏览记录
+  /history/list:
+    post:
+      consumes:
+      - application/json
+      description: 按最近浏览时间倒序返回当前用户打开过的主题，含每篇的续读游标（last_content_id）；被删除、待审、拒稿或等级/版面不可见的主题一律不出现，total
+        同样按可见结果计
+      parameters:
+      - description: 分页参数（可空 body）
+        in: body
+        name: body
+        schema:
+          properties:
+            page:
+              type: integer
+            pageSize:
+              type: integer
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/pkg.Response'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/model.PostListItem'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 我的浏览记录
+      tags:
+      - 浏览记录
   /latest.rss:
     get:
       description: 输出最近 20 条公开帖子的 RSS 2.0 feed。
@@ -7529,13 +7707,21 @@ paths:
     post:
       consumes:
       - application/json
-      description: 显式标记当前用户已阅读指定帖子（更新 last_read_at）
+      description: 显式标记当前用户已阅读指定帖子（更新 last_read_at）。可选带 last_content_id 一并记下读到哪条评论；不带时保留原有游标
       parameters:
       - description: 帖子 ID
         in: path
         name: id
         required: true
         type: string
+      - description: 续读游标（可空 body）
+        in: body
+        name: body
+        schema:
+          properties:
+            last_content_id:
+              type: string
+          type: object
       produces:
       - application/json
       responses:
@@ -7759,6 +7945,49 @@ paths:
       security:
       - BearerAuth: []
       summary: 更新帖子
+      tags:
+      - 帖子
+  /posts/{id}/view:
+    post:
+      consumes:
+      - application/json
+      description: 记录当前用户浏览过该主题，并把续读游标推进到指定评论（last_content_id，可省略）。只写浏览时间与游标，绝不改已读标记；主题不可见或评论不属于本帖时不落任何记录
+      parameters:
+      - description: 帖子 ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 最后读到的评论 ID（可空 body）
+        in: body
+        name: body
+        schema:
+          properties:
+            last_content_id:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/pkg.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/pkg.Response'
+      security:
+      - BearerAuth: []
+      summary: 上报阅读位置
       tags:
       - 帖子
   /posts/{postId}/contents/{id}/delete:

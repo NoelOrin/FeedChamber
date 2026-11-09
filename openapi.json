@@ -3645,6 +3645,80 @@
                 }
             }
         },
+        "/admin/settings/email/test": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "用当前已保存的邮件配置向指定地址投递一封测试邮件，返回生效通道与失败原因（不返回任何凭据）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "系统设置"
+                ],
+                "summary": "发送测试邮件",
+                "parameters": [
+                    {
+                        "description": "收件人邮箱",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "to": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/pkg.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/service.MailTestReport"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/admin/settings/{key}": {
             "post": {
                 "security": [
@@ -7275,6 +7349,150 @@
                 }
             }
         },
+        "/history/clear": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "清空当前用户的全部浏览记录；不影响主题本身，也不影响其他用户",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "浏览记录"
+                ],
+                "summary": "清空浏览记录",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/history/list": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "按最近浏览时间倒序返回当前用户打开过的主题，含每篇的续读游标（last_content_id）；被删除、待审、拒稿或等级/版面不可见的主题一律不出现，total 同样按可见结果计",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "浏览记录"
+                ],
+                "summary": "我的浏览记录",
+                "parameters": [
+                    {
+                        "description": "分页参数（可空 body）",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "page": {
+                                    "type": "integer"
+                                },
+                                "pageSize": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/pkg.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/model.PostListItem"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/history/{postId}/delete": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "删除当前用户对某主题的浏览记录；记录本就不存在时同样返回成功（幂等）",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "浏览记录"
+                ],
+                "summary": "删除一条浏览记录",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "主题 ID",
+                        "name": "postId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/latest.rss": {
             "get": {
                 "description": "输出最近 20 条公开帖子的 RSS 2.0 feed。",
@@ -10344,7 +10562,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "显式标记当前用户已阅读指定帖子（更新 last_read_at）",
+                "description": "显式标记当前用户已阅读指定帖子（更新 last_read_at）。可选带 last_content_id 一并记下读到哪条评论；不带时保留原有游标",
                 "consumes": [
                     "application/json"
                 ],
@@ -10362,6 +10580,19 @@
                         "name": "id",
                         "in": "path",
                         "required": true
+                    },
+                    {
+                        "description": "续读游标（可空 body）",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "last_content_id": {
+                                    "type": "string"
+                                }
+                            }
+                        }
                     }
                 ],
                 "responses": {
@@ -10688,6 +10919,74 @@
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/pkg.Response"
+                        }
+                    }
+                }
+            }
+        },
+        "/posts/{id}/view": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "记录当前用户浏览过该主题，并把续读游标推进到指定评论（last_content_id，可省略）。只写浏览时间与游标，绝不改已读标记；主题不可见或评论不属于本帖时不落任何记录",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "帖子"
+                ],
+                "summary": "上报阅读位置",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "帖子 ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "最后读到的评论 ID（可空 body）",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "type": "object",
+                            "properties": {
+                                "last_content_id": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/pkg.Response"
                         }
@@ -16442,7 +16741,15 @@
                 "last_active_at": {
                     "type": "string"
                 },
+                "last_content_id": {
+                    "description": "LastContentID 是该访问者在这个帖子里最后读到的那条评论（续读游标）。\n它此前只写不读——字段躺在 topic_read_states 里，没有任何出口带回前端，\n「精确到评论位置」因此一直是死数据。",
+                    "type": "string"
+                },
                 "last_read_at": {
+                    "type": "string"
+                },
+                "last_viewed_at": {
+                    "description": "LastViewedAt 仅由「浏览记录」出口填充（POST /history/list）；\n其它列表出口留空即序列化时不出现，避免把内部读状态当成帖子属性。",
                     "type": "string"
                 },
                 "like_count": {
@@ -16529,7 +16836,15 @@
                 "last_active_at": {
                     "type": "string"
                 },
+                "last_content_id": {
+                    "description": "LastContentID 是该访问者在这个帖子里最后读到的那条评论（续读游标）。\n它此前只写不读——字段躺在 topic_read_states 里，没有任何出口带回前端，\n「精确到评论位置」因此一直是死数据。",
+                    "type": "string"
+                },
                 "last_read_at": {
+                    "type": "string"
+                },
+                "last_viewed_at": {
+                    "description": "LastViewedAt 仅由「浏览记录」出口填充（POST /history/list）；\n其它列表出口留空即序列化时不出现，避免把内部读状态当成帖子属性。",
                     "type": "string"
                 },
                 "like_count": {
@@ -17460,6 +17775,42 @@
                     "type": "string"
                 },
                 "transport": {
+                    "type": "string"
+                }
+            }
+        },
+        "service.MailTestReport": {
+            "type": "object",
+            "properties": {
+                "elapsed_ms": {
+                    "type": "integer"
+                },
+                "email_enabled": {
+                    "type": "boolean"
+                },
+                "error": {
+                    "type": "string"
+                },
+                "from": {
+                    "type": "string"
+                },
+                "host": {
+                    "type": "string"
+                },
+                "notice": {
+                    "type": "string"
+                },
+                "ok": {
+                    "type": "boolean"
+                },
+                "port": {
+                    "type": "integer"
+                },
+                "provider": {
+                    "type": "string"
+                },
+                "tls_mode": {
+                    "description": "implicit | starttls，非 SMTP 为空",
                     "type": "string"
                 }
             }

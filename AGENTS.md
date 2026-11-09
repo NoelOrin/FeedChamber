@@ -221,6 +221,9 @@ func NewUserRepository(store db.Store) UserRepository {
 ### Content — 评论 (`handler/content.go`, `service/content.go`, `repository/content.go`)
 帖子评论 CRUD，支持 parentId 嵌套。R-06b 方案下 `Update/Delete` 走 service 层所有权检查。`AdminDelete` 供管理员后台直接删除。
 
+### Reading history / 续读位置 (`model/topic_read.go`, `repository/topic_read*.go`, `service/post.go`, `handler/history.go`, `router/routes_history.go`)
+浏览记录与「上次读到哪条评论」共用 `topic_read_states` 一行（`(user_id, post_id)` 唯一），三个事实分列且**写入方互不重叠**：`last_viewed_at`（被动浏览，两个公开详情出口 `GetDetail` / `GetByID` 共用 `recordBrowse` 钩子自动写）、`last_read_at`（**可空**，只由 `POST /posts/{id}/read` 写）、`last_content_id`（评论级续读游标）。可空是整套语义的支点：`list_view=new`（「没读过」）的谓词是「没有 `last_read_at IS NOT NULL` 的行」而不是「没有行」，`has_new` 也只在读标记非空时比较——否则一次被动浏览就会让帖子从筛选里消失、把全站角标熄灭。新建的第二条写路径 `POST /posts/{id}/view` 用 `checkCursorForPost` 校验 `content.RootID == post.ContentID`（防拿别人帖子的评论 id 盲写）。**四个出口（`RecordView` / `ListHistory` / `DeleteHistory` / `ClearHistory`）的 actor 一律从 ctx 的 `WithViewerID` 取，不接受 userID 参数**；网关四条映射在 `gateway/permission.go` 的 `initRouteMap`（未映射的 protected 路由默认拒绝）。`repository.ListReadByUser` 是第 7 个帖子读取出口，INNER JOIN 后复用 `buildPostListWhere` 的可见性谓词（**在 SQL 里过滤**，Go 里取一页再筛会让 `total` 说谎并泄露受限帖存在性），按 `COALESCE(last_viewed_at, last_read_at) DESC` 排序以兼容升级前只有读标记的存量行。历史列表与详情页共用 `PostListItem.last_content_id` 回读游标；前端 `CommentList` 用 IntersectionObserver 防抖上报、进入时滚动定位并画「上次读到这里」分隔线（只在真实用户输入后才上报，避免首帧回调把服务端游标悄悄回退）。端点：`POST /history/list`、`POST /history/{postId}/delete`（幂等）、`POST /history/clear`、`POST /posts/{id}/view`；分页用规范的 `page`/`pageSize`。规范见 `openspec/changes/2026-11-09-browse-history-read-position/`。
+
 ### Tag — 标签 (`model/tag.go`, `handler/tag.go`, `service/tag.go`, `repository/tag.go`)
 标签系统，帖子多对多关联。通过 SetPostTags 按名称批量设置标签（不存在则自动创建）。
 
@@ -245,9 +248,11 @@ func NewUserRepository(store db.Store) UserRepository {
 ### Notification — 通知 (`model/notification.go`, `handler/notification.go`, `service/notification.go`, `repository/notification.go`)
 用户通知系统，支持列表（按 type / read 服务端筛选）、未读计数、标记已读、批量标记已读和删除。`/stream` 端点以 SSE 方式推送未读数，前端通过 `@feedchamber/sse-client` 的 `SSEClient` 订阅（自动重连 + token 刷新），深链映射的唯一出口是 `app/web/lib/notification-target.ts`。未读计数使用 KV Store 缓存，实时更新无需查 DB。
 
-两条容易改坏的性质：
-- **一条评论只产生一条通知**。同一次评论可能同时命中「帖子作者 / @提及 / 关注话题」三条扇出路径，`service/content.go` 用一个共享的 `notified` 集合按「作者 > 提及 > 关注」优先级去重，集合随后传给 `publishUserMentions` 与 `NotifyWatchers`。新增扇出步骤必须接收并遵守同一个集合，否则收件人会重复收到通知。
-- **`/stream` 必须发心跳**。空闲的通知流不产生任何字节，任何带读超时的中间层（nginx 默认 60s）都会切断它；handler 每 15s 写一行 SSE 注释 `: keepalive`（客户端忽略，前端解析器只认 `data: ` 行）。nginx 侧另有 SSE 专用 location 兜底，见 `deploy/AGENTS.md`。
+几条容易改坏的性质：
+- **一条评论只产生一条通知**。同一次评论可能同时命中「帖子作者 / @提及 / 关注话题」三条扇出路径，`service/content.go` 用一个共享的 `notified` 集合按「作者 > 提及 > 关注」优先级去重，集合随后传给 `publishUserMentions` 与 `NotifyWatchers`。`NotifyWatchers` 的**发布循环只遍历本步新发现的关注者**（`newRecipients`），不能遍历整个共享集合——后者还含已被更早步骤通知的作者/提及者，遍历他们会重复发 `content.watched`。新增扇出步骤必须接收并遵守同一个集合，否则收件人会重复收到通知。
+- **`/stream` 必须发心跳**。空闲的通知流不产生任何字节，任何带读超时的中间层（nginx 默认 60s）都会切断它；handler 每 15s 写一行 SSE 注释 `: keepalive`（客户端忽略，前端解析器只认 `data: ` 行）。nginx 侧另有 SSE 专用 location 兜底，见 `deploy/AGENTS.md`。维护期 `MaintenanceGate` 也放行所有 `*/stream`（POST 承载的读），否则 5005 会被 `SSEClient` 静默吞掉。
+- **未读缓存 TTL 要能与 DB 对账**。`CountUnread`（`Get`）判 5min TTL 并回源 DB，而 `IncrBy` 读 JetStream 原值、不判 TTL；`Create` 落库前必须先 `CountUnread` 校准，否则 TTL 到期且无人读过时「过期脏值 +1」会被推给 SSE 客户端。
+- **异步链路不阻塞、丢弃可见**。`NotifDispatcher.enqueue` 与 EventBus `enqueue` 都用非阻塞入队，队列满时丢弃并记指标 + warn 日志（分别是 `feedchamber_notif_dispatcher_dropped_total` / `feedchamber_eventbus_dropped_total`），慢 DB/KV 不得拖住共用的 EventBus worker。
 
 ### Report — 举报 (`model/report.go`, `handler/report.go`, `service/report.go`, `repository/report.go`)
 内容举报系统，支持创建、列表和状态更新（待处理/已处理/已关闭）。
@@ -436,6 +441,9 @@ bash ../feedchamber_test.sh -all
 
 # 按模块测试
 bash ../feedchamber_test.sh -auth -post -user
+
+# 浏览记录 / 续读位置（含游标归属校验、幂等删除、清空）
+bash ../feedchamber_test.sh -history
 ```
 
 详细用法见 `.agents/skills/api-test/SKILL.md`。
@@ -462,6 +470,7 @@ open http://localhost:8080/swagger/
 | `/timeline/post` | 帖子详情 | ?id= 查询参数 |
 | `/spaces` | 版面大全 | Grid 展示所有版面 |
 | `/spaces/{slug}` | 单版首页 | 版面信息 + 帖子列表 |
+| `/user/history` | 浏览记录 | 打开过的主题 + 各篇续读游标；私有，页面内 requireAuth |
 | `/login` | 登录 | 认证页 |
 
 ## 后台管理路由（`/admin`，内嵌在主站）
@@ -517,7 +526,7 @@ open http://localhost:8080/swagger/
 
 <!-- 由 `node scripts/check-agents-docs.mjs --write-index` 生成，请勿手改。 -->
 
-共 45 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
+共 46 个模块文档。改动某模块的代码时，必须在同一次变更内更新它的 AGENTS.md（CI 会阻断）。
 
 | 模块目录 | 文档 | 标题 |
 |----------|------|------|
@@ -549,6 +558,7 @@ open http://localhost:8080/swagger/
 | `app/web/app/admin/` | [AGENTS.md](app/web/app/admin/AGENTS.md) | 管理后台（`app/admin/`） |
 | `app/web/components/` | [AGENTS.md](app/web/components/AGENTS.md) | Web Components（`components/`） |
 | `app/web/components/admin/` | [AGENTS.md](app/web/components/admin/AGENTS.md) | 后台壳层与准入组件（`components/admin/`） |
+| `app/web/components/history/` | [AGENTS.md](app/web/components/history/AGENTS.md) | 浏览记录（components/history/） |
 | `app/web/components/markdown-editor/` | [AGENTS.md](app/web/components/markdown-editor/AGENTS.md) | Markdown 编辑器（`components/markdown-editor/`） |
 | `app/web/components/slot/` | [AGENTS.md](app/web/components/slot/AGENTS.md) | 壳层插槽（`components/slot/`） |
 | `app/web/components/ui/` | [AGENTS.md](app/web/components/ui/AGENTS.md) | UI 原语（`components/ui/`） |

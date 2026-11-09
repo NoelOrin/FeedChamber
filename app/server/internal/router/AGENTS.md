@@ -190,3 +190,10 @@
 ## 插件预览 / 版本 / 回滚路由（2026-11-05）
 
 `/plugins` Party 追加：`preview`（manage）、`versions/list`（read）、`{id}/rollback`（manage）。固定段 `versions/*` 必须排在 `/{id}/*` 之前。
+
+## 浏览记录 / 续读位置（2026-11-09）
+
+新增 `routes_history.go` 段函数 `historyRoutes()`：`POST /history/list`、`/history/clear`、`/history/{postId}/delete` 三条 protected；`routes_content.go` 的 `/posts` Party 追加 `POST /{id}/view`（`h.Post.RecordView`，与 `/{id}/read` 分途）。规范见 `openspec/changes/2026-11-09-browse-history-read-position/`。
+
+- **固定段先于参数段**：`/list`、`/clear` MUST 排在 `/{postId}/delete` 之前，否则 `{postId}` 会吞掉固定段（本包既有硬约束，见「顺序为什么是硬约束」）。
+- **插入位置是语义**：`Register` 里 `r.historyRoutes()` 紧跟 `r.postRoutes()`（在 `engagementRoutes` 之前）——它是帖子读取面的第 7 个出口，与 `postRoutes` 共用同一份可见性谓词与 `topic_read_states`，放一起才便于一起被读到；不要挪到文件末尾或别的域段之后。新段只挂路由，无 `Use(gw.*)`。

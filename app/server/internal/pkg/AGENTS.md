@@ -71,6 +71,8 @@ Pub/Sub 机制：NATS core pub/sub（subject 前缀 `nats.kv.`），跨实例。
 - `Subscribe` — 队列订阅（`QueueSubscribe` + queue group）。**集群内每个事件只消费一次**，用于通知、Webhook 这类「一次就够」的消费者。
 - `SubscribeBroadcast` — 广播订阅（无 queue group）。**集群内每个实例的每个订阅方都收到**，用于插件钩子这类「多个消费者都要知道」的场景。广播消息在 NATS 回调里同步 fan-out，不进 `ch` 队列、不占用 worker。
 
+`enqueue` 的有界缓冲（默认 100）满时会**丢弃事件**：除 `EventbusDroppedTotal` 指标外还会打一条带 `event` 字段的 warn 日志，突发丢事件在日志里可见，不必先盯着 dashboard。
+
 广播 handler 单独存 `broadcastHandlers`/`broadcastSubs`：若与队列订阅共用 `handlers`，`handleNATSMessage` 会把队列 handler 再跑一遍，等于改掉「每事件只消费一次」的语义。`broadcast_test.go` 的 `TestSubscribeBroadcastDoesNotDoubleDeliverQueueHandlers` 钉住这一点。
 
 `Shutdown` 之后的广播是**全静默**：`broadcastSubs` 逐条退订、`nc` 置 nil。之后再 `Publish` 只记一条 `publish … after shutdown` 日志，MUST NOT 退回本地 fan-out（那会让「已关闭」变成「只在本机投递」的假象，插件钩子会在关停窗口里被触发）。`eventbus_broadcast_shutdown_test.go` 的 `TestBroadcastHandlerNotInvokedAfterShutdown` 钉住「关停前注册的 handler 关停后不再被调用 + 关停后订阅不 panic」。

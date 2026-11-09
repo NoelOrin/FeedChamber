@@ -67,3 +67,10 @@
 ## 插件版本历史（2026-11-05）
 
 `plugin_version.go` / `plugin_version_sql.go`：`Create` / `ListByPlugin`（`created_at DESC`）/ `Get` / `DeleteByPlugin`（卸载时清理历史）。
+
+## 浏览记录 / 续读位置（2026-11-09）
+
+- `post.go` / `post_sql.go` 新增 `ListReadByUser(ctx, userID, filter, offset, limit)`，是帖子读取面的**第 7 个出口**（INNER JOIN `topic_read_states`）。它复用 `buildPostListWhere`（软删 + `buildVisibilityWhere`）**在 SQL 里过滤**：先取一页再在 Go 里筛会让 `total` 说谎、页码翻不到，并泄露受限帖存在性。排序用 `COALESCE(last_viewed_at, last_read_at)` 兼容升级前只有读标记的存量行，总数走 `COUNT(*) OVER()`。
+- `topic_read.go` / `topic_read_sql.go` 接口增 `RecordView`（被动浏览，只写 `last_viewed_at` + 游标，**永不写 `last_read_at`**）、`DeleteByUserAndPost`（幂等）、`DeleteByUser`（清空）。**两路 upsert 各自用独立的 `AssignmentColumns`**：`Upsert` 只碰 `last_read_at`(+游标)、`RecordView` 只碰 `last_viewed_at`(+游标)；合成一个「全列 upsert」会让后写的一方把先写的读标记/浏览时间/游标静默清零。空游标不进列集合，旧位置因此不会被抹成「没有位置」。
+- `post_filter.go` 的 `list_view=new` 谓词从「不存在 `topic_read_states` 行」改成「不存在 `last_read_at IS NOT NULL` 的行」：被动浏览现在会落一行，若仍按「有无行」判断，用户刚点开过的帖子会从 `/timeline?list_view=new` 凭空消失。
+- 新增 `topic_read_test.go`（内存 sqlite 钉住两路 upsert 的列裁剪）。新出口分页字段用规范的 `page`/`pageSize`（`openspec/specs/api-style`），不是旧的 `page_size`。
