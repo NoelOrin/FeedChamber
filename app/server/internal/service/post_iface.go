@@ -44,6 +44,18 @@ type PostService interface {
 	MarkRead(ctx context.Context, userID, postID string) error
 	// MarkReadToContent records a comment-level read cursor for the post.
 	MarkReadToContent(ctx context.Context, userID, postID, lastContentID string) error
+	// RecordView notes a browse of the post for the viewer in ctx (last_viewed_at
+	// + optional comment cursor). It never writes last_read_at: viewing is not
+	// reading-done, and writing it would dim the has_new badge and the
+	// list_view=new filter. Anonymous views are skipped silently.
+	RecordView(ctx context.Context, postID, lastContentID string) error
+	// ListHistory returns the viewer's browse history (newest touch first),
+	// visibility-filtered in SQL. Actor comes from ctx, never from a parameter.
+	ListHistory(ctx context.Context, page, pageSize int) ([]model.PostListItem, int, error)
+	// DeleteHistory removes one row of the viewer's own history (idempotent).
+	DeleteHistory(ctx context.Context, postID string) error
+	// ClearHistory removes the viewer's own history entirely.
+	ClearHistory(ctx context.Context) error
 	// EnrichWithReadState fills has_new / last_read_at for the given user.
 	// No-op when userID is empty. Phase-2 rule: no record => has_new=false.
 	EnrichWithReadState(ctx context.Context, userID string, items []model.PostListItem)

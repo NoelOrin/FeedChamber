@@ -77,6 +77,11 @@ export const qk = {
 		list: (params?: Record<string, unknown>) => ['favorite', 'list', params ?? {}] as const,
 	},
 
+	history: {
+		all: ['history'] as const,
+		list: (params?: Record<string, unknown>) => ['history', 'list', params ?? {}] as const,
+	},
+
 	search: (params: Record<string, unknown>) => ['search', params] as const,
 	leaderboard: { list: (params?: Record<string, unknown>) => ['leaderboard', 'list', params ?? {}] as const },
 	checkin: {

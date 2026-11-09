@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"errors"
+	"io"
+
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
 	"feedchamber/internal/service"
@@ -27,6 +30,9 @@ type PostHandler interface {
 	Unpin(ctx iris.Context)
 	ListPinned(ctx iris.Context)
 	MarkRead(ctx iris.Context)
+	// RecordView 上报阅读位置（浏览记录 + 评论级续读游标），与 MarkRead 分途：
+	// 前者说明「看过/看到哪条」，后者说明「读完」。
+	RecordView(ctx iris.Context)
 }
 
 type postHandler struct{ svc service.PostService }
@@ -562,12 +568,13 @@ func (h *postHandler) ListPinned(ctx iris.Context) {
 
 // MarkRead 标记话题已读
 // @Summary      标记话题已读
-// @Description  显式标记当前用户已阅读指定帖子（更新 last_read_at）
+// @Description  显式标记当前用户已阅读指定帖子（更新 last_read_at）。可选带 last_content_id 一并记下读到哪条评论；不带时保留原有游标
 // @Tags         帖子
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        id   path      string  true  "帖子 ID"
+// @Param        id    path      string  true  "帖子 ID"
+// @Param        body  body      object{last_content_id=string}  false "续读游标（可空 body）"
 // @Success      200  {object}  pkg.Response
 // @Failure      401  {object}  pkg.Response
 // @Failure      404  {object}  pkg.Response
@@ -587,6 +594,43 @@ func (h *postHandler) MarkRead(ctx iris.Context) {
 		return
 	}
 	if err := h.svc.MarkReadToContent(ctx.Request().Context(), u.ID, id, body.LastContentID); err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	pkg.Success(ctx, nil)
+}
+
+// RecordView 上报阅读位置
+// @Summary      上报阅读位置
+// @Description  记录当前用户浏览过该主题，并把续读游标推进到指定评论（last_content_id，可省略）。只写浏览时间与游标，绝不改已读标记；主题不可见或评论不属于本帖时不落任何记录
+// @Tags         帖子
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id    path      string  true  "帖子 ID"
+// @Param        body  body      object{last_content_id=string}  false "最后读到的评论 ID（可空 body）"
+// @Success      200  {object}  pkg.Response
+// @Failure      401  {object}  pkg.Response
+// @Failure      403  {object}  pkg.Response
+// @Failure      404  {object}  pkg.Response
+// @Router       /posts/{id}/view [post]
+func (h *postHandler) RecordView(ctx iris.Context) {
+	if _, ok := requireUser(ctx); !ok {
+		return
+	}
+	id := ctx.Params().Get("id")
+	if id == "" {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, "帖子 ID 不能为空")
+		return
+	}
+	var body struct {
+		LastContentID string `json:"last_content_id"`
+	}
+	if err := ctx.ReadJSON(&body); err != nil && !errors.Is(err, io.EOF) {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS)
+		return
+	}
+	if err := h.svc.RecordView(viewerCtx(ctx), id, body.LastContentID); err != nil {
 		pkg.HandleError(ctx, err)
 		return
 	}

@@ -89,6 +89,13 @@ type PostListItem struct {
 	HasNew             bool       `json:"has_new"`
 	LastReadAt         *time.Time `json:"last_read_at,omitempty"`
 	UnreadContentCount int        `json:"unread_content_count,omitempty"`
-	CreatedAt          time.Time  `json:"created_at"`
-	UpdatedAt          time.Time  `json:"updated_at"`
+	// LastContentID 是该访问者在这个帖子里最后读到的那条评论（续读游标）。
+	// 它此前只写不读——字段躺在 topic_read_states 里，没有任何出口带回前端，
+	// 「精确到评论位置」因此一直是死数据。
+	LastContentID string `json:"last_content_id,omitempty"`
+	// LastViewedAt 仅由「浏览记录」出口填充（POST /history/list）；
+	// 其它列表出口留空即序列化时不出现，避免把内部读状态当成帖子属性。
+	LastViewedAt *time.Time `json:"last_viewed_at,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
 }

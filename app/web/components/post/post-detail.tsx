@@ -4,7 +4,7 @@ import type { PostDetail as PostDetailData } from '@feedchamber/api-client';
 import { PostStatus, postService, revisionService } from '@feedchamber/api-client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 import { CommentList } from '~/components/content/comment-list';
 import { Reply } from '~/components/content/reply';
@@ -118,8 +118,12 @@ export function PostDetail({ postId, pageSize }: PostDetailProps) {
 	const unreadCount = post?.unread_content_count ?? 0;
 	const canMarkRead = loggedIn && unreadCount > 0;
 
+	/* 阅读位置：CommentList 边滚边写这个 ref（不发渲染），点「标记已读」时
+	   取当前值——没滚过就回落到服务端记着的上次位置。 */
+	const cursorRef = useRef<string>('');
+
 	const markRead = useMutation({
-		mutationFn: () => postService.markRead(postId),
+		mutationFn: () => postService.markRead(postId, cursorRef.current || post?.last_content_id || undefined),
 		onSuccess: () => {
 			toast.success('已标记为已读');
 			queryClient.invalidateQueries({ queryKey: qk.posts.detail(postId) });
@@ -352,7 +356,12 @@ export function PostDetail({ postId, pageSize }: PostDetailProps) {
 				</div>
 
 				<div className="px-5 py-1">
-					<CommentList postId={postId} pageSize={pageSize} />
+					<CommentList
+						postId={postId}
+						pageSize={pageSize}
+						resumeFrom={post.last_content_id ?? ''}
+						cursorRef={cursorRef}
+					/>
 				</div>
 
 				{loggedIn ? (

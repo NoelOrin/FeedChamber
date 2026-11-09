@@ -137,6 +137,10 @@ export interface PostListItem {
 	has_new?: boolean;
 	last_read_at?: string | null;
 	unread_content_count?: number;
+	/** 续读游标：该访问者在这篇帖子里最后读到的评论 id（后端此前只写不读）。 */
+	last_content_id?: string;
+	/** 上次打开时间。只有「浏览记录」出口（POST /history/list）会填这个字段。 */
+	last_viewed_at?: string | null;
 	created_at: string;
 	updated_at: string;
 }
@@ -341,6 +345,22 @@ export interface SettingItem {
 	key: string;
 	value: string;
 	updated_at?: string;
+}
+
+/** 「发送测试邮件」的诊断结果。不含任何凭据字段。 */
+export interface MailTestReport {
+	ok: boolean;
+	provider: string;
+	from?: string;
+	host?: string;
+	port?: number;
+	/** implicit（465 隐式 TLS）| starttls（587）；非 SMTP 为空 */
+	tls_mode?: 'implicit' | 'starttls' | '';
+	/** 用户侧验证码邮件是否被 email_enabled 拦住 */
+	email_enabled: boolean;
+	elapsed_ms: number;
+	error?: string;
+	notice?: string;
 }
 
 export interface BannedUser {

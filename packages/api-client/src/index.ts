@@ -52,6 +52,7 @@ export type {
 } from './services/gate';
 export { gateService } from './services/gate';
 export { groupService } from './services/group';
+export { historyService } from './services/history';
 export { inviteService } from './services/invite';
 export { leaderboardService } from './services/leaderboard';
 export { likeService } from './services/like';

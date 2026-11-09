@@ -17,7 +17,7 @@ import {
 } from '~/components/ui/dropdown-menu';
 import { dashboardHomeOptions } from '~/components/user/queries';
 import { authClient, useAuthStore } from '~/lib/auth';
-import { Bookmark, LogOut, MessageSquare, Settings, User } from '~/lib/icons';
+import { Bookmark, History, LogOut, MessageSquare, Settings, User } from '~/lib/icons';
 import { toast } from '~/lib/toast';
 
 /* 未登录态的头像轮廓（旧 UserInfo 内联 SVG，非 lucide，保留原描边） */
@@ -127,6 +127,11 @@ export function UserInfo() {
 				<DropdownMenuItem asChild>
 					<Link href="/user/favorites?page=1">
 						<Bookmark /> 我的收藏
+					</Link>
+				</DropdownMenuItem>
+				<DropdownMenuItem asChild>
+					<Link href="/user/history?page=1">
+						<History /> 浏览记录
 					</Link>
 				</DropdownMenuItem>
 				<DropdownMenuItem asChild>

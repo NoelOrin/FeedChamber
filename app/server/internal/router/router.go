@@ -123,6 +123,9 @@ func Register(app *iris.Application, h *handler.Handler, deps middleware.Deps, g
 	r.accessRoutes()
 	r.tagManageRoutes()
 	r.postRoutes()
+	// 浏览记录是帖子读取面的第 7 个出口，紧跟 postRoutes：同一份可见性谓词、
+	// 同一张 topic_read_states，位置相邻便于一起被读到。
+	r.historyRoutes()
 	r.engagementRoutes()
 	r.uploadRoutes()
 	r.messageRoutes()

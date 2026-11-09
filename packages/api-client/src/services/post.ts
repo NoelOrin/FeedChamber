@@ -83,4 +83,12 @@ export const postService = {
 	markRead(id: string, lastContentId?: string) {
 		return post<null>(`/posts/${id}/read`, { last_content_id: lastContentId });
 	},
+	/**
+	 * 上报阅读位置：浏览记录 + 评论级续读游标。
+	 * 与 markRead 分途——这里只说明「看过 / 读到哪一条」，不说明「读完」，
+	 * 后端因此绝不写 last_read_at（否则有新回复角标与「没读过」筛选会一起失真）。
+	 */
+	recordView(id: string, lastContentId?: string) {
+		return post<null>(`/posts/${id}/view`, { last_content_id: lastContentId });
+	},
 };

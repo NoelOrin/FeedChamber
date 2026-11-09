@@ -52,6 +52,9 @@ func (r *reg) postRoutes() {
 		// 设为/取消精华（后台帖子管理）；网关映射到 report:manage
 		p.Post("/{id}/feature", h.Post.SetFeatured)
 		p.Post("/{id}/read", h.Post.MarkRead)
+		// 阅读位置上报（浏览记录 + 评论级续读游标）；与 /read 分途，只写浏览时间
+		// 与游标，不写已读标记。身份由会话决定，路径里不带 user id。
+		p.Post("/{id}/view", h.Post.RecordView)
 		p.Post("/{id}/pin/set", h.Post.SetPin)
 		p.Post("/{id}/pin/remove", h.Post.Unpin)
 		p.Post("/{id}/revisions/list", h.Revision.ListPost)

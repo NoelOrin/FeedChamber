@@ -3,6 +3,7 @@ package mock
 import (
 	"context"
 	"io"
+	"strings"
 	"sync"
 	"time"
 
@@ -532,6 +533,12 @@ func (m *PostRepository) ListWithTotal(_ context.Context, filter repository.Post
 	m.mu.Unlock()
 	return nil, 0, nil
 }
+
+// ListReadByUser 的历史出口在 service 层测试里跑真实 sqlite
+// （internal/service/history_test.go），内存替身只需满足接口形状。
+func (m *PostRepository) ListReadByUser(_ context.Context, _ string, _ repository.PostListFilter, _, _ int) ([]model.PostListItem, int, error) {
+	return nil, 0, nil
+}
 func (m *PostRepository) FindByIDWithDetails(_ context.Context, _ string) (*model.PostListItem, error) {
 	return nil, nil
 }
@@ -677,22 +684,39 @@ func NewTopicReadRepository() *TopicReadRepository {
 
 func topicReadKey(userID, postID string) string { return userID + "\x00" + postID }
 
+// applyTopicRead 是两路写入共用的 upsert 骨架：只写自己负责的列，
+// 空游标保留旧值（与 repository/topic_read_sql.go 的 AssignmentColumns 语义对齐）。
+// 真正的列裁剪由 topic_read_test.go 打在内存 sqlite 上，这里只求形状一致。
+func (m *TopicReadRepository) applyTopicRead(userID, postID string, set func(*model.TopicReadState), cursor string) {
+	key := topicReadKey(userID, postID)
+	st, ok := m.states[key]
+	if !ok {
+		st = &model.TopicReadState{ID: "tr-" + key, UserID: userID, PostID: postID}
+		m.states[key] = st
+	}
+	set(st)
+	if cursor != "" {
+		st.LastContentID = cursor
+	}
+}
+
 func (m *TopicReadRepository) Upsert(_ context.Context, userID, postID, lastContentID string, lastReadAt time.Time) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	key := topicReadKey(userID, postID)
-	if existing, ok := m.states[key]; ok {
-		existing.LastReadAt = lastReadAt
-		existing.LastContentID = lastContentID
-		return nil
-	}
-	m.states[key] = &model.TopicReadState{
-		ID:            "tr-" + key,
-		UserID:        userID,
-		PostID:        postID,
-		LastReadAt:    lastReadAt,
-		LastContentID: lastContentID,
-	}
+	m.applyTopicRead(userID, postID, func(st *model.TopicReadState) {
+		at := lastReadAt
+		st.LastReadAt = &at
+	}, lastContentID)
+	return nil
+}
+
+func (m *TopicReadRepository) RecordView(_ context.Context, userID, postID, lastContentID string, viewedAt time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.applyTopicRead(userID, postID, func(st *model.TopicReadState) {
+		at := viewedAt
+		st.LastViewedAt = &at
+	}, lastContentID)
 	return nil
 }
 
@@ -724,11 +748,31 @@ func (m *TopicReadRepository) ListByUser(_ context.Context, userID string) ([]mo
 	defer m.mu.RUnlock()
 	out := make([]model.TopicReadState, 0)
 	for key, st := range m.states {
-		if key[:len(userID)] == userID {
+		// 带分隔符比较：纯前缀匹配会让 "u1" 命中 "u10\x00p"。
+		if strings.HasPrefix(key, userID+"\x00") {
 			out = append(out, *st)
 		}
 	}
 	return out, nil
+}
+
+func (m *TopicReadRepository) DeleteByUserAndPost(_ context.Context, userID, postID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.states, topicReadKey(userID, postID))
+	return nil
+}
+
+func (m *TopicReadRepository) DeleteByUser(_ context.Context, userID string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	prefix := userID + "\x00"
+	for key := range m.states {
+		if strings.HasPrefix(key, prefix) {
+			delete(m.states, key)
+		}
+	}
+	return nil
 }
 
 // ── MotionRepository ────────────────────────────────────────────────────────

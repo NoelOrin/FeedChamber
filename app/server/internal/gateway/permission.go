@@ -462,6 +462,16 @@ func (p *PermissionCheckerMiddleware) initRouteMap() {
 	p.addExact("/api/v1/watches/delete", model.PermFavoriteSelf)
 	p.addExact("/api/v1/watches/status", model.PermFavoriteSelf)
 
+	// ── 浏览记录 / 阅读位置 ─────────────────────────────────
+	// 全部是「自己的阅读数据」，与 watches/favorites 同族：作用域由 ctx 里的
+	// 会话用户决定，接口本身不接受别人的 id，所以权限码只需要「自助」这一档。
+	// 未映射的 protected 路由会被默认拒绝，新增时必须同时补这里。
+	p.addExact("/api/v1/history/list", model.PermFavoriteSelf)
+	p.addExact("/api/v1/history/clear", model.PermFavoriteSelf)
+	p.addPattern("/api/v1/history/{postId}/delete", model.PermFavoriteSelf)
+	// 上报阅读位置与标记已读同级：都不改内容，只写自己的读状态。
+	p.addPattern("/api/v1/posts/{id}/view", model.PermPostRead)
+
 	// ── Blocks ─────────────────────────────────────────────
 	p.addExact("/api/v1/blocks/list", model.PermFollowSelf)
 	p.addPattern("/api/v1/users/{userId}/block", model.PermFollowSelf)

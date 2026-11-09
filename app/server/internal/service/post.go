@@ -380,7 +380,22 @@ func (s *postService) GetByID(ctx context.Context, id string) (*model.PostListIt
 		return nil, err
 	}
 	s.incrViewCount(ctx, id)
+	s.recordBrowse(ctx, id)
 	return item, nil
+}
+
+// recordBrowse 是各「帖子详情」出口共用的被动落库钩子。
+// 可见性在调用方已经判过（403/404 都到不了这里），所以直接写仓储，不再做
+// RecordView 那次 FindByID。匿名无归属主体，跳过；写失败只降级成「这条没记上」，
+// 不能让一次读详情的请求因为读状态表抖动而 500。
+func (s *postService) recordBrowse(ctx context.Context, id string) {
+	viewerID, _ := ctx.Value(viewerIDCtxKey{}).(string)
+	if viewerID == "" || s.topicReads == nil {
+		return
+	}
+	if err := s.topicReads.RecordView(ctx, viewerID, id, "", time.Now()); err != nil {
+		logrus.Warnf("post: record browse %s/%s failed: %v", viewerID, id, err)
+	}
 }
 
 func (s *postService) GetDetail(ctx context.Context, id string) (*model.PostDetail, error) {
@@ -401,6 +416,7 @@ func (s *postService) GetDetail(ctx context.Context, id string) (*model.PostDeta
 		return nil, err
 	}
 	s.incrViewCount(ctx, id)
+	s.recordBrowse(ctx, id)
 	return detail, nil
 }
 
@@ -1094,18 +1110,15 @@ func (s *postService) StartPinExpiryChecker(ctx context.Context) context.CancelF
 }
 
 func (s *postService) MarkRead(ctx context.Context, userID, postID string) error {
-	post, err := s.posts.FindByID(ctx, postID)
-	if err != nil {
+	if _, err := s.posts.FindByID(ctx, postID); err != nil {
 		if errors.Is(err, repository.ErrNotFound) {
 			return pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
 		}
 		return err
 	}
-	lastContentID := ""
-	if post != nil {
-		lastContentID = post.ContentID
-	}
-	return s.MarkReadToContent(ctx, userID, postID, lastContentID)
+	// 不带游标的「标记已读」不再 fallback 写主楼 contentID：那不代表任何阅读进度，
+	// 反而会把已有的评论级续读位置抹回帖子开头。留空即「保持原游标」。
+	return s.MarkReadToContent(ctx, userID, postID, "")
 }
 
 func (s *postService) MarkReadToContent(ctx context.Context, userID, postID, lastContentID string) error {
@@ -1115,19 +1128,153 @@ func (s *postService) MarkReadToContent(ctx context.Context, userID, postID, las
 	if s.topicReads == nil {
 		return nil
 	}
-	if lastContentID != "" && s.contents != nil {
-		if _, err := s.contents.FindByID(ctx, lastContentID); err != nil {
-			return pkg.NewAppError(pkg.NOT_FOUND, "评论不存在")
-		}
-	}
-	if err := s.topicReads.Upsert(ctx, userID, postID, lastContentID, time.Now()); err != nil {
+	if err := s.checkCursorForPost(ctx, postID, lastContentID); err != nil {
 		return err
+	}
+	return s.topicReads.Upsert(ctx, userID, postID, lastContentID, time.Now())
+}
+
+// checkCursorForPost 校验续读游标指向的评论确实属于这篇帖子。
+// 帖子↔评论的唯一关联是 content.RootID == post.ContentID（与 content.go 的判定同源）。
+// 少了这一步，任何人拿别人帖子里的一条评论 id 就能盲写自己的读状态，
+// 顺便探测那条评论的存在性——MarkReadToContent 历史上只校验「评论是否存在」。
+func (s *postService) checkCursorForPost(ctx context.Context, postID, contentID string) error {
+	if contentID == "" || s.contents == nil {
+		return nil
+	}
+	rootID := ""
+	if s.posts != nil {
+		post, err := s.posts.FindByID(ctx, postID)
+		if err != nil {
+			if errors.Is(err, repository.ErrNotFound) {
+				return pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
+			}
+			return err
+		}
+		if post == nil {
+			return pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
+		}
+		rootID = post.ContentID
+	}
+	c, err := s.contents.FindByID(ctx, contentID)
+	if err != nil || c == nil || (rootID != "" && c.RootID != rootID) {
+		return pkg.NewAppError(pkg.NOT_FOUND, "评论不存在")
 	}
 	return nil
 }
 
-// EnrichWithReadState fills has_new / last_read_at.
-// Phase-2 rule: no prior read record => has_new=false (only tracked topics show new replies).
+// RecordView 记一次浏览：只写 last_viewed_at 与（给了值时的）续读游标，
+// MUST NOT 写 last_read_at——看过 ≠ 读完，写了就会把「有新回复」角标与
+// 「没读过」筛选一起改坏。由详情出口自动调用，不依赖前端。
+//
+// 访问者身份一律取自 ctx（WithViewerID），不从参数收：这四个出口写的都是
+// 「谁读过什么」，参数化的 userID 早晚会成为越权写口的入口。
+func (s *postService) RecordView(ctx context.Context, postID, lastContentID string) error {
+	userID, _ := ctx.Value(viewerIDCtxKey{}).(string)
+	if userID == "" {
+		// 匿名没有归属主体：静默跳过，不是错误（详情是匿名可读的）。
+		return nil
+	}
+	if postID == "" {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "参数不完整")
+	}
+	if s.topicReads == nil {
+		return nil
+	}
+	post, err := s.posts.FindByID(ctx, postID)
+	if err != nil {
+		if errors.Is(err, repository.ErrNotFound) {
+			return pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
+		}
+		return err
+	}
+	if post == nil {
+		return pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
+	}
+	// 与详情同一门槛：状态不可见按 404（作者/审核者例外），等级不足按 403。
+	// 不可见帖不留记录，否则历史接口会变成存在性探测器。
+	if !s.canViewPost(ctx, post.Status, post.AuthorID) {
+		return pkg.NewAppError(pkg.NOT_FOUND, "帖子不存在")
+	}
+	if err := s.ensurePostVisible(ctx, model.PostListItem{
+		AuthorID: post.AuthorID,
+		SpaceID:  post.SpaceID,
+		MinLevel: post.MinLevel,
+	}); err != nil {
+		return err
+	}
+	if err := s.checkCursorForPost(ctx, postID, lastContentID); err != nil {
+		return err
+	}
+	return s.topicReads.RecordView(ctx, userID, postID, lastContentID, time.Now())
+}
+
+// viewerOrFail 取出 ctx 里的访问者，缺失时给 401（私有出口共用）。
+func (s *postService) viewerOrFail(ctx context.Context) (string, error) {
+	userID, _ := ctx.Value(viewerIDCtxKey{}).(string)
+	if userID == "" {
+		return "", pkg.NewAppError(pkg.TOKEN_NOT_EXIST, "请先登录")
+	}
+	return userID, nil
+}
+
+// ListHistory 是「我看过哪些帖、各读到哪条评论」的出口。
+// 可见性与状态过滤全部交给 SQL（applyVisibility + StatusIn），
+// 在 Go 里筛会让 total 说谎并泄露受限帖的存在性。
+func (s *postService) ListHistory(ctx context.Context, page, pageSize int) ([]model.PostListItem, int, error) {
+	userID, err := s.viewerOrFail(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	if s.posts == nil || s.topicReads == nil {
+		return []model.PostListItem{}, 0, nil
+	}
+	filter := repository.PostListFilter{}
+	// 与 List 同规则：无审核权限者只见 approved/closed（待审/拒稿不进历史）。
+	if !s.canViewNonPublic(ctx) {
+		filter.StatusIn = []string{model.PostStatusApproved, model.PostStatusClosed}
+	}
+	if err := s.applyVisibility(ctx, &filter); err != nil {
+		return nil, 0, err
+	}
+	items, total, err := s.posts.ListReadByUser(ctx, userID, filter, pkg.Offset(page, pageSize), pageSize)
+	if err != nil {
+		return nil, 0, err
+	}
+	return items, total, nil
+}
+
+// DeleteHistory 删除访问者自己的一条浏览记录；不存在也返回成功（幂等）。
+func (s *postService) DeleteHistory(ctx context.Context, postID string) error {
+	userID, err := s.viewerOrFail(ctx)
+	if err != nil {
+		return err
+	}
+	if postID == "" {
+		return pkg.NewAppError(pkg.INVALID_PARAMS, "参数不完整")
+	}
+	if s.topicReads == nil {
+		return nil
+	}
+	return s.topicReads.DeleteByUserAndPost(ctx, userID, postID)
+}
+
+// ClearHistory 清空访问者自己的全部浏览记录。作用域只可能是 ctx 里的这个人。
+func (s *postService) ClearHistory(ctx context.Context) error {
+	userID, err := s.viewerOrFail(ctx)
+	if err != nil {
+		return err
+	}
+	if s.topicReads == nil {
+		return nil
+	}
+	return s.topicReads.DeleteByUser(ctx, userID)
+}
+
+// EnrichWithReadState fills has_new / last_read_at / last_content_id.
+// Phase-2 rule: no prior read mark => has_new=false (only tracked topics show new replies).
+// 浏览记录改为被动落库后，「有行」不再等于「标过已读」：读标记为 NULL 的行
+// 必须继续视同从未读过，否则一次点开就会把全站角标熄灭。游标则要照常回传。
 func (s *postService) EnrichWithReadState(ctx context.Context, userID string, items []model.PostListItem) {
 	if userID == "" || s.topicReads == nil || len(items) == 0 {
 		return
@@ -1150,13 +1297,20 @@ func (s *postService) EnrichWithReadState(ctx context.Context, userID string, it
 		if !ok {
 			items[i].HasNew = false
 			items[i].LastReadAt = nil
+			items[i].LastContentID = ""
 			continue
 		}
-		last := st.LastReadAt
-		items[i].LastReadAt = &last
-		items[i].HasNew = items[i].LastActiveAt.After(st.LastReadAt)
+		// 续读游标与读标记互相独立：只点开过的帖子也要能回到上次的位置。
+		items[i].LastContentID = st.LastContentID
+		if st.LastReadAt == nil {
+			items[i].LastReadAt = nil
+			items[i].HasNew = false
+			continue
+		}
+		items[i].LastReadAt = st.LastReadAt
+		items[i].HasNew = items[i].LastActiveAt.After(*st.LastReadAt)
 		if s.contents != nil {
-			if count, err := s.contents.CountUnreadByRoot(ctx, items[i].ContentID, st.LastReadAt); err == nil {
+			if count, err := s.contents.CountUnreadByRoot(ctx, items[i].ContentID, *st.LastReadAt); err == nil {
 				items[i].UnreadContentCount = count
 			}
 		}

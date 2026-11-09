@@ -27,6 +27,16 @@ func TestBuildPostListWhere_ListView(t *testing.T) {
 	require.Equal(t, []interface{}{"u1"}, args)
 }
 
+// 「没读过」不等于「库里没有我的行」：浏览记录是被动落的（打开详情即建行），
+// 若 new 仍写作 NOT EXISTS(任意行)，用户刚点开过的帖子就会从
+// /timeline?list_view=new 里凭空消失。new 的权威定义是「从未标记已读」。
+func TestBuildPostListWhere_ListViewNewRequiresExplicitReadMark(t *testing.T) {
+	q, args := buildPostListWhere(PostListFilter{ListView: "new", ViewerID: "u1"})
+	require.Contains(t, q, "NOT EXISTS")
+	require.Contains(t, q, "trs.last_read_at IS NOT NULL")
+	require.Equal(t, []interface{}{"u1"}, args)
+}
+
 // 哨兵 "__all__" 表示「不过滤状态」，绝不能作为字面状态拼进 WHERE
 // （曾经 WHERE p.status = '__all__' 让后台列表恒 0 行）。
 func TestBuildPostListWhere_AllSentinelIsNotALiteralStatus(t *testing.T) {

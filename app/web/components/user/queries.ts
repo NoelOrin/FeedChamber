@@ -32,10 +32,11 @@ export function toReadFilter(value: string | string[] | undefined): ReadFilter {
 	return READ_VALUES.includes(raw as ReadFilter) ? (raw as ReadFilter) : 'all';
 }
 
-export function toPage(value: string | string[] | undefined): number {
-	const raw = Array.isArray(value) ? value[0] : value;
-	return Number.parseInt(raw ?? '', 10) > 0 ? Number.parseInt(raw ?? '', 10) : 1;
-}
+/**
+ * 页号归一的唯一实现已下沉到 `~/lib/pagination`（新的私有列表页如 /user/history 共用它）。
+ * 这里保持原导出名，避免改动全部调用点。
+ */
+export { toPage } from '~/lib/pagination';
 
 export function toFirstValue(value: string | string[] | undefined, fallback: string): string {
 	const raw = Array.isArray(value) ? value[0] : value;

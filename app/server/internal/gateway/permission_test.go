@@ -563,3 +563,29 @@ func TestPermMiddleware_PluginReadVsManageSplit(t *testing.T) {
 	e.POST("/api/v1/admin/plugins/preview").Expect().Status(http.StatusForbidden)
 	e.POST("/api/v1/admin/plugins/alpha/delete").Expect().Status(http.StatusForbidden)
 }
+
+// 浏览记录的四条 protected 端点必须已经在 initRouteMap 里。
+//
+// 这里用的是真实映射表 + 真实默认角色权限表：漏一条映射的表现不是 panic 而是
+// 静默 403，前端只会看到「历史列表打不开」，很容易被当成业务 bug 去查 service。
+// 反过来，若把码挂成某个普通用户没有的管理员码，这条用例同样会红。
+func TestPermMiddleware_HistoryRoutesMappedForPlainUser(t *testing.T) {
+	userCodes := map[string]bool{}
+	for _, code := range model.DefaultRolePermissions["user"] {
+		userCodes[code] = true
+	}
+	pc := NewPermissionChecker(Deps{Perms: &mockPermChecker{
+		hasPerm: func(role, code string) bool { return role == "user" && userCodes[code] },
+	}})
+	app := setupPermApp(pc, "user")
+	app.Post("/api/v1/history/list", okHandler)
+	app.Post("/api/v1/history/clear", okHandler)
+	app.Post("/api/v1/history/{postId}/delete", okHandler)
+	app.Post("/api/v1/posts/{id}/view", okHandler)
+
+	e := httptest.New(t, app)
+	e.POST("/api/v1/history/list").Expect().Status(http.StatusOK)
+	e.POST("/api/v1/history/clear").Expect().Status(http.StatusOK)
+	e.POST("/api/v1/history/p1/delete").Expect().Status(http.StatusOK)
+	e.POST("/api/v1/posts/p1/view").Expect().Status(http.StatusOK)
+}

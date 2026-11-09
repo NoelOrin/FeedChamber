@@ -51,6 +51,14 @@ type PostReadRepository interface {
 	FindDetailByID(ctx context.Context, id string) (*model.PostDetail, error)
 	// ListWithTotal returns posts matching the filter with total count in a single query.
 	ListWithTotal(ctx context.Context, filter PostListFilter, offset, limit int) ([]model.PostListItem, int, error)
+	// ListReadByUser returns the viewer's browse history (posts they have a
+	// topic_read_states row for), newest touch first.
+	//
+	// filter MUST carry the same visibility predicate the other outlets use
+	// (service.applyVisibility): filtering in Go after pagination would hand out
+	// page numbers that can't be reached and leak the existence of restricted
+	// posts. last_read_at / last_content_id / last_viewed_at come from trs.
+	ListReadByUser(ctx context.Context, userID string, filter PostListFilter, offset, limit int) ([]model.PostListItem, int, error)
 	Search(ctx context.Context, keyword string, offset, limit int) ([]model.PostListItem, error)
 	CountSearch(ctx context.Context, keyword string) (int, error)
 	// SearchWithTotal returns posts matching the keyword with total count in a single query.

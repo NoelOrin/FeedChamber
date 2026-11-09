@@ -84,7 +84,10 @@ func buildPostListWhere(f PostListFilter) (string, []interface{}) {
 	}
 	switch f.ListView {
 	case "new":
-		query += " AND NOT EXISTS (SELECT 1 FROM topic_read_states trs WHERE trs.post_id = p.id AND trs.user_id = ?)"
+		// 「没读过」= 从未显式标记已读。浏览记录改为被动落库（打开详情即写
+		// last_viewed_at，而 last_read_at 留 NULL），若这里仍按「有没有行」判断，
+		// 用户刚点开过的帖子就会从 /timeline?list_view=new 里凭空消失。
+		query += " AND NOT EXISTS (SELECT 1 FROM topic_read_states trs WHERE trs.post_id = p.id AND trs.user_id = ? AND trs.last_read_at IS NOT NULL)"
 		args = append(args, f.ViewerID)
 	case "read":
 		query += " AND EXISTS (SELECT 1 FROM topic_read_states trs WHERE trs.post_id = p.id AND trs.user_id = ? AND p.last_active_at <= trs.last_read_at)"

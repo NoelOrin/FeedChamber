@@ -267,6 +267,53 @@ test_favorites() {
     check "收藏列表" POST "/favorites/list" '{}' "$token" 200
 }
 
+# ── 浏览记录 / 评论级续读位置 ───────────────────────────────────
+# 自建帖子与评论，不依赖其它模块的执行顺序。
+# 关键契约：被动浏览自动落库（不写已读标记）、游标校验评论归属、
+# 历史列表只回传访问者本来能看见的帖子、删除幂等、清空只影响自己。
+test_history() {
+    local token="${1:?token required}"
+    section "10b. 浏览记录 / 续读位置"
+
+    check "浏览记录列表(空 body)" POST "/history/list" '' "$token" 200
+    check "浏览记录列表(分页)" POST "/history/list" '{"page":1,"pageSize":20}' "$token" 200
+    check "浏览记录列表(匿名被拒)" POST "/history/list" '{}' "" 401
+
+    local pid; pid=$(curl -s -X POST "$BASE/posts/create" \
+      -H "Content-Type: application/json" -H "Authorization: Bearer $token" \
+      -d '{"title":"API浏览记录帖","content":"浏览记录测试","tags":[]}' | json_val "id")
+    if [[ -z "$pid" ]]; then echo "  SKIP: could not create post for history"; return; fi
+
+    # 打开详情即应产生浏览记录（被动落库，不依赖前端按钮）
+    check "打开详情(触发浏览记录)" GET "/posts/$pid/detail" "" "$token" 200
+    check "浏览后历史含该帖" POST "/history/list" '{"page":1,"pageSize":20}' "$token" 200
+
+    # 评论级游标：先造一条评论，再上报「读到这里」
+    curl -s -X POST "$BASE/posts/$pid/contents/create" \
+      -H "Content-Type: application/json" -H "Authorization: Bearer $token" \
+      -d '{"body":"续读游标测试评论"}' >/dev/null
+    local cid; cid=$(curl -s -X POST "$BASE/posts/$pid/contents/list" \
+      -H "Content-Type: application/json" -d '{}' | first_id)
+    if [[ -n "$cid" ]]; then
+        check "上报阅读位置(合法游标)" POST "/posts/$pid/view" \
+          "{\"last_content_id\":\"$cid\"}" "$token" 200
+    fi
+    check "上报阅读位置(空 body / 保留旧游标)" POST "/posts/$pid/view" '' "$token" 200
+    # 别人的评论 id / 不存在的 content 一律拒绝，且不得留下记录
+    check "上报阅读位置(伪造游标被拒)" POST "/posts/$pid/view" \
+      '{"last_content_id":"not-a-real-content-id"}' "$token" 404
+    check "标记已读(带游标)" POST "/posts/$pid/read" \
+      "{\"last_content_id\":\"${cid:-}\"}" "$token" 200
+
+    # 删除幂等：删一次成功，再删一次仍成功（不是 404）
+    check "删除单条浏览记录" POST "/history/$pid/delete" '{}' "$token" 200
+    check "删除单条浏览记录(幂等)" POST "/history/$pid/delete" '{}' "$token" 200
+    check "清空浏览记录" POST "/history/clear" '{}' "$token" 200
+    check "清空后列表" POST "/history/list" '{"page":1,"pageSize":20}' "$token" 200
+
+    check "清理测试帖" POST "/posts/$pid/delete" '{}' "$token" 200
+}
+
 test_notifications() {
     local token="${1:?token required}"
     section "11. 通知"
@@ -570,6 +617,7 @@ run_tests() {
             tags)             test_tags "$admin_token" ;;
             follow)           test_follow "$admin_token" ;;
             favorites)        test_favorites "$admin_token" ;;
+            history)          test_history "$admin_token" ;;
             notifications)    test_notifications "$admin_token" ;;
 	    spaces)           test_spaces "$admin_token" ;;
             upload)           test_upload "$admin_token" ;;
@@ -602,11 +650,11 @@ run_tests() {
 
 modules=()
 if [[ $# -eq 0 ]]; then
-    modules=(public auth post_public post_crud user role tags follow favorites notifications upload reports admin spaces spaces_crud role_crud ban announcement checkin admin_extras oauth auth_flow)
+    modules=(public auth post_public post_crud user role tags follow favorites notifications upload reports admin spaces spaces_crud role_crud ban announcement checkin history admin_extras oauth auth_flow)
 else
     for arg in "$@"; do
         case "$arg" in
-            -all|-a)     modules=(public auth post_public post_crud user role tags follow favorites notifications upload reports admin spaces spaces_crud role_crud ban announcement checkin admin_extras oauth auth_flow); break ;;
+            -all|-a)     modules=(public auth post_public post_crud user role tags follow favorites notifications upload reports admin spaces spaces_crud role_crud ban announcement checkin history admin_extras oauth auth_flow); break ;;
             -public)     modules+=(public) ;;
             -auth)       modules+=(auth auth_flow) ;;
             -post)       modules+=(post_public post_crud) ;;
@@ -615,6 +663,7 @@ else
             -tag|-tags)      modules+=(tags) ;;
             -follow)     modules+=(follow) ;;
             -fav|-favorite)  modules+=(favorites) ;;
+            -history)    modules+=(history) ;;
             -notif|-notification) modules+=(notifications) ;;
             -upload)     modules+=(upload) ;;
             -report|-reports) modules+=(reports) ;;
@@ -627,7 +676,7 @@ else
 	    -checkin)    modules+=(checkin) ;;
 	    -admin-extras) modules+=(admin_extras) ;;
 	    -oauth)      modules+=(oauth) ;;
-            *) echo "Unknown option: $arg"; echo "Usage: $0 [-all|-auth|-post|-user|-role|-tag|-follow|-fav|-notif|-upload|-report|-admin|-space|-ban|-announce|-checkin|-spaces-crud|-role-crud|-admin-extras|-oauth]"; exit 1 ;;
+            *) echo "Unknown option: $arg"; echo "Usage: $0 [-all|-auth|-post|-user|-role|-tag|-follow|-fav|-history|-notif|-upload|-report|-admin|-space|-ban|-announce|-checkin|-spaces-crud|-role-crud|-admin-extras|-oauth]"; exit 1 ;;
         esac
     done
 fi

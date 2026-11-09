@@ -80,6 +80,7 @@ type Handler struct {
 	Auth         AuthHandler
 	MFA          MFAHandler
 	Post         PostHandler
+	History      HistoryHandler
 	Content      ContentHandler
 	Like         LikeHandler
 	Favorite     FavoriteHandler
@@ -138,6 +139,7 @@ func New(d *Deps) *Handler {
 		Auth:         newAuthHandler(d.Auth, d.Sessions, d.Email, d.AuditLog),
 		MFA:          newMFAHandler(d.MFA, d.Auth, d.User, d.Sessions),
 		Post:         newPostHandler(d.Post),
+		History:      newHistoryHandler(d.Post),
 		Content:      newContentHandler(d.Content),
 		Like:         newLikeHandler(d.Like),
 		Favorite:     newFavoriteHandler(d.Favorite),

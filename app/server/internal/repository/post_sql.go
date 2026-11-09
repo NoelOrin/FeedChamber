@@ -300,6 +300,48 @@ func (r *sqlPostRepo) ListWithTotal(ctx context.Context, filter PostListFilter, 
 	return items, int(rows[0].TotalCount), nil
 }
 
+// ListReadByUser 是帖子读取面的第 7 个出口：与列表/搜索共用 buildPostListWhere
+// （软删与可见性谓词都在 SQL 里），因此「访问者看不见的帖子」既占不到页位也进不了
+// total。在 Go 里先取一页再筛会给出翻不到的页码，并泄露受限帖的存在性。
+// 排序用 COALESCE(last_viewed_at, last_read_at)：升级前只有读标记的存量行
+// 不至于从历史里凭空消失。
+func (r *sqlPostRepo) ListReadByUser(ctx context.Context, userID string, filter PostListFilter, offset, limit int) ([]model.PostListItem, int, error) {
+	type row struct {
+		model.PostListItem
+		TotalCount int64
+	}
+	base := `
+			SELECT p.id, p.title, p.slug, p.content_digest, p.author_id, COALESCE(NULLIF(u.display_name, ''), u.username) AS author_name, u.avatar AS author_avatar,
+			       p.space_id, sp.name AS space_name,
+			       p.status, p.min_level, p.pinned, p.pin_order, p.pinned_at, p.featured_at, p.locked, p.last_active_at, p.view_count,
+			       p.comment_count, p.like_count, p.favorite_count,
+			       p.created_at, p.updated_at,
+			       trs.last_read_at, trs.last_viewed_at, trs.last_content_id,
+			       COUNT(*) OVER() AS total_count
+			FROM posts p
+			INNER JOIN topic_read_states trs ON trs.post_id = p.id AND trs.user_id = ?
+			LEFT JOIN users u ON p.author_id = u.id
+			LEFT JOIN spaces sp ON p.space_id = sp.id
+			WHERE ` + SQLSoftDeleteCondition("p")
+	where, args := buildPostListWhere(filter)
+	query := base + where + " ORDER BY COALESCE(trs.last_viewed_at, trs.last_read_at) DESC LIMIT ? OFFSET ?"
+	args = append([]interface{}{userID}, args...)
+	args = append(args, limit, offset)
+	var rows []row
+	err := r.db.DB().WithContext(ctx).Raw(query, args...).Scan(&rows).Error
+	if err != nil {
+		return nil, 0, err
+	}
+	items := make([]model.PostListItem, len(rows))
+	for i, rw := range rows {
+		items[i] = rw.PostListItem
+	}
+	if len(rows) == 0 {
+		return items, 0, nil
+	}
+	return items, int(rows[0].TotalCount), nil
+}
+
 func (r *sqlPostRepo) CountSearch(ctx context.Context, keyword string) (int, error) {
 	like := "%" + keyword + "%"
 	var count int64

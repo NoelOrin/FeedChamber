@@ -34,6 +34,11 @@ interface ContentItemProps {
 	className?: string;
 	/** root = 帖子正文：不显示作者行与楼层动作，只保留点赞 */
 	mode?: 'floor' | 'root';
+	/**
+	 * 这一楼是访问者上次读到的位置（续读游标）。由 CommentList 依服务端回传的
+	 * `last_content_id` 标出，画一条「上次读到这里」的分隔线。
+	 */
+	resumeHere?: boolean;
 }
 
 /** 旧 revision 列表的行形状（本切片只用 body / created_at）。 */
@@ -47,7 +52,14 @@ function errText(error: unknown, fallback: string) {
 	return error instanceof Error && error.message ? error.message : fallback;
 }
 
-export function ContentItem({ content, postId, children, className, mode = 'floor' }: ContentItemProps) {
+export function ContentItem({
+	content,
+	postId,
+	children,
+	className,
+	mode = 'floor',
+	resumeHere = false,
+}: ContentItemProps) {
 	const queryClient = useQueryClient();
 	const user = useAuthStore((state) => state.user);
 	const canModerate = user?.role === 'admin' || user?.role === 'moderator';
@@ -169,6 +181,13 @@ export function ContentItem({ content, postId, children, className, mode = 'floo
 			) : null}
 
 			<div className="min-w-0 flex-1">
+				{resumeHere ? (
+					<div className="mb-2 flex items-center gap-2">
+						<span className="h-px flex-1 bg-brand-text/40" aria-hidden="true" />
+						<span className="shrink-0 text-[11px] font-medium text-brand-text">上次读到这里</span>
+						<span className="h-px flex-1 bg-brand-text/40" aria-hidden="true" />
+					</div>
+				) : null}
 				{!isRoot ? (
 					<div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
 						<span className="text-[13px] font-medium text-foreground">{content.author_name}</span>
