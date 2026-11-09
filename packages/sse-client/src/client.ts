@@ -131,7 +131,11 @@ export class SSEClient {
 			if (!response.ok) {
 				const body = await response.json().catch(() => null);
 				const code = body?.code ?? 5001;
-				if (code > 0 && code < 5000) {
+				// Every positive business code must reach the caller. The old
+				// `code < 5000` guard silently swallowed 5xxx envelope codes
+				// (e.g. MAINTENANCE 5005), so the notification bell just stopped
+				// updating during maintenance with no error surfaced at all.
+				if (code > 0) {
 					this.opts.onError?.({ code, msg: body?.msg || '未知错误' });
 				}
 				this.scheduleReconnect();
