@@ -124,8 +124,22 @@ KV bucket 里存什么（按用途看，不按实现看）：
 报配置错误，而不是静默失败。
 
 发信限制不在邮件配置里，而在验证码设置里：`email_resend_cooldown`（默认 60 秒）、
-`email_daily_limit`（默认 10 封/邮箱/天）、`email_code_ttl`（默认 600 秒），
-细节见 [认证与安全](/configuration/authentication/)。
+`email_daily_limit`（默认 10 封/邮箱/天）、`email_code_ttl`（默认 600 秒）、
+`email_code_length`（默认 6 位），细节见 [认证与安全](/configuration/authentication/)。
+
+通知类邮件另有独立开关：`email_notify_enabled`（回复 / 提及等事件邮件）与
+`email_digest_enabled`（每周摘要）。两者默认 `false`，**且只作用于通知邮件**——
+验证码流程由 `email_enabled` 控制，互不影响。
+
+### 发送测试邮件
+
+「邮件服务」组底部有「发送测试邮件」：用**已保存**的配置真发一封到指定地址，
+并回显生效通道（provider / host / port / TLS 模式）与失败原因。
+
+- 投递失败不会变成 500——接口返回 `ok: false` 加原因，所以配置错、密码错、端口错
+  都能直接看到是哪一步断的。
+- 选 `log` 时会提示「只写日志、收件人不会收到」，避免误判成真发成功。
+- 改完上面的配置**必须先保存**再测，否则测的是旧配置。
 
 ## 验证
 

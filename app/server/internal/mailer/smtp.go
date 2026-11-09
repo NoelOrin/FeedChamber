@@ -34,6 +34,30 @@ func (s *smtpSender) Send(_ context.Context, msg Message) error {
 	return s.send(msg)
 }
 
+// newTLSConfig 构造两种拨号方式共用的 TLS 客户端配置。
+// 做成包级变量只为测试能注入自签 CA：生产恒走系统信任库，
+// 自签证书会被拒绝（见 TestSend_RejectsUntrustedServerCert）。
+var newTLSConfig = func(serverName string) *tls.Config {
+	return &tls.Config{ServerName: serverName}
+}
+
+// EffectivePort 返回实际拨号端口：Port 未配置时按 TLS 模式补默认值——
+// 465 是隐式 TLS，587 是 STARTTLS，两者拨号方式不同，猜错就是连不上。
+// 后台的邮件诊断报告也读它，避免「显示给管理员的端口」和「真正拨的端口」各算一套。
+func EffectivePort(cfg Config) int {
+	if cfg.Port > 0 {
+		return cfg.Port
+	}
+	if cfg.UseTLS {
+		return 465
+	}
+	return 587
+}
+
+func smtpAddr(cfg Config) string {
+	return fmt.Sprintf("%s:%d", cfg.Host, EffectivePort(cfg))
+}
+
 func (s *smtpSender) send(msg Message) error {
 	// Sanitize: prevent SMTP header injection in To field
 	sanitizedTo := make([]string, len(msg.To))
@@ -43,15 +67,7 @@ func (s *smtpSender) send(msg Message) error {
 	msg.To = sanitizedTo
 	msg.HTMLBody = sanitizeHTML(msg.HTMLBody)
 
-	port := s.cfg.Port
-	if port == 0 {
-		if s.cfg.UseTLS {
-			port = 465
-		} else {
-			port = 587
-		}
-	}
-	addr := fmt.Sprintf("%s:%d", s.cfg.Host, port)
+	addr := smtpAddr(s.cfg)
 	auth := smtp.PlainAuth("", s.cfg.Username, s.cfg.Password, s.cfg.Host)
 
 	from := s.cfg.From
@@ -66,8 +82,7 @@ func (s *smtpSender) send(msg Message) error {
 
 	if s.cfg.UseTLS {
 		// Implicit TLS (port 465)
-		tlsCfg := &tls.Config{ServerName: s.cfg.Host}
-		conn, err := tls.Dial("tcp", addr, tlsCfg)
+		conn, err := tls.Dial("tcp", addr, newTLSConfig(s.cfg.Host))
 		if err != nil {
 			return fmt.Errorf("mailer: smtp tls dial: %w", err)
 		}
@@ -90,7 +105,7 @@ func (s *smtpSender) send(msg Message) error {
 	defer c.Quit()
 
 	host, _, _ := net.SplitHostPort(addr)
-	if err := c.StartTLS(&tls.Config{ServerName: host}); err != nil {
+	if err := c.StartTLS(newTLSConfig(host)); err != nil {
 		return fmt.Errorf("mailer: smtp starttls: %w", err)
 	}
 	if err := c.Auth(auth); err != nil {

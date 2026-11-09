@@ -239,6 +239,10 @@ var DefaultSettings = map[string]string{
 	"email_code_length":     "6",
 	"email_resend_cooldown": "60",
 	"email_daily_limit":     "10",
+	// 这两个开关被 service/email.go 与 service/digest.go 真实读取，但此前既没有
+	// 默认值也没进后台 UI——硬默认 false 让邮件通知与周报处于「永远打不开」状态。
+	"email_notify_enabled": "false",
+	"email_digest_enabled": "false",
 	// OAuth2 / OIDC（access token 为 opaque，仅 id_token 是 JWT）
 	"oauth_access_token_ttl": "86400",
 	"sso_id_token_ttl":       "3600",

@@ -53,6 +53,8 @@ func (r *reg) adminRoutes() {
 		a.PartyFunc("/settings", func(as iris.Party) {
 			as.Post("", h.Setting.GetAll)
 			as.Post("/batch", h.Setting.BatchSet)
+			// 邮件自测：固定串挂在 /{key} 之前，避免 "email" 被当成设置键。
+			as.Post("/email/test", h.Setting.SendEmailTest)
 			as.Post("/{key}", h.Setting.Get)
 			as.Post("/{key}/update", h.Setting.Set)
 			as.Post("/{key}/delete", h.Setting.Delete)

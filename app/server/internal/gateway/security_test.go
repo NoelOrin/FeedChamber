@@ -433,3 +433,33 @@ type mockSecSettingReader struct {
 func (m *mockSecSettingReader) Get(_ context.Context, key string) (string, error) {
 	return m.data[key], nil
 }
+
+// 回归：被临时封禁的 IP 必须被真正拦下。
+//
+// 旧实现 `pkg.Fail(...); /* 缺 return */` 继续往下走，`ctx.Next()` 把请求交给
+// 业务 handler，于是同一个响应被写两次——客户端收到 403 状态码，但响应体是两个
+// JSON 对象拼接，且**副作用已经发生**（后台自助发信、写操作照常执行）。
+// 这里用 httptest 无法伪造 RemoteAddr，所以直接断言「写出响应后没有继续 next」。
+func TestSecurityManager_SecurityCheck_BlockedIPStopsPipeline(t *testing.T) {
+	kv := newSecurityMemoryKV()
+	sm := NewSecurityManager(Deps{KV: kv})
+	_ = kv.Set(context.Background(), "blocked_ip:10.0.0.99", "1", time.Hour)
+	require.True(t, sm.isIPBlocked("10.0.0.99"))
+
+	handlerRan := false
+	app := iris.New()
+	app.Use(func(ctx iris.Context) {
+		// httptest 下 RemoteAddr 为空，无法用它驱动封禁；改为把 SecurityCheck
+		// 看到的 IP 固定成已被封的那一个。
+		ctx.Request().RemoteAddr = "10.0.0.99:12345"
+		sm.SecurityCheck(ctx)
+	})
+	app.Get("/test", func(ctx iris.Context) {
+		handlerRan = true
+		ctx.JSON(iris.Map{"ok": true})
+	})
+
+	httptest.New(t, app).GET("/test").Expect().Status(http.StatusForbidden)
+
+	assert.False(t, handlerRan, "被封禁的 IP 不得继续执行到业务 handler")
+}

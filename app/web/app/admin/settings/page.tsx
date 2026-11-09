@@ -20,6 +20,7 @@ import { toast } from '~/lib/toast';
 import { DashboardAccount } from './modules/dashboard-account';
 import { DashboardLanguage } from './modules/dashboard-language';
 import { DashboardPassword } from './modules/dashboard-password';
+import { EmailTestPanel } from './modules/email-test-panel';
 import { type SettingItemDef, serviceTabs, settingsGroups } from './settingsConfig';
 
 const serviceTabKeys = serviceTabs.map((t) => t.key) as string[];
@@ -181,6 +182,7 @@ export default function AdminSettings() {
 										</div>
 									))}
 								</div>
+								{group.footer === 'email-test' ? <EmailTestPanel /> : null}
 							</CollapseContent>
 						</CollapseItem>
 					</Collapse>

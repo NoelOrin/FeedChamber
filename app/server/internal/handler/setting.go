@@ -18,15 +18,17 @@ type SettingHandler interface {
 	Set(ctx iris.Context)
 	BatchSet(ctx iris.Context)
 	Delete(ctx iris.Context)
+	SendEmailTest(ctx iris.Context)
 }
 
 type settingHandler struct {
 	svc         service.SettingService
 	auditLogSvc service.AuditLogService
+	emailSvc    service.EmailService
 }
 
-func newSettingHandler(svc service.SettingService, auditLogSvc service.AuditLogService) SettingHandler {
-	return &settingHandler{svc: svc, auditLogSvc: auditLogSvc}
+func newSettingHandler(svc service.SettingService, auditLogSvc service.AuditLogService, emailSvc service.EmailService) SettingHandler {
+	return &settingHandler{svc: svc, auditLogSvc: auditLogSvc, emailSvc: emailSvc}
 }
 
 // GetPublic 获取公开设置
@@ -187,4 +189,56 @@ func (h *settingHandler) Delete(ctx iris.Context) {
 		return
 	}
 	pkg.Success(ctx, nil)
+}
+
+// SendEmailTest 发送一封测试邮件，验证当前邮件配置是否真的能投递。
+// @Summary      发送测试邮件
+// @Description  用当前已保存的邮件配置向指定地址投递一封测试邮件，返回生效通道与失败原因（不返回任何凭据）
+// @Tags         系统设置
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        body  body      object{to=string}  true  "收件人邮箱"
+// @Success      200   {object}  pkg.Response{data=service.MailTestReport}
+// @Failure      400   {object}  pkg.Response
+// @Failure      401   {object}  pkg.Response
+// @Failure      403   {object}  pkg.Response
+// @Router       /admin/settings/email/test [post]
+func (h *settingHandler) SendEmailTest(ctx iris.Context) {
+	var req struct {
+		To string `json:"to"`
+	}
+	if err := ctx.ReadJSON(&req); err != nil {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS, err.Error())
+		return
+	}
+	// 投递失败以 report.ok=false 呈现（HTTP 仍是 200）：管理员要的是原因，
+	// 而不是一个只有「发送失败」四个字的 500。
+	report, err := h.emailSvc.SendTest(ctx.Request().Context(), req.To)
+	if err != nil {
+		pkg.HandleError(ctx, err)
+		return
+	}
+	if err := h.auditLogSvc.Record(ctx.Request().Context(), currentUserID(ctx), "settings.email_test", req.To,
+		emailTestAuditDetail(report)); err != nil {
+		logrus.Warnf("audit log write failed: %v", err)
+	}
+	pkg.Success(ctx, report)
+}
+
+// emailTestAuditDetail 记「谁试过、成没成、打到哪个通道」，刻意不含收件人以外的自由文本。
+func emailTestAuditDetail(report *service.MailTestReport) string {
+	if report == nil {
+		return ""
+	}
+	detail, err := json.Marshal(map[string]any{
+		"ok":       report.Ok,
+		"provider": report.Provider,
+		"host":     report.Host,
+		"port":     report.Port,
+	})
+	if err != nil {
+		return ""
+	}
+	return string(detail)
 }

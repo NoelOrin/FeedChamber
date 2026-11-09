@@ -39,6 +39,10 @@ func (s *stubEmailService) SendNotification(ctx context.Context, to, subject, ht
 	return nil
 }
 
+func (s *stubEmailService) SendTest(_ context.Context, _ string) (*MailTestReport, error) {
+	return &MailTestReport{Ok: true, Provider: "log"}, nil
+}
+
 func TestAuthSendAndVerifyEmail(t *testing.T) {
 	users := mock.NewUserRepository()
 	_ = users.Create(context.Background(), &model.User{

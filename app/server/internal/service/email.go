@@ -3,6 +3,8 @@ package service
 import (
 	"context"
 	"fmt"
+	"net/mail"
+	"strings"
 	"time"
 
 	"feedchamber/internal/mailer"
@@ -133,6 +135,76 @@ func (s *emailService) SendNotification(ctx context.Context, to, subject, htmlBo
 	}
 	return nil
 }
+
+// SendTest 用「当前已保存的配置」真发一封测试邮件，并把生效通道回给后台。
+// 它是唯一能在用户点「忘记密码」之前发现邮件配错的地方，所以配置类与网络类
+// 失败都只写进 report（err 仍为 nil）而不是打成 500——管理员要看的是原因。
+func (s *emailService) SendTest(ctx context.Context, to string) (*MailTestReport, error) {
+	to = strings.TrimSpace(to)
+	if to == "" {
+		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "请填写收件人邮箱")
+	}
+	if _, err := mail.ParseAddress(to); err != nil {
+		return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "收件人邮箱格式不正确")
+	}
+
+	cfg := pkg.BuildMailerConfig(ctx, s.settingSvc)
+	rep := &MailTestReport{
+		Provider: cfg.Provider,
+		From:     cfg.From,
+		EmailEnabled: pkg.GetSettingOrDefault(ctx, s.settingSvc, model.SettingEmailEnabled, "EMAIL_ENABLED", "false") ==
+			"true",
+	}
+	if cfg.Provider == "smtp" {
+		rep.Host = cfg.Host
+		rep.Port = mailer.EffectivePort(cfg)
+		if cfg.UseTLS {
+			rep.TLSMode = "implicit"
+		} else {
+			rep.TLSMode = "starttls"
+		}
+	}
+
+	sender, err := mailer.New(cfg)
+	if err != nil {
+		rep.Error = err.Error()
+		return rep, nil
+	}
+
+	msg := mailer.Message{
+		To:       []string{to},
+		Subject:  "Feed Chamber 邮件配置测试",
+		HTMLBody: testMailHTML,
+		TextBody: "这是一封验证邮件配置是否生效的测试邮件，收到即表示当前配置可用。",
+	}
+	start := time.Now()
+	if err := sender.Send(ctx, msg); err != nil {
+		rep.ElapsedMs = time.Since(start).Milliseconds()
+		rep.Error = err.Error()
+		return rep, nil
+	}
+	rep.ElapsedMs = time.Since(start).Milliseconds()
+	rep.Ok = true
+
+	notices := make([]string, 0, 2)
+	if cfg.Provider == "log" {
+		notices = append(notices, "provider=log：邮件只写进服务端日志，收件人不会收到")
+	}
+	if !rep.EmailEnabled {
+		notices = append(notices, "email_enabled=false：用户侧验证码邮件仍被拦截")
+	}
+	rep.Notice = strings.Join(notices, "；")
+	return rep, nil
+}
+
+const testMailHTML = `<!DOCTYPE html>
+<html>
+<body style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px">
+  <h2 style="color:#333">邮件配置测试</h2>
+  <p>这是一封验证邮件配置是否生效的测试邮件。</p>
+  <p style="color:#666;font-size:14px">收到本邮件说明当前的邮件提供商、服务器与凭据均可用。</p>
+</body>
+</html>`
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

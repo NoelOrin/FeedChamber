@@ -12,6 +12,8 @@ export interface SettingsGroup {
 	name: string;
 	tab: ServiceTabKey;
 	items: SettingItemDef[];
+	/** 组末附加面板（纯数据驱动，页面按标识渲染组件） */
+	footer?: 'email-test';
 }
 
 /** 服务设置下的细分 Tab，顺序即展示顺序 */
@@ -201,9 +203,13 @@ export const settingsGroups: SettingsGroup[] = [
 			{ key: 'email_use_tls', value: 'false', description: 'SMTP 使用 TLS', type: 'boolean' },
 			{ key: 'email_api_key', value: '', description: 'SendGrid / Resend API Key', type: 'secret' },
 			{ key: 'email_code_ttl', value: '600', description: '邮箱验证码有效期（秒）' },
+			{ key: 'email_code_length', value: '6', description: '邮箱验证码位数' },
 			{ key: 'email_resend_cooldown', value: '60', description: '验证码重发冷却（秒）' },
 			{ key: 'email_daily_limit', value: '10', description: '每日验证码发送上限' },
+			{ key: 'email_notify_enabled', value: 'false', description: '启用邮件通知（回复 / 提及等）', type: 'boolean' },
+			{ key: 'email_digest_enabled', value: 'false', description: '启用每周摘要邮件', type: 'boolean' },
 		],
+		footer: 'email-test',
 	},
 	{
 		name: '安全与高级认证',

@@ -93,7 +93,24 @@ it off, requesting a code fails immediately.
 `log` writes the message to the server log instead of sending — the cheapest local baseline for
 "did SMTP actually send?". `resend` and `sendgrid` fail loudly without `email_api_key`. Sending
 limits live with the codes: `email_resend_cooldown` (60s), `email_daily_limit` (10/day),
-`email_code_ttl` (600s); see [Authentication and Security](/configuration/authentication/).
+`email_code_ttl` (600s), `email_code_length` (6); see
+[Authentication and Security](/configuration/authentication/).
+
+Notification mail has its own switches: `email_notify_enabled` (reply / mention emails) and
+`email_digest_enabled` (weekly digest). Both default to `false` and **only affect notification
+mail** — the code flow is gated by `email_enabled`.
+
+### Sending a test message
+
+The bottom of the "Mail" group has **Send test email**: it uses the *saved* configuration to
+deliver one real message to an address you enter, and reports the effective route
+(provider / host / port / TLS mode) plus the failure reason.
+
+- A delivery failure is not a 500 — the endpoint returns `ok: false` with the reason, so a wrong
+  host, password or port is visible directly.
+- With the `log` provider it says "written to the log only, the recipient got nothing" so nobody
+  mistakes it for a real delivery.
+- Save the config first — the test always uses what is persisted.
 
 ## Verify
 

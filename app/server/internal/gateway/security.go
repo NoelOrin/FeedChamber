@@ -210,6 +210,11 @@ func (s *SecurityManager) SecurityCheck(ctx iris.Context) {
 	reqCtx := ctx.Request().Context()
 
 	// 1. IP block check (brute force)
+	//
+	// 下面两处 Fail 之后 MUST return：SecurityCheck 是链式中间件（由 gateway.enforce
+	// 在 permission 之后调用），继续往下走会执行到 ctx.Next() → 业务 handler，
+	// 于是响应被写两次（状态码 403 + 两个 JSON 对象拼接），而副作用照常发生。
+	// 回归测试：TestSecurityManager_SecurityCheck_BlockedIPStopsPipeline。
 	if s.isIPBlocked(ip) {
 		pkg.Fail(ctx, pkg.FORBIDDEN, "该 IP 已被临时封禁")
 		return

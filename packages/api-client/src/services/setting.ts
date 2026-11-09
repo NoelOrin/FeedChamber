@@ -1,4 +1,5 @@
 import { post } from '../client';
+import type { MailTestReport } from '../types';
 
 export const settingService = {
 	getPublic() {
@@ -23,5 +24,10 @@ export const settingService = {
 
 	delete(key: string) {
 		return post<null>(`/admin/settings/${key}/delete`);
+	},
+
+	/** 用当前已保存的邮件配置发一封测试邮件；投递失败回 ok=false 而不是抛错。 */
+	sendTestEmail(to: string) {
+		return post<MailTestReport>('/admin/settings/email/test', { to });
 	},
 };

@@ -157,7 +157,7 @@ func New(d *Deps) *Handler {
 		Moderation:   newModerationHandler(d.Moderation, d.AuditLog),
 		Motion:       newMotionHandler(d.Motion, d.AuditLog),
 		Admin:        newAdminHandler(d.Admin, d.AuditLog),
-		Setting:      newSettingHandler(d.Setting, d.AuditLog),
+		Setting:      newSettingHandler(d.Setting, d.AuditLog, d.Email),
 		Banned:       newBannedHandler(d.Banned, d.User, d.Permission, d.Setting, d.AuditLog),
 		Announcement: newAnnouncementHandler(d.Announcement),
 		OAuth:        NewOAuthHandler(d.OAuth, d.Banned, d.Sessions),
