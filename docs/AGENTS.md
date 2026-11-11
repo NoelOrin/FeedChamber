@@ -11,6 +11,7 @@
 | `ARCHITECTURE.md` | **架构入口**：分层心智模型、层表（含各层 `AGENTS.md` 链接）、关键设计决策速查 |
 | `system-map.md` | 跨栈现状地图：后端/Web/共享包/部署 + 分层与数据流图 + §2.3 目录与职责表 |
 | `backend-overview.md` | 后端实测梳理：规模、模块清单、网关层、现状偏差（发现项编号 G*/R*/H*） |
+| `measured-baseline.md` | **可计数声明的唯一数据来源**：2026-11-11 实测的文件数 / 行数 / 路由数 / 权限码数 / 模型数 + 复现命令。写「N 个文件 / M 行」前先按它重跑 |
 | `api-reference.md` | 端点清单（按模块分组、含权限码）。权威来源是根 `openapi.json` 与运行时 `/swagger/` |
 | `branching.md` | 分支管理规范（`main` + `develop`，短命分支命名，保护规则） |
 | `adr/` | 架构决策记录（`chat-mvp.md`、`no-otel-sdk-yet.md`） |
@@ -24,7 +25,7 @@
 
 - **规范 vs 说明**：能成为强制约束的写进 `openspec/specs/`；`docs/` 只写「为什么这样设计」「当前实现长什么样」「历史怎么走的」。
 - **不复制源码清单**：层文档（各 `AGENTS.md`）里已说明「方法签名以源码为准」。`docs/` 同样不维护逐方法清单——过期的清单比没有更误导。
-- **数字要实测**：写「N 个文件 / M 行 / K 条路由」前先数一遍。历史上权限码数量在根 AGENTS.md（53）、ARCHITECTURE.md（54/56）、`model/permission.go` 之间长期不一致。
+- **数字要实测**：写「N 个文件 / M 行 / K 条路由」前先数一遍，**并把结果写进 [measured-baseline.md](measured-baseline.md)**。历史上权限码数量在根 AGENTS.md、ARCHITECTURE.md、backend-overview.md、`openspec/specs/backend-service-design` 之间长期不一致（53 / 54 / 56 / 62 四个值并存过），2026-11-11 已统一为 62 条（`DefaultPermissions` 编译期实测）。
 - **死链是缺陷**：改文件名或删文件时全仓 grep 引用。2026-10-28 清理过一次（`docs/design/*`、`docs/plans/*` 的一批历史文档被删除，引用同步移除）。
 - **中文文档排版**：中英文之间加空格，代码/路径/命令用反引号，链接用相对路径（便于 GitHub 与编辑器跳转）。
 

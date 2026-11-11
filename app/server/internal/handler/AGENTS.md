@@ -2,7 +2,9 @@
 
 HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 
-实测规模：43 个生产文件 / 8700 行，39 个 `XxxHandler` 接口 + 一个 `Handler` 聚合体。本层测试很少：`sse_metrics_test.go` 覆盖 SSE 连接数指标 `feedchamber_sse_connections{channel}` 的连接/断开计数，`post_status_test.go` 覆盖 `POST /posts/{id}/status` 的参数解析与统一响应信封（用嵌入 nil 接口的 stub 只实现被测方法），`seo_sitemap_test.go` 钉住 `/sitemap-spaces.xml` 只收录匿名可读的版面（login / level 版面不得进爬虫面）。
+实测规模（2026-11-11）：**49 个生产文件 / 10879 行，45 个 `XxxHandler` 接口 + 一个 `Handler` 聚合体，7 个测试文件**。计数与复现命令见 [docs/measured-baseline.md](../../../../docs/measured-baseline.md)。
+
+测试覆盖：`sse_metrics_test.go`（SSE 连接数指标 `feedchamber_sse_connections{channel}` 的连接/断开计数）、`post_status_test.go`（`POST /posts/{id}/status` 的参数解析与统一响应信封，用嵌入 nil 接口的 stub 只实现被测方法）、`seo_sitemap_test.go`（钉住 `/sitemap-spaces.xml` 只收录匿名可读的版面）、`history_test.go`（浏览记录 HTTP 层）、`banned_test.go`、`customize_actor_test.go`（`writeActor` 的来源判定）、`email_test.go`。
 
 ## 约定
 
@@ -20,7 +22,7 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 
 | 文件 | Handler | 代表方法（完整清单以源码为准） |
 |------|---------|------|
-| handler.go | Handler (聚合) + Health | `Deps`（本层消费的服务清单）+ `New(*Deps)` 接线 39 个子 handler（38 个 `newXxxHandler` + 导出的 `NewOAuthHandler`）+ `/health` 探针。不引用 container，也不再有 `Shutdown()`——后台 worker 关停归 `container.Runtime` |
+| handler.go | Handler (聚合) + Health | `Deps`（本层消费的服务清单）+ `New(*Deps)` 接线 **45 个子 handler**（44 个 `newXxxHandler` + 导出的 `NewOAuthHandler`）+ `/health` 探针。不引用 container，也不再有 `Shutdown()`——后台 worker 关停归 `container.Runtime` |
 | ctx.go | 工具 | `currentSession()`, `currentUser()`, `currentUserID()`, `currentRole()`, `requireUser()` |
 | params.go | 工具 | `readListParams()`, `readTimeRange()` |
 | auth.go | AuthHandler | Register, ApproveRegistration, Login, RefreshToken, ChangePassword, FirstChangePassword, ResetPassword, ForgotPassword, ResetPasswordByCode, SendVerifyEmail, VerifyEmail |
@@ -65,6 +67,10 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 | invite.go | InviteHandler | Create, List, Delete |
 | seo.go | SEOHandler | Sitemap, SitemapIndex, SitemapSpaces, SitemapTags, Robots, LatestRSS |
 | realtime.go | RealtimeHandler | Stream |
+| history.go | HistoryHandler | List, Delete, Clear（复用 `PostService`，无独立 service） |
+| customize.go | CustomizeHandler | 站点自定义片段 / 主题 token / 导航与首页模块 / 自定义页面（含 `writeActor` 来源判定） |
+| motion.go | MotionHandler | 社区动议 CRUD、表决、结算 |
+| mcp_server.go | MCPServerHandler | 外部 MCP Server 登记 / 连通性测试 / 审核回退配置 |
 
 ## 插件管理端点（2026-11-05）
 

@@ -3,9 +3,11 @@
 Go + React 社区论坛 monorepo。后端 Iris v12，前端 Web (React 19 + vinext + TanStack Query + shadcn 原语)；管理后台内嵌在 Web 的 `/admin` 段（与前台共用 shadcn 原语，纯 CSR）。
 
 
-架构总览、分层依赖与各层约定文档入口见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)；后端现状梳理（实测规模、模块清单、网关层、现状偏差）见 [docs/backend-overview.md](docs/backend-overview.md)。
+架构总览、分层依赖与各层约定文档入口见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)；后端现状梳理（实测规模、模块清单、网关层、现状偏差）见 [docs/backend-overview.md](docs/backend-overview.md)；跨栈现状地图见 [docs/system-map.md](docs/system-map.md)。
 
 > 已采纳的稳定规范（API 风格、分层架构、服务设计、模块约定、前端共享包、运行配置）以 [openspec/specs/](openspec/specs/) 为单一可信来源；规范冲突时以 specs 为准，后续变更须经 `openspec` 提案流。
+>
+> **所有可计数声明（文件数 / 行数 / 路由数 / 权限码数 / 模型数）以 [docs/measured-baseline.md](docs/measured-baseline.md) 为唯一数据来源**（2026-11-11 实测 + 复现命令）。写「N 个文件 / M 行」前先按该文件重跑命令；改了数字就改该文件，不要在各处各写一套。
 ## 项目结构
 
 ```
@@ -13,8 +15,10 @@ app/server/
 ├── main.go                    # 入口，chdir 到自身目录后调用 cmd.RootCmd
 ├── cmd/root.go                # Cobra 根命令，持久标志 -e/--env（子命令：backup / import-discourse / recompute-xp）
 ├── server/
-│   ├── iris.go                # Start(env) — 应用启动主流程
-│   └── seed.go                # 角色、权限、管理员、设置等种子数据
+│   ├── iris.go                # Start(env) — 应用启动主流程；权限码/角色 seed 与 AutoMigrate(73 模型) 也在此
+│   ├── seed.go                # mock 数据 / 默认配置 / 审核配置 / 重灌帖子（权限码不在这里）
+│   ├── wiring.go              # container → handler.Deps 的映射（「HTTP 层依赖什么」一处读完）
+│   └── migrate.go             # 存量库升级（trust_level 数值化 / total_xp 回填 / visibility）
 ├── internal/
 │   ├── config/                # 环境变量加载 (PORT/DB_TYPE/DB_DSN/Storage)
 │   ├── db/                    # 数据库抽象层
@@ -34,7 +38,7 @@ app/server/
 │   ├── service/               # 业务逻辑层 (接收 repo 接口，返回 *pkg.AppError)
 │   │   ├── *_iface.go         #   接口定义独立于实现
 │   │   └── *.go               #   实现 + 构造函数
-│   ├── handler/               # HTTP 层 (43 文件 / 8700 行，39 个 XxxHandler；3 个测试文件)
+│   ├── handler/               # HTTP 层 (2026-11-11 实测：49 生产文件 / 10879 行，45 个 XxxHandler；7 个测试文件)
 │   │   ├── handler.go         #   Handler 聚合体 + New() 依赖装配 → container
 │   │   ├── ctx.go             #   currentSession/currentUser/currentRole 等上下文工具
 │   │   ├── params.go          #   分页/排序等通用请求解析
@@ -48,12 +52,14 @@ app/server/
 │   │   ├── mfa.go invite.go draft.go revision.go trash.go backup.go
 │   │   ├── webhook.go plugin.go badge.go theme.go leaderboard.go
 │   │   └── seo.go realtime.go
+│   │                          #   另有：history.go customize.go mcp_server.go motion.go
+│   │                          #        gate.go trust.go slot.go（共 49 个生产文件）
 │   │                          #   注：登出/会话/安全事件/API Key/OAuth Provider/OIDC 端点
 │   │                          #   在 internal/gateway 内自注册，/metrics 走 9091 独立 listener
-│   ├── gateway/               # 网关层 (18 生产文件 3869 行 + 13 测试文件)：auth / permission /
+│   ├── gateway/               # 网关层 (2026-11-11 实测：18 生产文件 3918 行 + 13 测试文件)：auth / permission /
 │   │                          #   ratelimit / tracing / OAuth 消费方 / OAuth Provider /
 │   │                          #   OIDC SSO / API Key / session / security，见 §Gateway
-│   ├── middleware/            # 身份确定后的门控与请求基础设施 (9 文件)
+│   ├── middleware/            # 身份确定后的门控与请求基础设施 (10 文件，含 notfound.go 的 404/405 统一信封)
 │   │   ├── auth.go            # AuthGate (站点级动态登录门控) / RequirePermission
 │   │   │                      # RequirePermission (权限码)
 │   │   ├── trace.go           # Trace：建立/沿用 traceparent，必须先于 Logger
@@ -137,7 +143,11 @@ packages/shared-utils/    # 跨前端共享工具函数 (时间格式化 / cx() 
 - ✅ `POST /reports/list`，body `{ status, page, pageSize }`
 - ✅ `GET /posts/{id}`、`GET /user/{id}/profile`、`GET /checkin/history?year=2026&month=10`（只读查询）
 
-> 规则来源：[openspec/specs/api-style/spec.md](openspec/specs/api-style/spec.md)。历史：2026-06-04 曾要求「一律 POST」，因与 OAuth/OIDC/爬虫/文件端点语义冲突且从未被执行（`router.go` 现存 30 处 GET），已于 2026-10-18 经 change `2026-10-18-allow-get-reads` 改为「按副作用选方法」。
+> 规则来源：[openspec/specs/api-style/spec.md](openspec/specs/api-style/spec.md)。历史：2026-06-04 曾要求「一律 POST」，因与 OAuth/OIDC/爬虫/文件端点语义冲突且从未被执行，已于 2026-10-18 经 change `2026-10-18-allow-get-reads` 改为「按副作用选方法」。**2026-11-11 实测 `internal/router` 生产文件有 36 处 `GET`**（旧文档写的「30 处」为 2026-10-27 快照，见 [measured-baseline.md](docs/measured-baseline.md)）。
+>
+> ✅ **2026-11-11 已修的偏差**：② `followers`/`following` 的 swag 注解曾写 `[get]` 而路由/前端是 `POST`，已改为 `[post]` + body；③ 22 个 POST 端点的 `@Param` 曾写成 `query` 而 handler 读 body，已改为 `body` 并重跑 `make swag`（`openapi.json` 现 0 处 POST+query）。
+>
+> ⚠️ **仍未收敛（需 openspec 提案）**：分页字段名规范要求 `page`/`pageSize`，但 `handler/params.go` 的 `ListParams` 实际用 `json:"page_size"`，且 POST 列表接口保留了 URL query 回退；前端 `types.ts` 与测试脚本也用 `page_size`。代码自身一致，但与规范字面不符——改它属于跨前后端的契约变更，须走提案流。
 
 ### 分层模式
 
@@ -167,7 +177,7 @@ func NewUserRepository(store db.Store) UserRepository {
 ```
 
 **2. 统一响应**  
-**所有** HTTP 出口——handler、`internal/gateway` 的鉴权/权限/限流/会话/安全端点、以及 maintenance 与 request-timeout 两个中间件——都只能通过 `pkg.Success(ctx, data)` / `pkg.SuccessPaginated(ctx, items, total)` / `pkg.Fail(ctx, code, msg?)` / `pkg.FailStatus(ctx, status, code, msg?)` / `pkg.HandleError(ctx, err)` 写响应。禁止裸用 `ctx.JSON` / `ctx.StopWithJSON` / `ctx.WriteString` 拼信封（唯一例外：OAuth 2.0 / OIDC 协议端点必须保持 RFC 形状，如 `{"access_token":…,"token_type":"Bearer"}` 与 `oauthError()`）。响应体固定为：
+**所有** HTTP 出口——handler、`internal/gateway` 的鉴权/权限/限流/会话/安全端点、以及 maintenance 与 request-timeout 两个中间件——都只能通过 `pkg.Success(ctx, data)` / `pkg.SuccessPaginated(ctx, items, total)` / `pkg.Fail(ctx, code, msg?)` / `pkg.FailStatus(ctx, status, code, msg?)` / `pkg.HandleError(ctx, err)` 写响应。禁止裸用 `ctx.JSON` / `ctx.StopWithJSON` / `ctx.WriteString` 拼信封。**已登记的例外**（2026-11-11 复核补齐，均为非 JSON 或协议形状出口）：① OAuth 2.0 / OIDC 协议端点（`oauth_provider.go` / `sso_oidc.go`，49 处，RFC 6749 形状如 `{"access_token":…,"token_type":"Bearer"}` 与 `oauthError()`）；② `/health` 探针（`handler.go` 的 `ctx.JSON(results)`）；③ sitemap / robots / RSS 爬虫面（`seo.go` 的 `WriteString`，输出 XML/纯文本）；④ SSE 流与文件字节读取。除这四类外不得裸写。响应体固定为：
 
 ```json
 { "code": 0, "msg": "success", "data": {...} }
@@ -176,13 +186,13 @@ func NewUserRepository(store db.Store) UserRepository {
 错误码是**单一共享命名空间**（`internal/pkg/errors.go`），网关与 handler 共用，不得自造号段；`msg` 取该码的默认中文文案，需要补充具体原因时作为第二个参数传入。分段：`1xxx` 认证/凭证、`2xxx` 参数、`3xxx` 资源、`4xxx` 限流与请求体、`5xxx` 服务端。`errToHTTPStatus` 负责业务码 → HTTP status（`5004→504`、`5005→503`）。`FailStatus` 只在"状态本身是契约"时使用，例如封禁用户返回 404 而非 403，避免泄露资源存在性。
 
 **3. 依赖装配**  
-`internal/container` 分两步：`container.New(Deps)` 只构造对象图（不起协程、不订阅事件、不写库），`(*Container).Start(ctx)` 才订阅事件并启动 5 个后台 worker，返回的 `*Runtime` 负责关停。`server/iris.go` 编排 `config → db.Store → AutoMigrate → seed → NATS/KV/EventBus → 共享服务 → container.New → Start → gateway.Deps → middleware.Deps → handler.New(wiring.go 映射) → Router → Listen`。handler 层不引用 container：它消费 `handler.Deps` 里显式列出的服务，映射写在 `server/wiring.go`，所以「HTTP 层依赖什么」可在一个文件里读完，新增服务漏接线会编译报错。
+`internal/container` 分两步：`container.New(Deps)` 只构造对象图（不起协程、不订阅事件、不写库），`(*Container).Start(ctx)` 才订阅事件并启动 **7 个**后台 worker（`view_count_flusher` / `pin_expiry_checker` / `webhook_delivery` / `weekly_digest` / `trust_recompute` / `motion_resolver` / `plugin_cron_daily`），返回的 `*Runtime` 负责关停。另有订阅类单元 `NotifDispatcher`、`WebhookSvc.Subscribe`、`ModerationSvc.SubscribeAsync`、`PluginHost.SubscribeEvents`、`GateSvc`/`TrustSvc` 的 `StartSyncSubscriber`。`server/iris.go` 的实际编排是：`config → db.Store → AutoMigrate → migrate → seed → NATS/KV/EventBus → 共享服务 → gateway.Deps → middleware.Deps → container.New → buildMCP → Start → handler.New(wiring.go 映射) → Router → Listen`（`gateway.Deps`/`middleware.Deps` 在 `container.New` **之前**；`c.MCP` 在 New 之后赋值）。handler 层不引用 container：它消费 `handler.Deps` 里显式列出的服务，映射写在 `server/wiring.go`，所以「HTTP 层依赖什么」可在一个文件里读完，新增服务漏接线会编译报错。
 
 **4. 权限系统**  
-启动时 seed 56 个平台级权限码 + 默认角色-权限映射（admin/moderator/user/pending_user/ban），另有版面级权限（`SpaceRolePermission`，支持层级继承）。`PermissionService` 通过 `sync.RWMutex` 维护 `map[string]map[string]struct{}` 内存缓存 (role → permission codes)。middleware 通过 `RequirePermission(code)` 在路由级拦截。资源粒度的"作者 OR 有权限"校验在 service 层实现（R-06b 方案），注入 `PermissionService` 到 PostService/ContentService。
+启动时从 `model.DefaultPermissions` seed **63 条**平台级权限码（2026-11-11 编译期实测，见 [measured-baseline.md](docs/measured-baseline.md)）+ 默认角色-权限映射（admin/moderator/user/pending_user/ban），另有版面级权限（`SpaceRolePermission`，支持层级继承）。`PermissionService` 通过 `sync.RWMutex` 维护 `map[string]map[string]struct{}` 内存缓存 (role → permission codes)。网关 `initRouteMap` 是 protected 路由的主门控（**未映射默认拒绝**），`middleware.RequirePermission(code)` 是路由级第二道门，2026-11-11 实测约 30 处。资源粒度的"作者 OR 有权限"校验在 service 层实现（R-06b 方案），注入 `PermissionService` 到 PostService/ContentService。
 
 **5. 路由组织**  
-`internal/router` 按域拆分（`router.go` + `routes_<域>.go`），只挂路由与中间件——网关实例由 composition root 传入（`Register(app, h, deps, gw)`）。网关流水线是**可组合的两段**：`v1.Use(gw.Preflight())`（trace + 全局 IP 限流 + 可选凭证解析，对 `/api/v1` 全量生效）与 `protected.Use(gw.Enforce())`（必需凭证 → banCheck（被封 404）→ 权限 → 安全风控 → 会话跟踪）。两段各自幂等，因此一个 protected 请求的限流与凭证解析都只发生一次（此前 `Handler()` 会把 preflight 再跑一遍，实测 60/分钟的上限在第 30 次就 429）。权限粒度直接标注在路由上。
+`internal/router` 按域拆分（`router.go` + **12 个** `routes_<域>.go`，共 13 个生产文件 / 975 行），只挂路由与中间件——网关实例由 composition root 传入（`Register(app, h, deps, gw)`）。网关流水线是**可组合的两段**：`v1.Use(gw.Preflight())`（trace + 全局 IP 限流 + 可选凭证解析，对 `/api/v1` 全量生效）与 `protected.Use(gw.Enforce())`（必需凭证 → banCheck（被封 404）→ 权限 → 安全风控 → 会话跟踪）。两段各自幂等，因此一个 protected 请求的限流与凭证解析都只发生一次（此前 `Handler()` 会把 preflight 再跑一遍，实测 60/分钟的上限在第 30 次就 429）。权限粒度直接标注在路由上。
 
 ### 新增模块 checklist
 
@@ -194,7 +204,7 @@ func NewUserRepository(store db.Store) UserRepository {
 5. `internal/handler/handler.go` — Handler struct 添加字段，New() 中注册
 6. `internal/router/router.go` — 添加路由
 7. `server/iris.go` — AutoMigrate 添加模型
-8. `server/seed.go` — 种子数据
+8. 种子数据按类型分流：**权限码 → `internal/model/permission.go` 的 `DefaultPermissions` + `internal/gateway/permission.go` 的 `initRouteMap`**；角色 → `server/iris.go` 的 `seedRoles`；系统设置 → `model.DefaultSettings`；mock/默认配置/重灌帖子 → `server/seed.go`（旧版笼统写「seed.go」会让人把权限码改到不生效的地方）
 9. `internal/container/container.go` — 新 repo/service 的构造与顺序；若它起后台任务或订阅事件，改 `runtime.go` 的 `Start`
 
 添加新 API（前端）：
@@ -264,16 +274,16 @@ func NewUserRepository(store db.Store) UserRepository {
 系统设置管理，支持公开设置读取、所有设置获取、单个设置读写、批量设置。S3 配置统一以 settings 表为唯一可信来源（H-04 修复）。
 
 ### Space — 版面 (`model/space.go`, `handler/space.go`, `service/space.go`, `repository/space.go`)
-社区版面系统，**取代原 Category 分类模块**，扩展为带图标、slug、排序、启禁状态的树形版面体系。支持树形/扁平/祖先/后代/面包屑等查询，帖子关联 space_id，列表接口支持 spaceName 筛选。Dashboard 提供版面管理 CRUD 页面。删除前检查关联帖子。
+社区版面系统，**取代原 Category 分类模块**，扩展为带图标、slug、排序、启禁状态的树形版面体系。支持树形/扁平/祖先/后代/面包屑等查询，帖子关联 space_id，列表接口支持 spaceName 筛选。后台 `/admin/spaces` 提供版面管理 CRUD 页面（与前台同一个 `app/web` 工程）。删除前检查关联帖子。
 
 ### Check-in — 签到 (`model/checkin.go`, `handler/checkin.go`, `service/checkin.go`, `repository/checkin.go`)
 每日签到系统，支持签到、获取状态（今日是否签到、连续签到天数、最大连续天数、总积分）、按月查询历史记录。每天限签一次，数据库复合唯一索引防并发重复签到。签到**不再**直写积分与等级：`check_ins` 只是 XP 聚合的输入（`checkin_count` + 连续里程碑），由 `TrustService.Recompute` 统一刷新快照。
 
 ### Trust / XP — 成长体系 (`model/trust.go`, `service/trust_level.go`, `repository/trust.go`, `handler/trust.go`)
-XP 是**行为聚合**而不是累加计数器：`total_xp = Σ(指标计数 × 当前 XP 规则) + Σ(连续签到里程碑) + Σ(人工调整)`，因此删帖 / 取消点赞收藏 / 取消精华 / 审核拒绝都会自动回收，改分值立即对全员生效（配置写后本地失效并广播 `trust:sync`，多实例同步失效）。四张配置表 `xp_rules` / `xp_streak_bonuses` / `trust_levels` / `xp_adjustments` 全部后台可配；等级 = 累计 XP 定级 + 滚动窗口保级（可升可降，逐级下探），`manual_only` 等级仅人工授予，管理员手工设级（`users.level_manual`）不被重算打回。`TrustService.Recompute` 是 `users.total_xp` / `trust_level` / `level_metrics` 的唯一写入点；发帖/评论/点赞/收藏/加精/签到/审核等触发点只调它。每日 ticker 全量重算一次；`go run main.go -e prod recompute-xp` 可手动对账。`total_points` 列与 API 别名均已在 P4 下线（字段统一 `total_xp`）；签到 `points_earned` 恒 0，旧 `trust_tl0_*` 设置不再被读取。
+XP 是**行为聚合**而不是累加计数器：`total_xp = Σ(指标计数 × 当前 XP 规则) + Σ(连续签到里程碑) + Σ(人工调整)`，因此删帖 / 取消点赞收藏 / 取消精华 / 审核拒绝都会自动回收。配置写后本地失效、广播 `trust:sync`（多实例同步失效），并**异步触发一次 `RecomputeAll`**——`users.total_xp` 是落库快照，只失效配置缓存不会改它（2026-11-11 修复：此前改「发帖 +10→+20」后全员数值/等级/排行榜仍按旧值，最长等 24h 的每日 ticker）。四张配置表 `xp_rules` / `xp_streak_bonuses` / `trust_levels` / `xp_adjustments` 全部后台可配；等级 = 累计 XP 定级 + 滚动窗口保级（可升可降，逐级下探），`manual_only` 等级仅人工授予，管理员手工设级（`users.level_manual`）不被重算打回。`TrustService.Recompute` 是 XP/等级聚合的唯一写入点（`SetManualLevel` 人工设级是设计允许的例外；`IncrPoints` 这个零调用的死后门已于 2026-11-11 删除）；发帖/评论/点赞/收藏/加精/签到/审核/**举报处置**等触发点都调它。每日 ticker 全量重算一次；`go run main.go -e prod recompute-xp` 可手动对账。`total_points` 列与 API 别名均已在 P4 下线（字段统一 `total_xp`）；签到 `points_earned` 恒 0，旧 `trust_tl0_*` 设置不再被读取。
 
 ### Visibility / Gate — 可见性与门控（P2/P3，`service/visibility.go`、`service/gate.go`、`routes_gate.go`）
-- **可见性**：`spaces.visibility ∈ public|login|level` + `spaces.min_level`，`posts.min_level` 可单帖覆盖；有效策略沿祖先链取最严格一档（`BuildVisibilityIndex`）。六个内容出口（列表 / 详情 / 搜索 / sitemap / RSS / 批量）共用同一谓词：聚合出口 SQL 过滤、详情 403 并提示所需/当前等级、作者例外、游客 = TL0；有 `report:manage` 的审核者不受限。评论列表、回复列表与评论创建等从属内容出口通过 `PostViewer.CheckViewablePost` 复用同一门槛（帖子不可见时同样 404/403，也不能盲写评论）。`AuthGate` 退化为站点级登录墙，`SpaceAuthGate` 删除。
+- **可见性**：`spaces.visibility ∈ public|login|level` + `spaces.min_level`，`posts.min_level` 可单帖覆盖；有效策略沿祖先链取最严格一档（`BuildVisibilityIndex`）。六个内容出口（列表 / 详情 / 搜索 / sitemap / RSS / 批量）共用同一判定语义：**`VisibilityIndex.PostVisibleTo` 是唯一实现**（login 版面看登录态、level 版面看等级、`posts.min_level` 取更高者），SQL 聚合出口经 `VisibleSpaceIDs`、Go 侧经 `visibleToViewer` 委托给它。2026-11-11 修掉了「Go 侧按 `RequiredLevel`、SQL 侧按 `Allows`」导致已登录 TL0 用户在 login 版面「列表可见、详情 403」的分歧，并补了 TL0 一致性用例。设计语义为聚合出口 SQL 过滤、详情 403 并提示所需/当前等级（login 版面未登录时提示「需要登录」）、作者例外、游客 = TL0；有 `report:manage` 的审核者不受限。评论列表、回复列表与评论创建等从属内容出口通过 `PostViewer.CheckViewablePost` 复用同一门槛（帖子不可见时同样 404/403，也不能盲写评论）。`AuthGate` 退化为站点级登录墙，`SpaceAuthGate` 删除。
 - **门控规则引擎**：`gate_rules(priority, domain, conditions JSON, action)` + `gate_domain_defaults`，谓词集固定（等级/XP/版面/标签/作者等级/是否作者/游客/邮箱验证/封禁/暗区/外链/窗口指标），动作仅 `allow|deny|require_review|rate_limit`；按优先级降序首个命中，无命中走域默认；配置快照 + `gate:sync` Pub/Sub 失效，命中写带 trace 的日志，后台 `/admin/gates` 支持 CRUD、域默认与「以用户试算」。发帖/评论（含正文外链）/外链已接管，`trust_tl0_*` 旧门删除。
 - **后台**：`/admin/levels`、`/admin/xp-rules`（P1）、`/admin/gates`（P3）；版面管理页可配可见性；用户详情「成长」页展示 XP 分解与人工调整。权限码 `level:manage` / `gate:manage`。
 
@@ -339,7 +349,7 @@ TOTP 绑定/启用/禁用 + 备份码重生成；登录时 `/auth/mfa/verify` �
 - `Trace(enabled)` — 建立/沿用 W3C traceparent，写入 `request.Context()`，MUST 排在 `Logger` 之前
 - `Logger()` — 结构化请求日志（`trace_id`/`span_id`/`method`/`path`/`route`/`status`/`latency_ms`/`user_uuid`/`ip`），并把请求级 logger 注入 context 供 `logger.FromContext(ctx)` 使用
 - `AuthGate(deps, settingKey)` — 通过 system setting 动态切换公开与强制登录（站点级）；版面 login/level 由 `service/visibility.go` 判定，`SpaceAuthGate` 已删除
-- `RequirePermission(deps, code)` — 权限码门控，现只挂在 `/permission/*`、`/admin/backups`、`/admin/webhooks`；其余受保护路径由网关的 path→permission 映射负责
+- `RequirePermission(deps, code)` — 权限码门控，2026-11-11 实测约 30 处（权限管理、admin 子域、gate/trust/站点自定义/插件等）；它排在网关 permission 中间件之后，故新增 protected 路由 MUST 先登记 `initRouteMap`。旧文档「只挂 3 处」已过时
 - `CORS()` / `Prometheus()` / `RateLimit(limiter, name, limit, window)` / `RequestTimeout(duration)` / `PathBodyLimit(size, overrides)` / `MaintenanceGate(settings)`
 - `Deps`（deps.go）在 `server/iris.go` 构造一次，其 `Perms`/`Ban` 会再交给网关，全链路只有一份权限缓存与禁言判定
 
@@ -375,12 +385,12 @@ KV 存储抽象层，支持 TTL、原子计数器、Pub/Sub、前缀扫描。唯
 ## 前端共享包
 
 ### `@feedchamber/api-client` (`packages/api-client/`)
-前端 API 共享包，Web 和 Dashboard 共同依赖。包含：
+前端 API 共享包，`app/web` 前台与 `/admin` 后台共同依赖（**不存在独立 Dashboard 工程**）。包含：
 - `client.ts` — authFetch 封装，自动携带 Bearer token，401 自动刷新并重试
 - `auth.ts` — 认证工具 (`setTokens` / `getAccessToken` / `getRefreshToken` / `clearAuthTokens` / `isAuthenticated`)
 - `types.ts` — 所有 API 响应类型（User、PostListItem、ContentListItem、AdminStats、SearchResults、EntitySearchResult 等）
 - `constants.ts` — 类型化常量（ErrorCode、PermissionCode、SettingKey、RoleName、PostStatus、API_BASE_URL）
-- `services/*.ts` — 20+ 个 API service 模块（auth、post、content、admin、notification 等）
+- `services/*.ts` — 49 个 service 文件 / 311 个唯一 (path, method)（auth、post、content、admin、notification 等；2026-11-11 实测）
 
 ### `@feedchamber/sse-client` (`packages/sse-client/`)
 框架无关 SSE 客户端。`SSEClient` 类提供：Bearer token 鉴权、401 自动刷新 token 重连、指数退避（3s→30s，最多 5 次）、ReadableStream 解析、AbortController 取消。Web 端通过 `app/web/lib/hooks/use-notification-sse.ts` 调用。

@@ -3,7 +3,7 @@
 `fbp` 命令：脚手架、本地 mock 宿主、打包。**不发布运行时 SDK**——生成的协议代码内联在插件工程里，
 插件打包产物不依赖任何 `@feedchamber/*` 包。
 
-> 上级：[packages/AGENTS.md](../AGENTS.md) · 规范：[plugin-sdk](../../../openspec/changes/2026-11-04-plugin-hooks/specs/plugin-sdk/spec.md) · 插件运行时：[internal/plugin](../../../app/server/internal/plugin/AGENTS.md)
+> 上级：[packages/AGENTS.md](../AGENTS.md) · 规范：[plugin-sdk](../../openspec/changes/2026-11-04-plugin-hooks/specs/plugin-hooks/spec.md) · 插件运行时：[internal/plugin](../../app/server/internal/plugin/AGENTS.md)
 
 ## 三个子命令
 

@@ -2,13 +2,13 @@
 
 > 本文件是 Feed Chamber 后端 HTTP 接口的端点快照，按模块分组罗列。
 > **权威来源**为仓库根目录的 `openapi.json` 与运行时的 `/swagger/` 页面，由 handler 上的 swag 注解经 `make swag` 生成。本文件便于离线速查，若与 `openapi.json` 不一致，以 `openapi.json` 为准。
-> API 风格约定（全部 RPC 风格 `POST`、动词后缀 URL、body 传参、统一响应）见根目录 [AGENTS.md](AGENTS.md) 的「API 风格约定」。
+> API 风格约定（RPC 风格、写操作 `POST` + 动词后缀、body 传参、统一响应；只读查询 MAY `GET`）见根目录 [AGENTS.md](../AGENTS.md) 的「API 风格约定」。可计数声明的实测值见 [measured-baseline.md](measured-baseline.md)。
 
 ## API 端点总览 (速查)
 
 > `/metrics` 不在本树的端点里：Prometheus 指标由 `METRICS_PORT`(9091) 的独立 listener 暴露，不经 nginx（见 `app/server/internal/metrics/AGENTS.md`）。
 
-> 本清单仅为常见端点速查，**不完整**（实测约 224 个 POST + 31 个 GET）。其中 `GET` 均为只读查询或协议/爬虫/文件端点——方法规则见 [openspec/specs/api-style](../openspec/specs/api-style/spec.md)（写操作 `POST`，只读查询 MAY `GET`）。完整清单以 `router.go` 与 `openapi.json` 为准。以下模块尚未在此展开：metrics/dashboard、groups、mfa、pm、watches、user-blocks、drafts、revisions、trash、backups、webhooks、plugins、badges、theme、leaderboard、invite、security、sessions、api-keys、realtime、oauth provider、sso。
+> 本清单仅为常见端点速查，**不完整**（2026-11-11 实测全量为 **300 POST + 36 GET = 336 条注册**，`openapi.json` 为 332 路径 / 333 操作；见 [measured-baseline.md](measured-baseline.md)）。其中 `GET` 均为只读查询或协议/爬虫/文件端点——方法规则见 [openspec/specs/api-style](../openspec/specs/api-style/spec.md)（写操作 `POST`，只读查询 MAY `GET`）。完整清单以 `router.go` 与 `openapi.json` 为准。以下模块尚未在此展开：metrics/dashboard、groups、mfa、pm、watches、user-blocks、drafts、revisions、trash、backups、webhooks、plugins、badges、theme、leaderboard、invite、security、sessions、api-keys、realtime、oauth provider、sso。
 
 ### Public
 - `GET /api/v1/health` — 健康检查
@@ -169,7 +169,7 @@
 ### Check-in (`POST /api/v1/checkin`)
 - `/` — 每日签到
 - `GET /status` — 签到状态
-- `GET /history` — 签到历史
+- `GET /checkin/history?year=2026&month=10` — 签到历史（旧文档误写为 `GET /history`；现在 `/history/*` 是浏览记录命名空间）
 
 ### Space (`POST /api/v1/spaces`)
 - `POST /tree` `/flat` `/roots` `/{space_id}` 等 — 公开读（可选登录 + gate）

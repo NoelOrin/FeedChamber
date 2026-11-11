@@ -2,7 +2,7 @@
 
 站点对外暴露的 MCP Server（P2）。挂在应用根 `/mcp`，让 AI 客户端（Claude Desktop / Cursor / Cline）以 API Key 凭证读写本站内容与站点自定义配置。
 
-> 上级：[app/server/AGENTS.md](../../AGENTS.md) · 规范：[openspec/specs/mcp-server](../../../../openspec/specs/mcp-server/spec.md) · 设计：[design.md](../../../../openspec/changes/customization-and-mcp/design.md)
+> 上级：[app/server/AGENTS.md](../../AGENTS.md) · 规范：[openspec/specs/mcp-server](../../../../openspec/specs/mcp-server/spec.md) · 设计：[design.md](../../../../openspec/changes/archive/2026-10-29-customization-and-mcp/design.md)
 
 ## 为什么这个包必须自带鉴权
 

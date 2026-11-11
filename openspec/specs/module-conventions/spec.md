@@ -12,7 +12,7 @@ Service 接口定义 MUST 优先拆分到 `_iface.go` 文件（与实现分离�
 #### Scenario: 新增资源模块的文件落位
 
 - WHEN 新增一个业务资源 Xxx
-- THEN MUST 在 model/repository/service/handler 各层分别建立对应文件，并在 `handler.go` 的 Handler struct 注册、`router.go` 注册路由、`iris.go` 的 AutoMigrate 注册模型、`seed.go` 补充种子（如需要）
+- THEN MUST 在 model/repository/service/handler 各层分别建立对应文件，并在 `handler.go` 的 Handler struct 注册、`router.go` 注册路由、`iris.go` 的 AutoMigrate 注册模型、`model/permission.go` 的 `DefaultPermissions` + `internal/gateway/permission.go` 的 `initRouteMap` 补充权限码（如需要；种子按类型分流，见根 AGENTS.md 的新增模块 checklist）
 
 ### Requirement: 新增模块改动清单
 
@@ -26,10 +26,10 @@ Service 接口定义 MUST 优先拆分到 `_iface.go` 文件（与实现分离�
 6. `server/wiring.go` — 把容器里的服务映射进 `handler.Deps`（漏接线是编译错误）
 7. `internal/container/container.go` — repo/service 构造与顺序；若该 service 需要后台任务或事件订阅，改 `runtime.go` 的 `Start`，MUST NOT 在 `New` 里起协程
 8. `internal/router/router.go` — 路由注册（保持既有注册顺序，固定路径在参数路径之前）
-9. `server/iris.go` — `AutoMigrate` 追加模型；`server/seed.go` — 种子数据（如需）
+9. `server/iris.go` — `AutoMigrate` 追加模型；种子数据按类型分流：权限码 → `model/permission.go` + `internal/gateway/permission.go`，角色 → `iris.go` 的 `seedRoles`，设置 → `model.DefaultSettings`，mock/默认配置 → `server/seed.go`
 10. `make swag` — 重新生成 `app/server/docs/` 与根 `openapi.json`
 
-新增 API 的前端侧 MUST 同步：api-client 的 `types.ts` / `services/xxx.ts` / `constants.ts`（新权限码、设置 key 或错误码），以及 `app/web` 或 `app/dashboard` 页面组件。
+新增 API 的前端侧 MUST 同步：api-client 的 `types.ts` / `services/xxx.ts` / `constants.ts`（新权限码、设置 key 或错误码），以及 `app/web/app/(app)/…`（前台）或 `app/web/app/admin/…`（后台 `/admin`）页面组件。**不存在独立的 `app/dashboard` 工程**。
 
 #### Scenario: 新增带后台任务的模块
 
@@ -39,7 +39,7 @@ Service 接口定义 MUST 优先拆分到 `_iface.go` 文件（与实现分离�
 #### Scenario: 前端 service 同步
 
 - WHEN 后端新增受前端调用的接口
-- THEN MUST 在 `packages/api-client` 增加对应 service 模块与类型，Dashboard 经 `@/services/backend` adapter 调用
+- THEN MUST 在 `packages/api-client` 增加对应 service 模块与类型，后台页面直接调 `@feedchamber/api-client`，不经独立 adapter
 
 #### Scenario: 文档与端点清单同步
 
@@ -48,7 +48,7 @@ Service 接口定义 MUST 优先拆分到 `_iface.go` 文件（与实现分离�
 
 ### Requirement: 用户标识统一为 ULID
 
-所有用户标识 MUST 使用 `User.ID`（ULID），不得再使用历史 `UUID` 字段。前端路由参数 `userId` 与 Dashboard 查询参数 MUST 映射为 `User.ID`。
+所有用户标识 MUST 使用 `User.ID`（ULID），不得再使用历史 `UUID` 字段。前端路由参数 `userId` 与后台 `/admin` 查询参数 MUST 映射为 `User.ID`。
 
 #### Scenario: 用户标识解析
 

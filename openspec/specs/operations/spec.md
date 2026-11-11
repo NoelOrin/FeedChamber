@@ -5,7 +5,7 @@
 ## Requirements
 ### Requirement: 环境变量配置
 
-系统 MUST 通过环境变量配置运行参数，关键变量包括：`PORT`（默认 8080）、`DB_TYPE`（sqlite/mysql/postgres，默认 sqlite）、`DB_DSN`、`STORAGE_TYPE`（local/s3，默认 local）、S3 系列变量、`NATS_URL`（空则启动内嵌 nats-server）、`NATS_BUCKET`（默认 feedchamber_kv）、`NATS_EMBEDDED_PORT`。
+系统 MUST 通过环境变量配置运行参数，关键变量包括：`PORT`（默认 8080）、`DB_TYPE`（sqlite/mysql/postgres，默认 sqlite）、`DB_DSN`、`STORAGE_TYPE`（local/s3，默认 local）、S3 系列变量、`NATS_URL`（**必填**：外部 NATS 地址，需启用 JetStream；为空则启动失败）、`NATS_BUCKET`（默认 feedchamber_kv）。`NATS_EMBEDDED_PORT` 已随进程内 nats-server 一并下线。
 
 `JWT_SECRET` MUST NOT 再作为配置项存在：该变量已随令牌 opaque 化退场，未设置、留空或保留旧值 MUST NOT 影响启动，且 MUST NOT 被任何代码路径读取。系统唯一保留的 JWT 是 OIDC `id_token`（OIDC Core 强制其为签名 JWT），其签名私钥以 PEM 持久化在 settings `sso_oidc_signing_key` 中，不依赖环境变量。
 
@@ -17,10 +17,11 @@ Cookie 安全位由 `MASTER_COOKIE_SECURE` 控制（默认 false）；`ORIN_ADMI
 
 Storage 配置 MUST 以 settings 表为唯一可信来源，环境变量仅作回退（H-04 修复）。
 
-#### Scenario: 内嵌 NATS 回退
+#### Scenario: 外部 NATS 必填校验
 
 - WHEN `NATS_URL` 为空
-- THEN 系统 MUST 启动进程内 nats-server（JetStream KV），支撑会话 read-through 缓存、限流计数、OAuth state、View Count 缓冲、Settings/Ban 缓存与权限多实例同步（Pub/Sub）
+- THEN 系统 MUST 在 `config.Validate()` 阶段报错并拒绝启动（2026-10-28 起进程内 nats-server 已剥离，`internal/pkg/natsembedded` 仅供单元测试）
+- AND 当 `NATS_URL` 指向启用 JetStream 的外部实例时，系统 MUST 用它支撑会话 read-through 缓存、限流计数、OAuth state、View Count 缓冲、Settings/Ban 缓存与权限多实例同步（Pub/Sub）
 
 #### Scenario: Storage 配置优先级
 
@@ -53,7 +54,7 @@ Storage 配置 MUST 以 settings 表为唯一可信来源，环境变量仅作�
 
 ### Requirement: 启动与运行命令
 
-后端 MUST 通过 `cd app/server && go run main.go -e dev`（或 `-e prod`）启动。环境由持久标志 `-e/--env` 指定，默认 `dev`；`dev` 与 `prod` MUST NOT 作为子命令存在（`main.go dev` 实测报 `unknown command`）。Cobra 子命令仅有 `backup` 与 `import-discourse`。启动 MUST 按环境读取 `.env` 与 `.env.dev` / `.env.prod`（后者覆盖前者）。
+后端 MUST 通过 `cd app/server && go run main.go -e dev`（或 `-e prod`）启动。环境由持久标志 `-e/--env` 指定，默认 `dev`；`dev` 与 `prod` MUST NOT 作为子命令存在（`main.go dev` 实测报 `unknown command`）。Cobra 子命令共有 3 个：`backup`、`import-discourse`、`recompute-xp`（全量重算 XP / 等级）。启动 MUST 按环境读取 `.env` 与 `.env.dev` / `.env.prod`（后者覆盖前者）。
 
 前端开发 MUST 使用 `pnpm dev:web` 与 `pnpm dev:dashboard`。
 

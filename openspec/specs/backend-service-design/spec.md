@@ -19,9 +19,9 @@ Handler 与网关 MUST 统一使用 `internal/pkg` 的响应封装（`Success` /
 
 ### Requirement: 权限系统与动态鉴权
 
-系统 MUST 在启动时 seed 53 个平台级权限码（形如 `post:create`、`role:manage`、`reconcile:counters`）与默认角色-权限映射（admin / moderator / user / pending_user / ban），另有版面级权限 `SpaceRolePermission`（沿版面层级继承）。`PermissionService` MUST 通过 `sync.RWMutex` 维护 `role → permission codes` 内存缓存，启动时从 DB 加载，变更经 KV Pub/Sub 多实例同步。
+系统 MUST 在启动时从 `internal/model/permission.go` 的 `DefaultPermissions` seed 平台级权限码（2026-11-11 编译期实测 **63 条**，形如 `post:create`、`role:manage`、`reconcile:counters`；计数见 [measured-baseline.md](../../../docs/measured-baseline.md)）与默认角色-权限映射（admin / moderator / user / pending_user / ban），另有版面级权限 `SpaceRolePermission`（沿版面层级继承）。角色 seed 在 `server/iris.go` 的 `seedRoles`，权限 seed 在 `server/iris.go` 的 `seedPermissions`；`server/seed.go` 只放 mock 数据、默认配置与重灌帖子。`PermissionService` MUST 通过 `sync.RWMutex` 维护 `role → permission codes` 内存缓存，启动时从 DB 加载，变更经 KV Pub/Sub 多实例同步。
 
-路由级鉴权 MUST 通过权限码判定：`internal/gateway` 的 path→permission 映射覆盖绝大多数受保护路由，`middleware.RequirePermission(code)` 仅用于映射表不便表达的 `/permission/*`、`/admin/backups`、`/admin/webhooks`。资源级"作者 OR 有权限"校验 MUST 在 Service 层实现（R-06b）。
+路由级鉴权 MUST 通过权限码判定：`internal/gateway` 的 `initRouteMap` 是 protected 路由的主门控（exact / prefix / pattern / space-pattern 四类匹配，**未映射默认拒绝**，新增 protected 路由 MUST 先登记）。`middleware.RequirePermission(code)` 是排在其后的路由级第二道门，2026-11-11 实测约 30 处（权限管理、admin 子域、gate/trust/站点自定义/插件等）；旧版「仅 3 处」已过时。资源级"作者 OR 有权限"校验 MUST 在 Service 层实现（R-06b）。
 
 #### Scenario: 路由级权限拦截
 
@@ -31,7 +31,7 @@ Handler 与网关 MUST 统一使用 `internal/pkg` 的响应封装（`Success` /
 #### Scenario: 权限数量与代码一致
 
 - WHEN 新增权限码
-- THEN MUST 同时更新 seed 列表与本规范中的计数，避免文档停在历史数值（此前长期写作「约 20 个」而实测为 53）
+- THEN MUST 同时更新 `model.DefaultPermissions` 与 `internal/gateway/permission.go` 的 `initRouteMap`，避免文档停在历史数值（历史值依次为「约 20 个」→ 53 → 54 → 56，2026-11-11 实测 62 条）
 
 #### Scenario: 多实例权限缓存同步
 

@@ -9,7 +9,7 @@
 | 路径 | 说明 |
 |------|------|
 | `specs/<capability>/spec.md` | **已采纳规范**。每个 capability 一个目录，一个 `spec.md`，按 `## Purpose` + `## Requirements` 组织 |
-| `changes/` | 活跃 change（当前为空；`2026-10-28-trust-level-xp-system` 与 `2026-10-29-post-moderation-modes` 均已归档）。每个 change 一个目录：`proposal.md` + `tasks.md` + `specs/<capability>/spec.md`（delta） |
+| `changes/` | 活跃 change（2026-11-11 实测 **3 个**：`2026-11-04-plugin-hooks`、`2026-11-09-backend-domain-consolidation`（草案/未采纳）、`2026-11-09-browse-history-read-position`；`2026-10-28-trust-level-xp-system` 与 `2026-10-29-post-moderation-modes` 均已归档）。每个 change 一个目录：`proposal.md` + `tasks.md` + `specs/<capability>/spec.md`（delta） |
 | `changes/archive/YYYY-MM-DD-<name>/` | 已归档 change，附带 `.openspec.yaml`（`schema` + `created`） |
 | `config.yaml` | OpenSpec 项目配置（`schema: spec-driven`） |
 
@@ -18,7 +18,11 @@
 
 ## 现有 capabilities
 
-`access-gating` · `agents-docs` · `api-style` · `backend-service-design` · `community-motion` · `frontend-packages` · `layered-architecture` · `module-conventions` · `observability` · `operations` · `post-moderation` · `seo` · `trust-levels`
+共 **16 个**（2026-11-11 实测）：
+
+`access-gating` · `agents-docs` · `api-style` · `backend-service-design` · `community-motion` · `frontend-packages` · `layered-architecture` · `mcp-client` · `mcp-server` · `module-conventions` · `observability` · `operations` · `post-moderation` · `seo` · `site-customization` · `trust-levels`
+
+> 旧版清单漏了 `mcp-client` / `mcp-server` / `site-customization` 三项（代码侧对应 `internal/mcp/`、`service/mcp_server.go`、`handler/customize.go` + `model/snippet.go`/`custom_page.go`，均已在生产路径）。
 
 ## 规范写法（spec.md）
 
@@ -62,7 +66,7 @@ openspec validate --all            # 归档后再校验一次
 ## 改这里要注意
 
 - **不要直接改 `specs/` 来改规范**：那等于绕过提案流。规范变更走 change。
-- **`openspec validate --all` 必须通过**（当前 13 个 spec 全绿）。新增或归档后都跑一次。
+- **`openspec validate --all` 必须通过**（2026-11-11 实测 19 项全绿：16 个 spec + 3 个 change）。新增或归档后都跑一次。
 - 归档用 `openspec archive <name> -y`，**不要手工搬目录**——它会同时处理 spec 合并与校验。
 - 纯工具/纯文档类 change 可以 `openspec archive --skip-specs`。
 

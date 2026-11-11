@@ -4,7 +4,7 @@ shadcn/ui 基准的原语层：**无业务、无取数、只接收 props**。前
 
 > 上级：[components/AGENTS.md](../AGENTS.md) · 视觉基准：`app/web/app/globals.css`（shadcn token，中性色 + 冷紫主色）
 
-实测规模：33 个文件。token 的唯一载体是 `app/web/app/globals.css`——**Web 不依赖 `@feedchamber/tokens`**（该包只服务 Dashboard），daisyUI 已移除。
+实测规模：33 个文件。token 的唯一入口是 `app/web/app/globals.css`，它 **`@import "@feedchamber/tokens/shadcn.css"`**（`app/web/package.json` 声明 `"@feedchamber/tokens": "workspace:\*"`）——色彩与圆角的唯一来源是 `packages/tokens/w3c-tokens.json`，改 token 后跑 `pnpm --filter @feedchamber/tokens tokens:build`。daisyUI 已移除；`tokens` 的 `antd` 产物无消费方（旧独立 Dashboard 已删除）。
 
 ## 硬规则
 

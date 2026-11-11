@@ -1,11 +1,11 @@
 # frontend-packages Specification
 
 ## Purpose
-定义 Feed Chamber 前端共享包的契约与职责边界，确保 Web 与 Dashboard 共用一致的类型、客户端与工具。
+定义 Feed Chamber 前端共享包的契约与职责边界，确保 `app/web` 前台与内嵌的 `/admin` 后台共用一致的类型、客户端与工具。管理后台不是独立应用，**不存在 `app/dashboard` 工程**（旧独立 Dashboard 已删除）。
 ## Requirements
 ### Requirement: api-client 共享包契约
 
-`@feedchamber/api-client` MUST 为 Web 与 Dashboard 共同依赖，提供：`client.ts`（authFetch 封装，自动携带 Bearer token，401 自动刷新并重试）、`auth.ts`（token 存取与 `isAuthenticated`）、`types.ts`（所有 API 响应类型）、`constants.ts`（ErrorCode / PermissionCode / SettingKey / RoleName / PostStatus / API_BASE_URL 等类型化常量）、`services/*.ts`（各模块 API service：写操作 `method: 'POST'` 且 URL 带动词后缀，只读查询 MAY 使用 `GET` 且 MUST 与后端方法一致）。
+`@feedchamber/api-client` MUST 为 `app/web` 前台与 `/admin` 后台共同依赖，提供：`client.ts`（authFetch 封装，自动携带 Bearer token，401 自动刷新并重试）、`auth.ts`（token 存取与 `isAuthenticated`）、`types.ts`（所有 API 响应类型）、`constants.ts`（ErrorCode / PermissionCode / SettingKey / RoleName / PostStatus / API_BASE_URL 等类型化常量）、`services/*.ts`（各模块 API service：写操作 `method: 'POST'` 且 URL 带动词后缀，只读查询 MAY 使用 `GET` 且 MUST 与后端方法一致）。
 
 #### Scenario: 401 自动刷新重试
 
@@ -24,7 +24,7 @@
 
 ### Requirement: sse-client 框架无关契约
 
-`@feedchamber/sse-client` MUST 提供框架无关的 `SSEClient` 类，支持 Bearer token 鉴权、401 自动刷新 token 重连、指数退避（3s→30s，最多 5 次）、ReadableStream 解析与 AbortController 取消。Web 端 MUST 通过 SolidJS adapter hook 订阅。
+`@feedchamber/sse-client` MUST 提供框架无关的 `SSEClient` 类，支持 Bearer token 鉴权、401 自动刷新 token 重连、指数退避（3s→30s，最多 5 次）、ReadableStream 解析与 AbortController 取消。Web 端 MUST 通过 React hook（`app/web/lib/hooks/use-notification-sse.ts`）订阅；旧 Solid 前端树已删除。
 
 #### Scenario: 断线指数退避重连
 

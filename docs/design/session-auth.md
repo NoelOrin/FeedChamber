@@ -24,7 +24,7 @@
    - OAuth 客户端凭证 `GenerateOAuthClientToken` → 当时判定**保留**（见下方 2026-10-18 补记：现已改 opaque，不再是 JWT）
    - OIDC SSO 的 id_token 签名（`sso_oidc.go`）→ **保留**，外部依赖方要靠 JWKS 验签，必须自包含
 
-   > **2026-10-18 补记**：上面「保留 client JWT」的结论已被推翻。OAuth2/OIDC 的 access token 全部改为 opaque（`of_at_` + 32B base64url，服务端只存 SHA-256 hex 于 `oauth_tokens.access_token`，撤销翻 `revoked` 列）；`pkg/jwt` 整包删除，JWT 只剩 OIDC `id_token`（RS256，签名私钥 PEM 持久化在 settings `sso_oidc_signing_key`，`kid` 由公钥推导，TTL 走 `sso_id_token_ttl`）。因此本文「用户 JWT 已废弃、client JWT 保留」不再是现状，现状是**所有 access token 均已 opaque**，设计记录见 [2026-10-18-oauth-opaque-tokens-design.md](../superpowers/specs/2026-10-18-oauth-opaque-tokens-design.md)。
+   > **2026-10-18 补记**：上面「保留 client JWT」的结论已被推翻。OAuth2/OIDC 的 access token 全部改为 opaque（`of_at_` + 32B base64url，服务端只存 SHA-256 hex 于 `oauth_tokens.access_token`，撤销翻 `revoked` 列）；`pkg/jwt` 整包删除，JWT 只剩 OIDC `id_token`（RS256，签名私钥 PEM 持久化在 settings `sso_oidc_signing_key`，`kid` 由公钥推导，TTL 走 `sso_id_token_ttl`）。因此本文「用户 JWT 已废弃、client JWT 保留」不再是现状，现状是**所有 access token 均已 opaque**，设计记录见 [2026-10-18-oauth-opaque-tokens 提案](../../openspec/changes/archive/2026-10-18-oauth-opaque-tokens/proposal.md)。
 
 **由此得出的核心设计**：让 `Authorization: Bearer` 携带**不透明 session id** 而非 JWT。字段名 `access_token` 不变、值变成 sid → 约束 1 自动满足，测试脚本一行不改；同时用户凭证真正变成单一服务端类型。
 

@@ -1,56 +1,61 @@
 # Feed Chamber 系统地图
 
-> 状态：2026-10-27 · 范围：整个 monorepo（后端 + Web + Dashboard + 共享包 + 部署）
+> 状态：**2026-11-11 复核** · 范围：整个 monorepo（后端 + Web + 共享包 + 部署）
 > 依据：源码实测。本文只描述「代码现在长什么样」，不评价优劣、不提案改法。
 > 规范真相源是 [openspec/specs/](../openspec/specs/)；规范与代码冲突时以 specs 为准，本文的偏差清单只做记录。
 > 相关文档：[ARCHITECTURE.md](ARCHITECTURE.md)（入口索引）、[backend-overview.md](backend-overview.md)（后端纵深）、[api-reference.md](api-reference.md)（端点清单）。
+> **所有可计数声明以 [measured-baseline.md](measured-baseline.md) 为准**（2026-11-11 实测 + 复现命令）。本文 §8 的规模表与 §7.2 曾基于已删除的独立 `app/dashboard` 工程，现已按当前代码重述；原 Dashboard 章节作为历史架构保留在 §7.3 供追溯，勿当作现状。
 
 ---
 
 ## 1. 系统组成
 
-单一 Go 后端同时服务两个前端，前端共享 4 个包。
+单一 Go 后端服务**一个**前端工程 `app/web`；管理后台是它内部的 `/admin` 段，不是独立应用。前端共享 4 个包。
 
 ```
                     ┌──────────────────────────────────────────┐
                     │  app/server  (Go + Iris v12, 单进程)      │
-                    │  /api/v1  ·  RPC 风格  ·  253 条路由      │
-                    └───────▲──────────────────────▲───────────┘
-                            │ HTTPS/JSON           │ SSE
-        ┌───────────────────┴──────┐   ┌───────────┴──────────────┐
-        │  app/web  (React 19)     │   │  app/dashboard (React 19) │
-        │  vinext App Router SSR   │   │  Ant Design Pro + Vite    │
-        │  面向用户                │   │  管理后台 SPA             │
-        └───────────┬──────────────┘   └───────────┬──────────────┘
-                    │                              │
-        ┌───────────┴──────────────────────────────┴──────────────┐
-        │  @feedchamber/api-client  (唯一请求层, 40 个 service 模块) │
-        │  @feedchamber/sse-client  ·  @feedchamber/shared-utils       │
-        │  @feedchamber/tokens      (仅 Dashboard 用)                │
-        └─────────────────────────────────────────────────────────┘
+                    │  /api/v1  ·  RPC 风格  ·  336 条路由注册   │
+                    └───────────────────▲──────────────────────┘
+                                        │ HTTPS/JSON + SSE
+        ┌───────────────────────────────┴──────────────────────┐
+        │  app/web  (React 19 + vinext App Router)              │
+        │  ├─ 前台：文件系统路由 app/(app)/…                    │
+        │  └─ 后台：app/admin/** → /admin（纯 CSR，42 个页面）  │
+        │     与前台同构建 / 同 origin / 同一套 shadcn 原语      │
+        └───────────────────────────────┬──────────────────────┘
+                                        │
+        ┌───────────────────────────────┴──────────────────────┐
+        │  @feedchamber/api-client  (唯一请求层, 49 个 service)  │
+        │  @feedchamber/sse-client  ·  @feedchamber/shared-utils  │
+        │  @feedchamber/tokens      (shadcn.css 供 Web 引用)      │
+        └───────────────────────────────────────────────────────┘
 ```
+
+> **已删除**：独立的 `app/dashboard`（React + Ant Design Pro SPA）与更早的 Solid 前端树都已在 git 历史中移除，`app/` 下现只有 `docs/`、`server/`、`web/`。`app/web/package.json` 不含 antd 依赖，源码里的 "antd" 仅出现在「已把 antd X 换成 Y」的迁移注释中。历史架构见 §7.3。
 
 ### 包依赖方向（实测 `package.json`）
 
 | 包 | 依赖 | 被谁依赖 |
 |---|---|---|
-| `@feedchamber/api-client` | 无内部依赖 | web、dashboard、sse-client |
+| `@feedchamber/api-client` | 无内部依赖 | web（含 `/admin`）、sse-client |
 | `@feedchamber/sse-client` | `api-client` | web |
-| `@feedchamber/shared-utils` | 无内部依赖 | web、dashboard |
-| `@feedchamber/tokens` | 无内部依赖 | **仅 dashboard**（Web 已不依赖，自带 shadcn token） |
+| `@feedchamber/shared-utils` | 无内部依赖 | web（含 `/admin`） |
+| `@feedchamber/tokens` | 无内部依赖 | web（`app/web/app/globals.css` 引用 `shadcn.css`） |
 
-`api-client` 是唯一请求层：`authFetch` 封装 Bearer、401 单飞刷新重试、默认 3s 超时。Web 通过 `lib/api/adapter.ts` 注入 `readRequestCookie`（把 SSR 请求的 cookie 转发给后端）并在服务端 `setApiBaseUrl`。
+`api-client` 是唯一请求层：`authFetch` 封装 Bearer、401 单飞刷新重试、默认 3s 超时。Web 通过 `lib/api/adapter.ts` 注入 `readRequestCookie`（把 SSR 请求的 cookie 转发给后端）并在服务端 `setApiBaseUrl`。后台页面直接调 `@feedchamber/api-client`，不经独立 adapter。
 
 ### 技术栈
 
-| 维度 | 后端 | Web | Dashboard |
+| 维度 | 后端 | `app/web` 前台 | `app/web/app/admin` 后台 |
 |---|---|---|---|
-| 语言/框架 | Go 1.25 + Iris v12 | React 19 + vinext 1.1（Next App Router 的 Vite 实现） | React 19 + Vite |
-| 路由 | 自建 `internal/router`（RPC 风格） | 文件系统路由 `app/` | TanStack Router（33 条 `createRoute`） |
-| 取数 | — | TanStack Query 5 + RSC `cache()` | TanStack Query |
-| UI | — | shadcn 基准原语 + Tailwind v4 | Ant Design 6 + `@feedchamber/tokens` |
+| 语言/框架 | Go 1.25 + Iris v12 | React 19 + vinext 1.1（Next App Router 的 Vite 实现） | 同前台，客户端挂载门挡住 SSR |
+| 路由 | 自建 `internal/router`（RPC 风格，12 个 `routes_*.go`） | 文件系统路由 `app/(app)/` | 文件系统路由 `app/admin/`，42 个 `page.tsx` |
+| 取数 | — | TanStack Query 5 + RSC `cache()` | TanStack Query 5（纯 CSR） |
+| UI | — | shadcn 基准原语 + Tailwind v4 | 同一套 `components/ui/*`（Radix）+ `@tanstack/react-table` |
+| 准入 | — | `(app)/layout.tsx` 的 `requireAuth` | `lib/admin/auth/access.ts` + `route-access.ts`（角色 + 模块级权限码） |
 | ORM | GORM（sqlite/mysql/postgres） | — | — |
-| 消息/KV | NATS（JetStream KV + core Pub/Sub），可内嵌 | — | — |
+| 消息/KV | NATS（JetStream KV + core Pub/Sub），**外部必填** | — | — |
 
 ---
 
@@ -100,7 +105,7 @@ HTTP Request
 | 模型 | `internal/model` | 纯数据模型（GORM 标签，无业务） | [model/AGENTS.md](../app/server/internal/model/AGENTS.md) |
 | 网关层 | `internal/gateway` | 凭证解析与会话、API Key、权限映射、限流、安全风控、OAuth 消费方 + Provider、OIDC SSO | [gateway/AGENTS.md](../app/server/internal/gateway/AGENTS.md) |
 | 中间件 | `internal/middleware` | trace / 日志 / CORS / 限流 / 超时 / 体积 / 维护模式 / 动态登录门控。**不解析用户凭证** | [middleware/AGENTS.md](../app/server/internal/middleware/AGENTS.md) |
-| 路由 | `internal/router` | 253 条路由注册，按域拆 9 个文件 | [router/AGENTS.md](../app/server/internal/router/AGENTS.md) |
+| 路由 | `internal/router` | 336 条路由注册（300 POST + 36 GET），按域拆 12 个 `routes_*.go` | [router/AGENTS.md](../app/server/internal/router/AGENTS.md) |
 | 依赖装配 | `internal/container` | repo/service 构造（`New`）+ 后台 worker（`Start`） | [container/AGENTS.md](../app/server/internal/container/AGENTS.md) |
 | 通用工具 | `internal/pkg` | 统一响应、错误码、cookie、分页、KV、限流、事件总线、日志、tracing | [pkg/AGENTS.md](../app/server/internal/pkg/AGENTS.md) |
 | 基础设施 | `internal/config`、`db`、`storage`、`mailer`、`metrics` | 配置、DB 抽象、存储、邮件、Prometheus Registry | [metrics/AGENTS.md](../app/server/internal/metrics/AGENTS.md) |
@@ -111,13 +116,13 @@ HTTP Request
 
 | 段 | 文件 | 做什么 | 约束 |
 |---|---|---|---|
-| `New(Deps)` | `container.go`（240 行） | 纯构造对象图：36 个 repository + 35 个 service | **无副作用**：不起协程、不订阅、不写库，因此可在测试里安全调用 |
-| `Start(ctx)` | `runtime.go`（66 行） | 订阅事件 + 起 5 个后台 worker + seed 默认徽章 | 写库失败必须返回给调用方 |
-| `Shutdown()` | `runtime.go` | 冲刷浏览量 → 停 worker → 关事件总线 → 关通知分发 | 顺序有意义：浏览量在 KV 里，必须先落 SQL 再关 KV |
+| `New(Deps)` | `container.go` | 纯构造对象图（repository + service，字段按字母序） | **无副作用**：不起协程、不订阅、不写库，因此可在测试里安全调用 |
+| `Start(ctx)` | `runtime.go` | 订阅事件 + 起 **7 个**后台 worker + 两个配置同步订阅 + seed 默认徽章 | 写库失败必须返回给调用方 |
+| `Shutdown()` | `runtime.go` | 停插件 → 冲刷浏览量 → 逐个 cancel worker → 关事件总线 → 关通知分发 | 顺序有意义：浏览量在 KV 里，必须先落 SQL 再关 KV |
 
-`Deps`（`deps.go`，31 行）取代了此前 11 个位置参数。`Container` 结构体有 36 个 repo 字段 + 40 个 service 字段，其中 5 个 service 字段**不由 container 构造**——`PermissionSvc` / `SettingSvc` / `BannedSvc` / `SpaceSvc` / `SessionSvc` 在 `server/iris.go` 启动期建好后注入（另有 `Security` 只注入给 AuthService），因为 middleware、gateway、业务层三方都要用，必须只有一份实例。
+`Deps` 取代了此前 11 个位置参数，具名字段让调用点自证。`Container` 里有 6 类 service 字段**不由 container 构造**——`PermissionSvc` / `SettingSvc` / `BannedSvc` / `SpaceSvc` / `SessionSvc` / `Security` 在 `server/iris.go` 启动期建好后注入，因为 middleware、gateway、业务层三方都要用，必须只有一份实例（[container/AGENTS.md](../app/server/internal/container/AGENTS.md) 有回归测试锁住）。
 
-**后台 worker（`Start` 启动，`Shutdown` 按名归因关停）**：
+**后台 worker（`Start` 启动，`Shutdown` 按名归因关停，共 7 个）**：
 
 | 名称 | 来源 | 周期/触发 |
 |---|---|---|
@@ -125,11 +130,13 @@ HTTP Request
 | `pin_expiry_checker` | `PostSvc.StartPinExpiryChecker` | 定时解除过期置顶 |
 | `webhook_delivery` | `WebhookSvc.StartWorker` | 投递队列 + 重投 |
 | `weekly_digest` | `DigestSvc.StartWeeklyTicker` | 周报 |
-| `trust_promotion` | `TrustSvc.StartDailyPromotionTicker` | 信任等级按日晋升 |
+| `trust_recompute` | `TrustSvc.StartDailyRecomputeTicker` | 每日全量重算 XP / 等级（旧的 `trust_promotion` / `StartDailyPromotionTicker` 已删除） |
+| `motion_resolver` | `MotionSvc.StartResolveTicker` | 社区动议到期结算 |
+| `plugin_cron_daily` | `PluginHost.StartDailyHookTicker` | 插件 `cron.daily` 钩子（无事件源，ticker 直接 Dispatch） |
 
-外加 `service.SubscribeNotifications` 返回的 `NotifDispatcher`（事件 → 通知）。
+外加订阅类单元（消费跑在 EventBus 自己的 worker 池里，不是独立 worker）：`service.SubscribeNotifications` 返回的 `NotifDispatcher`、`WebhookSvc.Subscribe`、`ModerationSvc.SubscribeAsync`、`PluginHost.SubscribeEvents`，以及 `GateSvc.StartSyncSubscriber`（`gate:sync`）与 `TrustSvc.StartSyncSubscriber`（`trust:sync`）两个配置同步订阅。
 
-**HTTP 层不接触 container**：`server/wiring.go`（61 行）把 39 个 service 逐字段映射成 `handler.Deps`。新增 service 若被 handler 消费，漏接线是编译错误；「HTTP 层依赖什么」可从一个文件读完。
+**HTTP 层不接触 container**：`server/wiring.go` 把 container 装配出的 service 逐字段映射成 `handler.Deps`（约 38 个服务 + `/health` 探针需要的 store/kv/cfg）。新增 service 若被 handler 消费，漏接线是编译错误；「HTTP 层依赖什么」可从一个文件读完。
 
 ### 2.5 启动顺序（`server.Start(env)`）
 
@@ -201,7 +208,7 @@ HTTP Request
 
 **三种凭证**：会话 sid（用户）、API Key（机器，`ak_` 前缀）、OAuth2/OIDC opaque access token（`of_at_` + 32B 随机串，库中只存 SHA-256 hex，撤销翻 `revoked` 列）。唯一的 JWT 是 OIDC `id_token`（RS256，私钥 PEM 持久化在 settings `sso_oidc_signing_key`）。
 
-**权限映射**：`permission.go` 的 `initRouteMap` 用 exact / prefix / pattern / space-pattern 四类匹配。`RequirePermission` 中间件只额外挂在 `/permission/*`、`/admin/backups`、`/admin/webhooks`；其余 protected 路径由这张映射表负责。
+**权限映射**：`permission.go` 的 `initRouteMap` 用 exact / prefix / pattern / space-pattern 四类匹配，**未映射的 protected 路由默认拒绝**。`middleware.RequirePermission` 作为路由级第二道门，挂在约 30 处（权限管理、admin 子域、gate/trust/站点自定义/插件等）；它排在网关 permission 中间件之后，所以一条 protected 路由必须先在 `initRouteMap` 有映射，否则网关先 `Fail(FORBIDDEN)` 返回、路由级中间件根本不会执行。新增 protected 路由 MUST 同时登记 `initRouteMap`。
 
 ---
 
@@ -209,24 +216,26 @@ HTTP Request
 
 ### 4.1 三层对应关系
 
-| 层 | 规模 | 组织方式 |
+| 层 | 规模（2026-11-11 实测） | 组织方式 |
 |---|---|---|
-| Handler | 42 生产文件 / 7716 行 / **38 个 `XxxHandler` 接口** | 每资源一个接口 + 私有实现 + swag 注解；聚合体在 `handler.go` |
-| Service | 80 生产文件（44 实现 + 36 iface）/ 9876 行 / **38 个 service 接口** | 接口与实现分离；9 个实现文件无独立 iface（`backup_snapshot` `badge` `digest` `leaderboard` `mention` `points` `slug` `totp` `webhook`），`session_iface.go` 定义的是 `SessionStore` 而实现在网关层 |
-| Repository | 60 生产文件 / 4953 行 / **38 个接口** | 19 个资源已拆成 `xxx.go`（接口）+ `xxx_sql.go`（实现），其余单文件内定义 |
+| Handler | **49 生产文件 / 10879 行 / 45 个 `XxxHandler` 接口 / 7 个测试文件** | 每资源一个接口 + 私有实现 + swag 注解；聚合体在 `handler.go` |
+| Service | **91 生产文件 / 16525 行 / 40 个 `*_iface.go` / 54 个测试文件** | 接口与实现分离；部分实现文件无独立 iface；`session_iface.go` 定义的是 `SessionStore` 而实现在网关层 |
+| Repository | **106 生产文件 / 6942 行 / 12 个测试文件** | 多资源拆成 `xxx.go`（接口）+ `xxx_sql.go`（实现），其余单文件内定义 |
+
+> 完整分层规模表与复现命令见 [measured-baseline.md](measured-baseline.md)。
 
 ### 4.2 按域分组
 
 | 域 | Handler | Service | 说明 |
 |---|---|---|---|
 | 认证与账号 | `auth` `mfa` `oauth` `banned` `user` `invite` | `auth` `mfa` `totp` `oauth` `banned` `user` `invite` `credential` | 会话 sid、MFA/TOTP、OAuth 消费方、禁言与封号、邀请注册 |
-| 权限与组织 | `role` `permission` `group` | `role` `permission` `group` `trust` | 54 个平台级权限码 + 版面级权限（层级继承）+ 用户组 + 信任等级 |
+| 权限与组织 | `role` `permission` `group` | `role` `permission` `group` | 63 个 seed 权限码 + 版面级权限（层级继承）+ 用户组 |
 | 内容 | `post` `content` `tag` `space` `draft` `revision` `trash` | `post` `content` `tag` `space` `slug` `draft` `revision` | 帖子/评论/标签/版面树；草稿、修订历史、回收站 |
 | 互动 | `like` `favorite` `follow` `watch` `user_block` | `like` `favorite` `follow` `watch` `user_block` `mention` | toggle 模式 + 状态查询 + 列表 |
 | 通讯 | `pm` `notification` `realtime` | `pm` `notification` `email` | 私信、通知（SSE 未读数）、通用 SSE、邮件 |
 | 运营 | `report` `moderation` `announcement` `admin` `dashboard` | `report` `moderation` `announcement` `admin` `audit_log` | 举报、审核规则、公告、后台统计/搜索/批量/对账 |
-| 成长 | `checkin` `badge` `leaderboard` | `checkin` `badge` `leaderboard` `points` `digest` | 签到、徽章、排行榜、积分、周报 |
-| 基础设施 | `upload` `setting` `backup` `plugin` `webhook` `theme` `seo` | `upload` `setting` `backup` `backup_snapshot` `plugin` `webhook` `theme` | 上传、系统设置、备份、插件（仅元数据）、Webhook、主题、sitemap/RSS |
+| 成长 | `checkin` `badge` `leaderboard` `trust` `gate` | `checkin` `badge` `leaderboard` `trust_level` `gate` `digest` | 签到、徽章、排行榜、Trust/XP 重算、门控规则、周报（`service/points.go` 已删除，积分唯一来源是 TrustService） |
+| 基础设施 | `upload` `setting` `backup` `plugin` `webhook` `theme` `seo` `realtime` `history` `customize` `motion` `mcp_server` `slot` | `upload` `setting` `backup` `backup_snapshot` `plugin` `webhook` `theme` `customize` `motion` `mcp_server` `slot` | 上传、系统设置、备份、插件（v2 子进程运行时）、Webhook、主题、sitemap/RSS、SSE、浏览记录、站点自定义、社区动议、MCP |
 
 ### 4.3 网关自注册的端点（handler 层没有对应文件）
 
@@ -272,21 +281,27 @@ gw.SSO.{Discovery,JWKS,Authorize,Token,UserInfo}
 
 ## 6. 路由
 
-`internal/router` 拆成 `router.go` + 8 个 `routes_*.go`，共 15 个段函数。**实测 253 条注册：223 POST + 30 GET**。
+`internal/router` 拆成 `router.go` + **12 个** `routes_*.go`（13 个生产文件 / 975 行）。**2026-11-11 实测 336 条注册：300 POST + 36 GET**（生产文件口径；另有 1 条 `OPTIONS /mcp`）。
 
-| 文件 | 行数 | 段函数 | 覆盖 |
-|---|---|---|---|
-| `router.go` | 113 | `Register` + `reg` | v1 party、`/.well-known/*`、v1.Use 链、`/health`、SEO app 根注册、protected 挂载 |
-| `routes_admin.go` | 138 | `spaceManageRoutes`, `adminRoutes` | 版面写操作；后台（邀请/审批/公告/设置/禁言/备份/插件/回收站/审核/webhook/统计/批量/审计/对账） |
-| `routes_session.go` | 104 | `dashboardRoutes`, `protectedAuthRoutes`, `userRoutes` | 首页聚合、登出/刷新/改密/MFA、OAuth 绑定、SSO 授权、用户资料 |
-| `routes_public.go` | 85 | `publicRoutes`, `publicOptionalRoutes` | 公开读 + 注册登录 + OAuth/SSO 公开面 + tags/spaces/announcements 可选登录读 |
-| `routes_content.go` | 71 | `tagManageRoutes`, `postRoutes` | 标签写、帖子与评论 |
-| `routes_engagement.go` | 70 | `engagementRoutes`, `uploadRoutes` | 收藏/点赞/回复/订阅/关注/拉黑；上传 |
-| `routes_message.go` | 51 | `messageRoutes`, `reportRoutes` | 私信、通知、实时流；举报 |
-| `routes_account.go` | 51 | `accountRoutes` | 签到、API Key、草稿、会话、主题偏好、安全风控 |
-| `routes_access.go` | 46 | `accessRoutes` | 角色、权限（含版面级）、用户组 |
+| 文件 | 行数 | 覆盖 |
+|---|---|---|
+| `router.go` | 139 | `Register` + `reg`：v1 party、`/.well-known/*`、v1.Use 链、`/health`、SEO app 根注册、`/mcp`、protected 挂载 |
+| `routes_admin.go` | 227 | 版面写操作；后台（邀请/审批/公告/设置/禁言/备份/插件/回收站/审核/webhook/统计/批量/审计/对账/站点自定义/MCP） |
+| `routes_session.go` | 104 | `dashboardRoutes`, `protectedAuthRoutes`, `userRoutes`：首页聚合、登出/刷新/改密/MFA、OAuth 绑定、SSO 授权、用户资料 |
+| `routes_public.go` | 94 | `publicRoutes`, `publicOptionalRoutes`：公开读 + 注册登录 + OAuth/SSO 公开面 + tags/spaces/announcements 可选登录读 |
+| `routes_content.go` | 78 | 标签写、帖子与评论、浏览记录（`/{id}/view`、`/{id}/read`） |
+| `routes_engagement.go` | 70 | 收藏/点赞/回复/订阅/关注/拉黑；上传 |
+| `routes_message.go` | 51 | 私信、通知、实时流；举报 |
+| `routes_account.go` | 51 | 签到、API Key、草稿、会话、主题偏好、安全风控 |
+| `routes_access.go` | 46 | 角色、权限（含版面级）、用户组 |
+| `routes_trust.go` | 39 | 等级定义、XP 规则、全量重算、用户 XP 分解与人工调整 |
+| `routes_motion.go` | 29 | 社区动议 |
+| `routes_gate.go` | 24 | 门控规则、域默认动作、以用户试算 |
+| `routes_history.go` | 23 | 浏览记录列表 / 删除 / 清空 |
 
-非 `/api/v1` 的系统端点：`/.well-known/openid-configuration`、`/.well-known/jwks.json`、`/sitemap.xml`、`/sitemap-posts.xml`、`/robots.txt`、`/latest.rss`、`/swagger/{any:path}`（后者在 `server/iris.go` 注册）。`/metrics` **不在**业务路由上，由 `METRICS_PORT`(9091) 独立 listener 暴露。
+非 `/api/v1` 的系统端点：`/.well-known/openid-configuration`、`/.well-known/jwks.json`、`/sitemap.xml`、`/sitemap-posts.xml`、`/sitemap-spaces.xml`、`/sitemap-tags.xml`、`/robots.txt`、`/latest.rss`、`/mcp`（JSON-RPC，自管鉴权）、`/swagger/{any:path}`（后者在 `server/iris.go` 注册）。`/metrics` **不在**业务路由上，由 `METRICS_PORT`(9091) 独立 listener 暴露。
+
+> 部署层 `deploy/nginx/nginx.conf` 用 6 条精确 `location =` 把 sitemap / robots / RSS 转给后端；少了它们会落到前端并 404。
 
 ---
 
@@ -334,61 +349,65 @@ gw.SSO.{Discovery,JWKS,Authorize,Token,UserInfo}
 
 **约定出口**：`lib/icons.ts` 是图标唯一出口（`biome.json` 把直接 import `lucide-react` 列为 error）；`components/ui/prose.tsx` 是正文排版唯一出口。
 
-### 7.2 Dashboard（`app/dashboard`）
+### 7.2 管理后台（`app/web/app/admin/**`，现状）
 
-规模：52 文件 / 8201 行，26 个页面目录，33 条 `createRoute`（全部手写在 `router.tsx`，无文件路由 codegen）。
+后台不是独立应用：它就在 `app/web/app/admin/**`，与前台同一个构建、同一个 origin、同一套部署。**2026-11-11 实测 42 个 `page.tsx`**。
 
-| 分组 | 路由 |
-|---|---|
-| 认证 | `/login`、`/first-change-password` |
-| 运营 | `/`、`/users`(+detail)、`/posts`(+detail)、`/comments`(+detail)、`/reports`(+detail)、`/moderation`、`/banned`、`/search` |
-| 组织 | `/roles`(+detail)、`/groups`、`/invites` |
-| 内容结构 | `/spaces`、`/tags`、`/announcements` |
-| 系统 | `/settings`(+dashboard)、`/webhooks`、`/api-keys`、`/backups`、`/security`、`/sessions`、`/trash`、`/oauth-clients`、`/plugins`、`/audit-logs` |
+- **不走 SSR**：`app/admin/layout.tsx` 用客户端挂载门（`components/admin/admin-root.tsx`）把整段路由挡在服务端渲染之外；页面组件全部 `'use client'`。
+- **准入独立成模块**：`lib/admin/auth/access.ts` 按会话 cookie 拉 `/user/profile`，角色为 `admin` / `moderator` 或命中后台权限码才放行；未登录跳主站 `/login?redirect=/admin/...`，普通用户原路返回。进入后再按 `lib/admin/auth/route-access.ts` 做模块级门控（菜单过滤 + 壳层内 403，登记 40 条路由；未登记的是 `[...rest]` 兜底页与 `/first-change-password`）。
+- **UI 复用前台原语**：`components/ui/*`（Radix + Tailwind）+ `@tanstack/react-table` + `react-hook-form`/`zod`，不经 antd；菜单在 `components/admin/layout/admin-shell.tsx` 的 `menuItems` 登记。
+- **登录页已删除**，统一复用主站 `/login`（带 `redirect` 回后台）；后台仅保留 `/admin/first-change-password`。
 
-结构要点：`router.tsx` 集中路由配置（含 ErrorBoundary 注册）、`stores/auth-store.ts` 认证状态、`components/error/`（`boundaries.tsx` + `ErrorFallback` 的 antd `Result` 兜底）。
+路由分组（详见根 [AGENTS.md](../AGENTS.md) 的「后台管理路由」表）：首页 `/admin`；论坛管理（banned / posts / comments / tags / trash）；运营管理（announcements / reports / moderation / spaces / search / customize/* / mcp / mcp-servers）；用户与权限（users / invites / roles / groups / levels / xp-rules / gates / motion）；系统设置（api-keys / webhooks / backups / oauth-clients / plugins / security / sessions / settings / audit-logs）。
+
+### 7.3 历史架构：独立 Dashboard（已删除，勿当作现状）
+
+2026-10-27 快照时曾存在独立的 `app/dashboard`（React 19 + Vite + Ant Design Pro 6 + TanStack Router，52 文件 / 8201 行 / 26 个页面目录 / 33 条 `createRoute`，`stores/auth-store.ts` 管认证、`components/error/` 用 antd `Result` 兜底）。该工程与更早的 Solid 前端树均已删除，`app/` 下现只有 `docs/`、`server/`、`web/`。`@feedchamber/tokens` 的 `antd` 产物是这段历史的兼容残留，无消费方。
+
+本节仅用于读懂 `docs/reviews/`、`docs/superpowers/plans/` 等历史文档中的 Dashboard 引用；**任何新代码都不要按这节去找文件或加依赖**。
 
 ---
 
 ## 8. 规模实测表
 
+> 本节数字全部来自 [measured-baseline.md](measured-baseline.md)（2026-11-11 实测，含复现命令）。旧版（2026-10-27）曾记「合计 319 生产文件 / 36643 行 / 26 个包」，已废止。
+
 ### 8.1 后端（`app/server`，不含 swaggo 生成的 `docs/`）
 
-| 目录 | 生产文件 | 生产行数 | 测试文件 | 测试行数 |
-|---|---|---|---|---|
-| `internal/service` | 80 | 9876 | 28 | 3521 |
-| `internal/handler` | 42 | 7716 | 1 | 344 |
-| `internal/repository` | 60 | 4953 | 7 | 602 |
-| `internal/gateway` | 19 | 3710 | 13 | 3763 |
-| `internal/model` | 47 | 2352 | 2 | 73 |
-| `server` | 3 | 1041 | 0 | 0 |
-| `internal/middleware` | 9 | 819 | 6 | 695 |
-| `internal/router` | 9 | 729 | 1 | 99 |
-| `internal/mock` | 1 | 725 | 0 | 0 |
-| `cmd` | 3 | 636 | 0 | 0 |
-| `internal/metrics` | 10 | 513 | 2 | 233 |
-| `internal/pkg`（根） | 9 | 471 | 1 | 85 |
-| `internal/mailer` | 5 | 460 | 0 | 0 |
-| `internal/storage` | 3 | 343 | 0 | 0 |
-| `internal/container` | 3 | 337 | 1 | 85 |
-| `internal/db` | 4 | 240 | 1 | 36 |
-| `internal/config` | 1 | 132 | 1 | 38 |
-| `internal/pkg/*`（7 子包） | 10 | 1548 | 8 | 1109 |
+| 目录 | 生产文件 | 生产行数 | 测试文件 |
+|---|---:|---:|---:|
+| `internal/service` | 91 | 16525 | 54 |
+| `internal/handler` | 49 | 10879 | 7 |
+| `internal/repository` | 106 | 6942 | 12 |
+| `internal/model` | 60 | 3613 | 2 |
+| `internal/gateway` | 18 | 3918 | 13 |
+| `internal/router` | 13 | 975 | 2 |
+| `internal/middleware` | 10 | 799 | 9 |
+| `internal/container` | 4 | 715 | 2 |
+| `internal/metrics` | 16 | 828 | 4 |
+| `internal/mcp` | 9 | 1688 | 4 |
+| `internal/plugin` | 9 | 2578 | 8 |
+| `internal/authz` | 1 | 216 | 1 |
+| `server` | 7 | 1755 | 2 |
+| `cmd` | 4 | 676 | 0 |
+| `internal/pkg`（根，不含子包） | 10 | 527 | 2 |
 
-- **合计 319 个生产文件 / 36643 行**，另有 **71 个测试文件 / 10602 行**（共 390 个 `.go` 文件）。
-- 测试分布：service 28、gateway 13、pkg 子包 8、repository 7、middleware 6、metrics 2、model 2、其余各 1。**`internal/handler` 只有 1 个测试文件**（`sse_metrics_test.go`，测指标埋点，不是 handler 行为）。
-- `go build ./...` / `go vet ./...` / `go test ./...` 全绿（26 个包，18 个含测试）。
+- `handler` 的 7 个测试文件覆盖 SSE 指标、帖子状态参数解析、sitemap 版面可见性、浏览记录、自定义写入来源、邮件等，**不再是旧版「只有 1 个指标测试」**。
+- `go build ./...` 退出码 0；`go test ./...` **28 个包全绿**（2026-11-11 实测）。
 
-### 8.2 前端
+### 8.2 前端（2026-11-11 实测，`.ts`/`.tsx`/`.css`）
 
 | 包 | 文件 | 行数 |
-|---|---|---|
-| `app/web`（app + components + lib） | 161 | 13447 |
-| `app/dashboard/src` | 52 | 8201 |
-| `packages/api-client/src` | 53 | 3032 |
-| `packages/sse-client/src` | 2 | 201 |
+|---|---:|---:|
+| `app/web/app`（含 `app/admin/**`） | 89 | 14702 |
+| `app/web/components` | 148 | 15128 |
+| `app/web/lib` | 30 | 2028 |
+| `packages/api-client/src` | 61 | 4128 |
+| `packages/sse-client/src` | 3 | 277 |
 | `packages/shared-utils/src` | 4 | 58 |
 | `packages/tokens` | 构建产物（`dist/`）+ `scripts/build.ts` | — |
+
+> 独立 `app/dashboard` 已删除，不再计入（历史 52 文件 / 8201 行见 §7.3）。
 
 ---
 
@@ -420,8 +439,9 @@ gw.SSO.{Discovery,JWKS,Authorize,Token,UserInfo}
 
 ---
 
-## 10. 文档 vs 代码：偏差清单
+## 10. 文档 vs 代码：偏差清单（2026-10-27 历史快照）
 
+> **本节是历史记录，编号被代码注释与 change 提案引用，不要重排。** 表内「实测」列是 **2026-10-27 当时的实测值**，不是当前值；当前值一律以 [measured-baseline.md](measured-baseline.md) 为准。其中第 1–9 项的文档已在 2026-11-11 复核中更新或重述，保留在此仅供追溯。
 > 本节只记录实测差异，不含处置建议。规范级偏差须走 `openspec` 提案流修正。
 
 ### 10.1 文档过期（数字与路径）

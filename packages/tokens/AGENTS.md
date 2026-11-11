@@ -1,6 +1,6 @@
 # Tokens 视觉设计 Token
 
-视觉设计 Token 系统。单源真理，生成 CSS 和 JS 产物，供 Web（Tailwind + daisyUI）和 Dashboard（Ant Design ThemeConfig）消费。
+视觉设计 Token 系统。单源真理，生成 CSS 和 JS 产物。**现状消费者只有一个：`app/web`（前台 + 内嵌 `/admin` 后台），经 `globals.css` 引用 `shadcn.css`（Tailwind v4）。** `antd.js` 产物是已删除的独立 Dashboard 的历史兼容残留，2026-11-11 实测无消费方。
 
 ## 技术栈
 
@@ -28,7 +28,7 @@ dist/
 |------|--------|
 | `tokens.css` | Web 前端（Tailwind CSS） |
 | `daisyui.css` | Web 前端（daisyUI 主题） |
-| `antd` | Dashboard 后台（Ant Design ConfigProvider theme） |
+| `antd` | **无消费方**（历史兼容产物；旧独立 Dashboard 已删除，新代码不要再接） |
 | `layout` | Web 前端布局 token |
 | `dashboard` | Dashboard 专用 token |
 

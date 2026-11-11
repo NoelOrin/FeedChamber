@@ -10,7 +10,7 @@
 
 - React 19 + vinext 1.1 — App Router（`app/` 目录、RSC、Server Actions），`proxy.ts` 取代 `middleware.ts`
 - TanStack Query 5 — 取数/缓存（**不再使用 TanStack Router**，路由由 vinext 承担；`TanStack` 在本包只指 Query）
-- shadcn/ui 基准的原语 + `app/globals.css` 自带的 shadcn token（中性色 + 冷紫主色）。**Web 不再依赖 `@feedchamber/tokens`**（该包只服务 Dashboard）；daisyUI 已移除
+- shadcn/ui 基准的原语 + `app/globals.css`（**`@import "@feedchamber/tokens/shadcn.css"`**，`packages/tokens/w3c-tokens.json` 是色彩与圆角的唯一来源；改 token 后跑 `pnpm --filter @feedchamber/tokens tokens:build`）。daisyUI 已移除；`tokens` 的 `antd` 产物无消费方（旧独立 Dashboard 已删除）
 - `@feedchamber/api-client` — 唯一请求层（`authFetch` + 401 单飞刷新），SSR cookie 经 `next/headers` 转发
 - `@feedchamber/sse-client` — 实时未读数
 - nuqs — URL 查询参数校验（取代 TanStack 的 `validateSearch`）

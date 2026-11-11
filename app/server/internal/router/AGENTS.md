@@ -60,7 +60,7 @@
 ├── /auth
 │   ├── /register                  POST (public, rate-limited)
 │   ├── /login                     POST (public, rate-limited)
-│   └── /refresh_token             POST (public)
+│   └── /refresh                   POST (protected，单用轮换；`/refresh_token` 从未存在)
 ├── /auth (forgot/reset)
 │   ├── /forgot_password           POST (public, rate-limited)
 │   └── /reset_password_by_code    POST (public, rate-limited)
@@ -197,3 +197,43 @@
 
 - **固定段先于参数段**：`/list`、`/clear` MUST 排在 `/{postId}/delete` 之前，否则 `{postId}` 会吞掉固定段（本包既有硬约束，见「顺序为什么是硬约束」）。
 - **插入位置是语义**：`Register` 里 `r.historyRoutes()` 紧跟 `r.postRoutes()`（在 `engagementRoutes` 之前）——它是帖子读取面的第 7 个出口，与 `postRoutes` 共用同一份可见性谓词与 `topic_read_states`，放一起才便于一起被读到；不要挪到文件末尾或别的域段之后。新段只挂路由，无 `Use(gw.*)`。
+
+## 路由层依赖注入（Iris hero DI）：已验证，未采纳（2026-11-11）
+
+曾在本包试做「段函数用 `HandleFunc` + `handler.XxxHandler` 接口形参注入，取代 `r.h`」，
+完整实现并跑通测试后**主动回滚**。结论留档，避免下次重走：
+
+### Iris DI 的硬约束（实测）
+
+1. **依赖注册必须早于任何 `Party()`**。`Party()` 复制父容器此刻的依赖快照
+   （`core/router/api_container.go` 的 `convertHandlerFuncs` 读 `apiBuilderDI.Container`），
+   晚注册的依赖在子 party 里不可见，注入点直接注册期 panic
+   （`expected [2] bindings ... Missing: [2] Xxx`）。
+2. **只有 `HandleFunc` 支持注入**。`Get`/`Post`/`Delete` 的签名是
+   `handlers ...context.Handler`，传注入型函数是**编译错误**。
+3. **注入型 handler MUST 无返回值**。hero 会把返回值交给自己的 result handler 直接写响应
+   （实测返回 `string` 时响应体就是该字符串），绕过 `pkg.Success` 统一信封。
+4. 注入型 handler 不自动 `ctx.Next()`，与原生 handler 语义一致。
+5. 具体类型注册可注入到接口形参；接口类型变量（`container` 持有的形态）同样可注入。
+
+### 为什么回滚
+
+按「收益 / 代价」算不划算：
+
+| 维度 | 现状 `h.Post.List` | DI 版 | 谁更好 |
+|---|---|---|---|
+| handler 字段名拼错 | 编译错误 | 编译错误 | 打平 |
+| `handler.New` 漏构造字段 | 运行期 panic | 注册期 panic | DI 略好，但场景罕见 |
+| 依赖可读性 | `h.Post.List` 一眼可见 | 形参可见 | 打平 |
+| 代码量 | 1 行/路由 | 3 行/路由 | 现状 |
+| 编译期保证强度 | 强 | 弱（需手写源码扫描兜底） | 现状 |
+
+关键判断：**漏接线从编译错误退化为注册期 panic 是能力退化**，而它针对的
+「`handler.New` 漏构造字段」场景，已被「45 个 handler 全在单一构造函数里」覆盖。
+用反射换取一个已有的性质，再用自写正则测试去守卫更弱的新不变量，方向是反的。
+规模数据：308 条路由 × 2 行 ≈ 净增 600 行，会稀释「扫一眼就知道有什么端点」这个路由文件的核心价值。
+
+Iris DI 真正的适用场景是 handler 多、依赖按请求动态构造；本项目 45 个 handler 全部在
+启动时静态构造，已是依赖关系最简形态。
+
+> 若将来重提此方案，直接读上面 5 条硬约束即可，不必重新验证。

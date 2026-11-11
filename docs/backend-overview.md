@@ -1,20 +1,22 @@
 # Feed Chamber 后端梳理（`app/server`）
 
-> 状态：2026-10-27 · 范围：仅 `app/server`（Go 后端）
+> 状态：**2026-10-27 实测快照，2026-11-11 复核纠错** · 范围：仅 `app/server`（Go 后端）
 > 依据：源码实测（非转述既有文档）。跨栈全景见 [system-map.md](./system-map.md)，架构索引入口见 [ARCHITECTURE.md](./ARCHITECTURE.md)，端点清单见 [api-reference.md](./api-reference.md)。
 > 已采纳规范以 `openspec/specs/` 为准；本文是「现状梳理」，规范冲突时以 specs 为准。
+>
+> ⚠️ **本文的规模数字是 2026-10-27 快照，多数已过时**：路由 253 → **336**、service 80/9876 → **91/16294**、handler 42/7716 → **49/10851**、AutoMigrate 55 → **73**、权限码 54 → **62**、后台 worker 5 → **7**、CLI 子命令 2 → **3**。当前值与复现命令一律见 [measured-baseline.md](./measured-baseline.md)。下文 §0/§2/§6/§7/§8 的旧数字保留供追溯，已在关键处加「（2026-10-27 快照）」标注；§3/§11/§12 的事实性错误已就地纠正。
 
 ---
 
 ## 0. TL;DR
 
-- 单一 Go 单体服务（Iris v12），RPC 风格 HTTP API，同时驱动 Web（React 19 + vinext）与 Dashboard（React + Ant Design）两个前端。
-- 规模：**390 个 `.go` 文件**（不含 swaggo 生成的 `app/server/docs/`），其中 **319 个生产文件 / 36643 行**，71 个测试文件 / 10602 行。分层按行数排序：service(9.9k) → handler(7.7k) → repository(5.0k) → model(2.4k)，外加 `internal/gateway`(3.7k) 网关层与 `internal/pkg`(2.0k) 基础设施。
+- 单一 Go 单体服务（Iris v12），RPC 风格 HTTP API，驱动**一个**前端工程 `app/web`（React 19 + vinext）：前台 + 内嵌的 `/admin` 后台共用一个构建、一套 shadcn 原语。**不存在独立的 `app/dashboard` 工程**（旧 React + Ant Design Pro SPA 已删除，见 [system-map.md §7.3](./system-map.md)）。
+- 规模（2026-10-27 快照；**当前值见 [measured-baseline.md](./measured-baseline.md)**：service 91/16294、handler 49/10851、repository 106/6952、model 60/3595、gateway 18/3909）：当时为 390 个 `.go` 文件（不含 swaggo 生成的 `app/server/docs/`），其中 319 个生产文件 / 36643 行，71 个测试文件 / 10602 行。
 - 存储单一 SQL 实现：每个 repository 一个接口 + SQL(GORM) 实现，按 `DB_TYPE` 选择 sqlite / mysql / postgres。
 - `NATS_URL` 必填，指向外部 NATS（JetStream KV + Pub/Sub），承载会话凭证读穿缓存、限流、权限缓存同步、设置缓存、浏览量缓冲。进程内 nats-server 已于 2026-10-28 剥离（`natsembedded` 仅供测试）。
 - 可观察性已闭环（§9.1）：自研 W3C `traceparent`（刻意不引 OpenTelemetry）→ trace 写进 `request.Context()`，Service/Repository 用 `logger.FromContext(ctx)` 取到同一 `trace_id`；指标按域拆成 10 个文件、独立 Registry，只在 `METRICS_PORT`(9091) 内部 listener 暴露；Prometheus + 13 条告警 + Grafana provisioning + blackbox 探活编排在仓库根 `deploy/`。
-- 业务面很宽：认证/MFA、用户/角色/权限/用户组、帖子/评论/点赞/收藏/关注/拉黑、版面(Space 树)、标签、通知/私信、举报/审核、公告、签到/徽章/积分/等级、草稿/修订历史、上传、OAuth 登录 + **自建 OAuth2 Provider** + **OIDC SSO**、API Key、会话管理、安全风控、Webhook、插件目录、备份/回收站、SEO（sitemap/RSS）。
-- 端点规模：[router 包](../app/server/internal/router) 实测 **223 处 `POST` + 30 处 `GET`**（共 253 条注册，252 个唯一路径）；`/metrics` 不在此树中，由 9091 内部 listener 暴露；`/swagger/{any:path}` 注册在 `server/iris.go`。
+- 业务面很宽：认证/MFA、用户/角色/权限/用户组、帖子/评论/点赞/收藏/关注/拉黑、版面(Space 树)、标签、通知/私信、举报/审核、公告、签到/徽章/Trust-XP 等级、草稿/修订历史、上传、OAuth 登录 + **自建 OAuth2 Provider** + **OIDC SSO**、API Key、会话管理、安全风控、Webhook、插件（v2 子进程运行时）、备份/回收站、SEO（sitemap/RSS）、**浏览记录/续读位置、站点自定义、社区动议、MCP Server/Client、门控规则引擎**（后几项为 2026-10-27 之后新增）。
+- 端点规模（2026-10-27 快照）：[router 包](../app/server/internal/router) 当时 223 处 `POST` + 30 处 `GET`（共 253 条注册）；**2026-11-11 实测为 300 POST + 36 GET = 336 条**（生产文件口径，另有 1 条 `OPTIONS /mcp`），见 [measured-baseline.md](./measured-baseline.md)。`/metrics` 不在此树中，由 9091 内部 listener 暴露；`/swagger/{any:path}` 注册在 `server/iris.go`。
 - 构建/测试：`go build ./...`、`go vet ./...`、`go test ./...` 全绿（26 个包，18 个含测试）。
 
 ---
@@ -26,11 +28,11 @@
 | 语言 / 运行时 | Go 1.25（`go.mod`） |
 | Web 框架 | Iris v12（`kataras/iris/v12`） |
 | ORM / 驱动 | GORM（sqlite / mysql / postgres） |
-| 消息 / KV | NATS（`nats.go`）+ 内嵌 `nats-server`（JetStream） |
+| 消息 / KV | NATS（`nats.go`），**外部必填**（JetStream）；内嵌 `nats-server` 仅测试用 |
 | 鉴权 | 服务端会话 sid + opaque OAuth2/OIDC access token；仅 OIDC `id_token` 用 `golang-jwt/jwt/v5`（RS256）；bcrypt（`x/crypto`） |
 | 对象存储 | AWS SDK v2 S3（local / S3 双实现） |
 | 可观测性 | Prometheus client_golang（独立 Registry，`:9091` 内部 listener）+ logrus（经 `internal/pkg/logger` 结构化封装）+ 自研 W3C `traceparent`（刻意不引 OpenTelemetry，见 §9.1） |
-| CLI | Cobra（根命令 + 持久标志 `-e/--env`；子命令只有 `backup` / `import-discourse`，见 §12） |
+| CLI | Cobra（根命令 + 持久标志 `-e/--env`；子命令有 `backup` / `import-discourse` / `recompute-xp`，见 §12） |
 | API 文档 | swaggo/swag → `docs/` + 根 `openapi.json` |
 | HTML 清洗 | bluemonday |
 | ID | oklog/ulid（业务主键）、google/uuid |
@@ -74,7 +76,7 @@ app/server/
 
 > 部署编排已移到**仓库根** `deploy/`（2026-10，此前在 `app/server/deploy/`）：`docker-compose.{basic,lite,full,cluster}.yml` + `nginx/` + `prometheus/` + `grafana/` + `blackbox/`，见 §12。
 
-模块实测规模（仅生产文件，即 `*_test.go` 之外的 `.go`）：
+模块实测规模（**2026-10-27 快照**，仅生产文件，即 `*_test.go` 之外的 `.go`；当前值见 [measured-baseline.md](./measured-baseline.md)）：
 
 | 目录 | 文件 | 行数 |
 |---|---|---|
@@ -98,9 +100,9 @@ app/server/
 | `internal/config` | 1 | 132 |
 | `main.go` | 1 | 42 |
 
-- 合计：**319 个生产文件 / 36643 行**，另有 71 个测试文件 / 10602 行。
-- 测试分布：service 28、`internal/gateway` 13、`internal/pkg` 子包 7、repository 7、middleware 6、metrics 2、model 2，router / handler / db / container / config / `pkg` 根各 1。**`internal/handler` 的 1 个测试文件是 `sse_metrics_test.go`（测指标埋点），不是 handler 行为测试**。
-- `go list ./...` = 26 个包（含 `cmd`、`docs`），18 个含测试，全绿。
+- 合计（2026-10-27 快照）：**319 个生产文件 / 36643 行**，另有 71 个测试文件 / 10602 行。
+- 测试分布（当时）：service 28、`internal/gateway` 13、`internal/pkg` 子包 7、repository 7、middleware 6、metrics 2、model 2，router / handler / db / container / config / `pkg` 根各 1。**当时 `internal/handler` 只有 1 个测试文件**（`sse_metrics_test.go`）；2026-11-11 实测已增至 **7 个**。
+- `go list ./...` 当时 = 26 个包、18 个含测试；**2026-11-11 实测 `go test ./...` 28 个包全绿**。
 
 ---
 
@@ -114,7 +116,7 @@ app/server/
 4. `backfillDisplayName`（一次性回填 `display_name = username`）。
 5. 种子：`seedRoles` → `seedAdmin` → `seedGroups` → `syncDefaultSettings` → `syncModerationConfigs`。
 6. 读元标记 `MetaSeeded` 判断是否首启（`alreadySeeded`）。
-7. **NATS**：`NATS_URL` 空则 `natsembedded.StartOnPort` 起内嵌实例；随后建 `kvstore`（JetStream bucket）与 `eventbus`。
+7. **NATS**：**`NATS_URL` 必填**，`config.Validate()` 在为空时直接报错、启动失败（2026-10-28 起已剥离进程内 nats-server）；随后连外部 NATS 建 `kvstore`（JetStream bucket）与 `eventbus`。`internal/pkg/natsembedded` 仅保留给 `internal/pkg/testnats` 的单元测试使用。
 8. `seedPermissions(...)`：建 PermissionService（载入内存缓存）/ SettingService / BannedService；权限映射幂等（首启或表空才 destructive 重建，避免覆盖管理员自定义）。
 9. 从 settings 表初始化运行时参数：`InitOAuthTTL`（`oauth_access_token_ttl`）、`InitPagination`；OIDC `id_token` 的 TTL 不走启动缓存，签发时现读 `sso_id_token_ttl`。
 10. **Dev 专属**：`ensureMockData` + `reseedPostsAndContents`。
@@ -124,12 +126,12 @@ app/server/
 14. `iris.New()`：`WithRemoteAddrHeader(X-Forwarded-For / X-Real-IP)` → app 级 `CORS` → `Trace(cfg.TracingEnabled)` → `Logger` → `Recover` →（`METRICS_ENABLED` 时）`Prometheus`；同一分支内 `metrics.RegisterDBPoolCollector(store)` 并在 `:{METRICS_PORT}` 起独立指标 listener（失败只 warn，不中断启动）；挂 `/swagger/{any:path}`。
 15. 构造共享依赖：`spaceSvc`（并把版面层级注入权限缓存）、`SessionStore`（`user_sessions` 行 + KV 读穿缓存，全链路唯一会话吊销权威）、`SecManager`（暴力破解防护）。
 16. `gwDeps := gateway.Deps{SettingService, Perms, Ban, KV, DB}` → `middleware.Deps{Settings, Space, Perms, Ban, Limiter}`。
-17. `container.New(container.Deps{...})` 完成全部 repo/service 装配 → `c.Start(ctx)` 订阅事件并起 5 个后台 worker → `server/wiring.go` 的 `newHandler(c)` 把 39 个 service 映射成 `handler.Deps` 后 `handler.New(...)`。
+17. `container.New(container.Deps{...})` 完成全部 repo/service 装配 → `c.Start(ctx)` 订阅事件并起 **7 个**后台 worker（2026-10-27 时是 5 个）→ `server/wiring.go` 的 `newHandler(c)` 把 container 的 service 映射成 `handler.Deps` 后 `handler.New(...)`。注意实际编排中 `gateway.Deps` / `middleware.Deps` 在 `container.New` **之前**构造（见 §13.2-新增项），并非严格按本列表的线性顺序。
 18. `router.Register(app, h, deps, gateway.New(gwDeps))` 注册全部路由。
 19. 预检端口占用 → goroutine 内 `app.Listen`。
-20. 阻塞等 `SIGINT/SIGTERM` → 10s 优雅关闭：`app.Shutdown` → `metricsSrv.Shutdown`（复用同一 ctx）→ `runtime.Shutdown()`（冲刷浏览量、停各 ticker/worker、关事件总线与通知分发）→ 停权限同步 → 关 KV / 内嵌 NATS / DB。
+20. 阻塞等 `SIGINT/SIGTERM` → 10s 优雅关闭：`app.Shutdown` → `metricsSrv.Shutdown`（复用同一 ctx）→ `runtime.Shutdown()`（停插件 → 冲刷浏览量 → cancel 7 个 worker → 关事件总线与通知分发）→ 停权限同步 → 关 KV / DB。**注意**：`GateSvc`/`TrustSvc` 的 `StartSyncSubscriber` 依赖传入 ctx 的 `Done()`，而 `container.Start` 收到的是 `context.Background()`，其 goroutine 不会被 `Runtime.Shutdown` 取消（见 §13.2 新增项）。
 
-后台常驻协程（由 `container.Start` 启动、随 `Runtime.Shutdown` 取消，worker 名存于 map 以便关停归因）：`view_count_flusher`、`pin_expiry_checker`、`webhook_delivery`、`weekly_digest`、`trust_promotion`，外加通知侧的 `NotifDispatcher`。`container.New` 本身不产生任何副作用。
+后台常驻协程（2026-10-27 快照，由 `container.Start` 启动、随 `Runtime.Shutdown` 取消，worker 名存于 map 以便关停归因）：`view_count_flusher`、`pin_expiry_checker`、`webhook_delivery`、`weekly_digest`、`trust_promotion`。**2026-11-11 实测为 7 个**：`view_count_flusher`、`pin_expiry_checker`、`webhook_delivery`、`weekly_digest`、`trust_recompute`（取代已删除的 `trust_promotion`）、`motion_resolver`、`plugin_cron_daily`；外加订阅类单元 `NotifDispatcher`、`WebhookSvc.Subscribe`、`ModerationSvc.SubscribeAsync`、`PluginHost.SubscribeEvents`，以及 `GateSvc`/`TrustSvc` 的 `StartSyncSubscriber`。`container.New` 本身不产生任何副作用。
 
 ---
 
@@ -139,7 +141,7 @@ app/server/
 
 ```
 HTTP Request
-  → Middleware / Gateway   (Tracing → RateLimit → APIKey|会话 sid|OAuth access token → BanCheck → Permission → Security → Session)
+  → Middleware / Gateway   (Tracing → RateLimit → APIKey|会话 sid|OAuth access token → banCheck(网关内) → Permission → Security → Session)
     → Handler               (解析参数、调 service、统一 JSON 响应、swag 注解)
       → Service             (业务逻辑、权限/所有权校验，返回 *pkg.AppError)
         → Repository        (接口 + SQL 实现，错误包装)
@@ -234,7 +236,7 @@ gw.SSO.{Discovery,JWKS,Authorize,Token,UserInfo}
 3. **v1 public**（无需登录凭证，部分带 `AuthGate` 动态门控）：health、settings/public、themes/list、leaderboard/list、badges/list、upload/file/{key}；`/auth`（register/login/forgot/reset_by_code/mfa.verify，均限流）；`/oauth`（消费方 provider + 自建 provider 的 token/revoke）；`/sso`（token/userinfo）；`/tags/list`、`/spaces/*`、`/announcements/published|{id}`、`/posts/list|search|{id}|{id}/detail|{id}/suggestions|{postId}/contents/list|{postId}/tags`、`/user/{id}/profile`。
 4. **v1 protected**（经 `gw.Enforce()`，其前置 trace/限流/可选凭证已由 v1 层 Preflight 完成）：dashboard、user/role/permission/groups/tags/posts(写)/comments/contents/favorites/watches/users{follow|block}/upload/notifications/realtime/reports/checkin/api-keys/drafts/sessions/themes/security/spaces(写)/admin/*。`/metrics` 不在此树中（见 §9.1）。
 
-统计：router 包实测 **`POST` 223 处、`GET` 30 处**，共 **253 条注册 / 252 个唯一路径**（`/oauth/authorize` 同时注册 GET 与 POST）。含 `/.well-known/*`、`/sitemap*`、`/robots.txt`、`/latest.rss`、`/health` 等系统端点。方法判据为「有无副作用」——写操作 `POST` + 动词后缀，只读查询 MAY `GET`（见 §13.1-5）。
+统计（2026-10-27 快照）：router 包当时 `POST` 223 处、`GET` 30 处，共 253 条注册 / 252 个唯一路径（`/oauth/authorize` 同时注册 GET 与 POST）。**2026-11-11 实测为 300 POST + 36 GET = 336 条**（生产文件口径），`routes_*.go` 从 8 个增至 12 个；见 [measured-baseline.md](./measured-baseline.md)。含 `/.well-known/*`、`/sitemap*`、`/robots.txt`、`/latest.rss`、`/health`、`/mcp` 等系统端点。方法判据为「有无副作用」——写操作 `POST` + 动词后缀，只读查询 MAY `GET`（见 §13.1-5）。
 
 限流点（`middleware.RateLimit`，滑动窗口，KV 支撑，共 **12 个命名端点**）：register 5/min、login 10/min、forgot_password 3/min、reset_password_by_code 5/min、mfa_verify 20/min、send_verify_email 3/min、verify_email 10/min、post_create 10/min、comment_create 30/min、report_create 10/min、pm_conversation_create 20/min、pm_message_create 60/min。
 
@@ -244,10 +246,10 @@ gw.SSO.{Discovery,JWKS,Authorize,Token,UserInfo}
 
 ## 7. 权限与鉴权体系
 
-- **权限码**：实测平台级 **54 个**（`xxx:yyy` 形式，如 `post:create`、`role:manage`、`security:report`、`reconcile:counters`），无重复；另有**版面级权限**（`space_permission.go` + `SpaceRolePermission` 模型，支持层级继承）。角色映射默认：admin / moderator / user / pending_user / ban。
+- **权限码**：2026-10-27 快照记 54 个；**2026-11-11 编译期实测 `model.DefaultPermissions` 为 62 条**（`xxx:yyy` 形式，如 `post:create`、`role:manage`、`security:report`、`reconcile:counters`），全文件权限码字面量 61 个唯一值、`PermXxx` 常量 63 个（差值为未进 seed 的 `admin:metrics` 等）；数字见 [measured-baseline.md](./measured-baseline.md)。另有**版面级权限**（`space_permission.go` + `SpaceRolePermission` 模型，支持层级继承）。角色映射默认：admin / moderator / user / pending_user / ban。
 - **缓存**：`PermissionService` 用 `sync.RWMutex` 维护 `role → set(perm)` 内存缓存，启动 `LoadCache`，变更经 KV Pub/Sub 跨实例同步（`StartSyncSubscriber`）。
-- **中间件**：`RequirePermission(code)` 路由级拦截（只额外挂在 `/permission/*`、`/admin/backups`、`/admin/webhooks`）；其余 protected 路径由网关的 path→permission 映射表负责（exact / prefix / pattern / space-pattern 四类匹配，**未映射默认拒绝**）。资源级「作者 OR 有权限」在 service 层判定（R-06b）；`AuthGate(settingKey)` / `SpaceAuthGate` 按系统设置动态切换公开/鉴权。
-- **封禁双层**：`role=ban`（封号，登录即拒 + 吊销全部会话）与 `Banned` 表（禁言，BanCheck 拦截写操作，网关层返回 404 而非 403）。
+- **中间件**：`RequirePermission(code)` 路由级拦截，2026-10-27 时只挂在 3 处，**2026-11-11 实测约 30 处**（权限管理、admin 子域、gate/trust/站点自定义/插件等）；其余 protected 路径由网关的 path→permission 映射表负责（exact / prefix / pattern / space-pattern 四类匹配，**未映射默认拒绝**）。网关 permission 中间件先于路由级 `RequirePermission` 执行，故新增 protected 路由 MUST 先登记 `initRouteMap`。资源级「作者 OR 有权限」在 service 层判定（R-06b）；站点级 `AuthGate(settingKey)` 做登录墙，`SpaceAuthGate` 已删除——版面 `login`/`level` 由 `service/visibility.go` 判定。
+- **封禁双层**：`role=ban`（封号，登录即拒 + 吊销全部会话）与 `Banned` 表（禁言，网关 `banCheck` 拦截写操作，返回 404 而非 403）。
 - **鉴权入口**：会话 sid（`Authorization: Bearer <sid>` 或 HttpOnly cookie `master_session`）与 API Key（`X-API-Key` / `Bearer ak_`）互斥、API Key 优先；自建 OAuth2/OIDC Provider 签发的 opaque access token（`of_at_`，库中只存 SHA-256）是第三种，只用于机器对机器；唯一仍是 JWT 的是 OIDC `id_token`（RS256）。
 - **身份传递**：网关解析凭证后写入 iris `ctx.Values()`，键名集中在 [internal/pkg/ctxkey.go](../app/server/internal/pkg/ctxkey.go)（`CtxUserID`/`CtxUsername`/`CtxRole`/`CtxSession`/`CtxClaims`/`CtxAuthMethod`/`CtxAPIKeyScopes`/`CtxClientScopes`）。写入方只有 `internal/gateway`；`CtxUserID` 携带的是 `User.ID`（ULID），键名与各表的 `user_uuid` 列都是历史遗留命名。
 
@@ -400,7 +402,7 @@ Service/Repository → logger.FromContext(ctx).WithContext(ctx).Info(...)
 
 ## 10. 外部依赖（go.mod 直接依赖）
 
-AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uuid、iris-contrib/swagger、godotenv、Iris v12、bluemonday、nats-server v2（内嵌）、nats.go、oklog/ulid、prometheus client_golang、logrus、cobra、testify、swaggo/swag、x/crypto、x/oauth2、x/sync、GORM（+ sqlite/mysql/postgres driver）。
+AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uuid、iris-contrib/swagger、godotenv、Iris v12、bluemonday、nats-server v2（**仅测试夹具**）、nats.go、oklog/ulid、prometheus client_golang、logrus、cobra、testify、swaggo/swag、x/crypto、x/oauth2、x/sync、GORM（+ sqlite/mysql/postgres driver）。
 
 ---
 
@@ -413,7 +415,7 @@ AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uu
 | `PORT` | 8080 | 端口 |
 | `DB_TYPE` | sqlite | sqlite/mysql/postgres |
 | `DB_DSN` | 空 | 非 sqlite 必填；连接池另有 `DB_MAX_OPEN_CONNS(25)`/`DB_MAX_IDLE_CONNS(10)`/`DB_CONN_MAX_LIFETIME(300)`/`DB_CONN_MAX_IDLE_TIME(60)` |
-| `NATS_URL` | 空 | 空则内嵌 nats-server |
+| `NATS_URL` | 空 | **必填**：外部 NATS 地址（需 `-js`），为空则 `config.Validate()` 报错、启动失败 |
 | `NATS_BUCKET` | feedchamber_kv | JetStream KV bucket |
 | `METRICS_ENABLED` | true | 同时控制 `middleware.Prometheus()` 与 9091 指标 listener；`false` 时两者都不注册 |
 | `METRICS_PORT` | 9091 | 指标独立端口，无鉴权，MUST NOT 经 nginx 暴露；`Validate()` 在启用时校验 1–65535 |
@@ -445,7 +447,7 @@ AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uu
 
   **这是唯一的编排档**。原 `lite` / `basic` / `full` / `cluster` 四档均已删除（`cluster` 的 PG + nats×3 + 监控栈不再随仓库发布）。`prometheus.yml`、`prometheus/rules/`、`blackbox/`、`grafana/` 保留为可选素材，挂到外部 Prometheus / Grafana 使用；backend 的 `METRICS_PORT`(9091) 仅在容器网络内可达。
 - **热重载**：`.air.toml`。
-- **CLI 子命令**：只有 `backup` 与 `import-discourse`（[cmd/backup.go](../app/server/cmd/backup.go)、[cmd/import_discourse.go](../app/server/cmd/import_discourse.go)）。环境经根命令的持久标志 `-e/--env` 选择（默认 `dev`），**不存在 `dev`/`prod` 子命令**——`go run main.go dev` 会报 `unknown command`。
+- **CLI 子命令**：共 **3 个**——`backup`（[cmd/backup.go](../app/server/cmd/backup.go)）、`import-discourse`（[cmd/import_discourse.go](../app/server/cmd/import_discourse.go)）、`recompute-xp`（[cmd/recompute_xp.go](../app/server/cmd/recompute_xp.go)，全量重算 XP / 等级）。环境经根命令的持久标志 `-e/--env` 选择（默认 `dev`），**不存在 `dev`/`prod` 子命令**——`go run main.go dev` 会报 `unknown command`。
 - **API 测试**：仓库根 `feedchamber_test.sh`（纯 curl 全量脚本）。
 
 ---
@@ -457,13 +459,13 @@ AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uu
 **（文档失真）**
 
 1. **`Category` 模块已下线但仍在文档中** → 已从根 `AGENTS.md`、`docs/api-reference.md` 及各层 `AGENTS.md` 移除；`Space`（版面树）承接分类能力。
-2. **权限数量失真**（曾写「约 20 个权限码」）→ 现为 **54 个**平台级权限码 + 版面级权限。
+2. **权限数量失真**（曾写「约 20 个权限码」）→ 2026-10-27 记为 54 个；**2026-11-11 编译期实测 `DefaultPermissions` 为 62 条**（全文件码字面量 61、常量 63）。当前值以 [measured-baseline.md](./measured-baseline.md) 为准。
 3. **`internal/gateway` 未文档化** → 已在根 `AGENTS.md`、`ARCHITECTURE.md` 与本文 §4.1 补入。
 4. **大量新模块未收录** → 已在根 `AGENTS.md`「模块说明」与各层 `AGENTS.md` 补入 MFA / PM / Group / Trust / Webhook / Invite / Draft / Revision / Trash / Badge / Leaderboard / Watch / UserBlock / Backup / Plugin / Theme / SEO / Realtime / Security / Session / APIKey。
 5. **RPC 风格 GET 偏差** → 2026-10-18 拍板：允许只读查询使用 `GET`，规则改为「按有无副作用选方法」。`router` 的 30 处 GET 在新规则下全部合规，零代码改动。规范经 change `2026-10-18-allow-get-reads` 合入 `openspec/specs/api-style`。
 6. **文档路径过时**（`packages/server/...`）→ 已改为 `app/server/...`。
 7. **`/metrics` 可见性** → 已从业务树整体删除、改由 9091 内部 listener 暴露（§9.1）；权限码 `PermAdminMetrics` 保留，只剩 `internal/gateway/apikey.go` 的 API Key 白名单引用它。
-8. **「存在 `dev`/`prod` 子命令」** → 已按 [cmd/root.go](../app/server/cmd/root.go) 实测改写（只有持久标志 `-e/--env` + `backup` / `import-discourse`），见 §12。`openspec/specs/operations/spec.md` 的相应表述仍错，须走 openspec 提案流。
+8. **「存在 `dev`/`prod` 子命令」** → 已按 [cmd/root.go](../app/server/cmd/root.go) 实测改写（只有持久标志 `-e/--env` + `backup` / `import-discourse` / `recompute-xp` 三个子命令），见 §12。`openspec/specs/operations/spec.md:56` 曾写「子命令仅有 `backup` 与 `import-discourse`」，**2026-11-11 已就地纠正为三个**（本次文档更新）。
 9. **「`docs/superpowers/` 已忽略」** → 2026-10-28 起已 `git rm --cached`，7 个文件从版本控制移除（本地文件保留），`git check-ignore` 现已命中，与 `.gitignore` 和 `ARCHITECTURE.md` 的表述一致。
 10. **`openapi.json` 覆盖率（2026-10-27 补）** → 为 12 个无注解的 handler 文件与 `internal/gateway` 的 5 个组件补齐 61 条 `@Router` 注解，openapi 路径数 185 → **246**；`make swag` 幂等（连跑两次产物哈希一致），`make swag-check` 在提交后即为绿。剩余 6 条 app 根端点因 `@BasePath` 限制有意不标，见 §13.2-39。
 
@@ -509,10 +511,38 @@ AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uu
 
 **文档与契约层**（本轮实测新增）
 
-39. **`openapi.json` 曾缺 67 条已挂载路由（2026-10-27 已补 61 条）**：补齐后 openapi 从 **185 → 246** 个路径，与路由表逐条核对后仅剩 6 条 app 根端点未纳入。根因是 12 个 handler 文件（`backup.go` `badge.go` `draft.go` `leaderboard.go` `mfa.go` `plugin.go` `realtime.go` `revision.go` `seo.go` `theme.go` `trash.go` `webhook.go`）以及 `internal/gateway` 的 18 个生产文件（仅 `session.go` 有 1 条 `@Router`）没有 `@Router` 注解。**仍缺的 6 条**是 `/.well-known/openid-configuration`、`/.well-known/jwks.json`、`/sitemap.xml`、`/sitemap-posts.xml`、`/robots.txt`、`/latest.rss`——它们是 app 根路径，而 swag 的 `@BasePath` 固定为 `/api/v1`，标注后会生成 `/api/v1/sitemap.xml` 这类错误路径，因此有意保持不标；这 6 条的权威定义在 `router.go` 的 app 根注册区。
-40. **followers/following 方法与注解不一致**：代码是 `POST /users/{userId}/followers`（`routes_engagement.go:44-45`），swag 注解写 `[get]`，`packages/api-client/src/services/follow.ts:17-22` 也用 `post`。openapi 与实际路由因此不一致（注：此条本轮**未修**）。
+39. **`openapi.json` 曾缺 67 条已挂载路由（2026-10-27 已补 61 条）**：当时补齐后 openapi 从 **185 → 246** 个路径，与路由表逐条核对后仅剩 6 条 app 根端点未纳入。根因是 12 个 handler 文件（`backup.go` `badge.go` `draft.go` `leaderboard.go` `mfa.go` `plugin.go` `realtime.go` `revision.go` `seo.go` `theme.go` `trash.go` `webhook.go`）以及 `internal/gateway` 的 18 个生产文件（仅 `session.go` 有 1 条 `@Router`）没有 `@Router` 注解。**2026-11-11 实测 openapi 已达 332 路径 / 333 操作**（297 POST + 36 GET，唯一双方法路径 `/oauth/authorize`）；仍缺的是 app 根路径 `/.well-known/openid-configuration`、`/.well-known/jwks.json`、`/sitemap*.xml`、`/robots.txt`、`/latest.rss`、`/mcp`——swag 的 `@BasePath` 固定为 `/api/v1`，标注会生成错误路径，故有意不标；权威定义在 `router.go` 的 app 根注册区。
+40. **followers/following 方法与注解不一致（仍未修）**：代码是 `POST /users/{userId}/followers`（`routes_engagement.go:44-45`），swag 注解写 `[get]`（`handler/follow.go:112,143`），`packages/api-client/src/services/follow.ts:17-22` 也用 `post`。openapi 里这两条只有 `get` 且参数声明为 query，与运行时不一致：按 openapi 生成的客户端会发 `GET ?page=1` → 405 且参数丢失。**修复需改注解为 `[post]` + `@Param body` 并重跑 `make swag`**，属代码改动，不在本次文档更新范围内。
 41. **根 `Dockerfile` Go 版本落后**：`go.mod` 要求 `go 1.25.0`，根 `Dockerfile` 用 `golang:1.24-alpine`（`app/server/Dockerfile` 已是 1.25）。`GOTOOLCHAIN` 默认 `auto` 时会在线拉取 1.25 工具链，所以**不必然构建失败**；代价是与仓库其余镜像不一致、构建期多一次网络依赖，且离线环境会失败。
 42. **`docs/superpowers/specs/2026-10-18-web-shadcn-refactor-design.md` 不存在（已修复）**：该文件从未存在于 git 历史。2026-10-28 已把 `app/web/AGENTS.md` 与 `documents/designs/current-ui_design_system.md` 的引用改为指向真实载体 `app/web/app/globals.css` 与 `components/ui/` 原语。同类死链：`ARCHITECTURE.md` 曾引用 `superpowers/specs/2026-10-18-oauth-opaque-tokens-design.md`（实际内容在 `openspec/changes/2026-10-18-oauth-opaque-tokens/`），已改为指向 proposal。
+
+---
+
+## 13.3 2026-11-11 复核发现：代码侧业务断层（**已于同日修复**）
+
+> 本节来自 2026-11-11 架构复核。它们**不是文档腐化**，而是真实的功能缺口。
+> **状态：A–N 已在同一次变更中修复并补了回归测试**（O、P 为长期项，见条目内说明）。每条保留「修复前症状」以便追溯，不再需要单独提案。
+
+| # | 严重度 | 断层 | 证据 | 用户可观察后果 |
+|---|---|---|---|---|
+| A | 高 | ✅**已修** **4 条 protected 写路由漏挂网关 `initRouteMap` 映射，恒 403** | `routes_access.go:28-29` 的 `/permission/space/effective`、`/space/tree`；`routes_admin.go:17,21` 的 `/spaces/reorder`、`/spaces/{space_id}/move`。`grep -cF '/spaces/reorder' internal/gateway/permission.go` = 0。网关 `permission.Middleware` 未映射即 `Fail(FORBIDDEN)`（`permission.go:159-166`），且排在路由级 `RequirePermission` 之前，后者根本不执行 | 版面重排 / 移动、版面级权限树查询永远返回 403 |
+| B | 高 | ✅**已修** **可见性「六个出口共用同一谓词」不成立** | 实际 3 套：SQL `buildVisibilityWhere`(`repository/post_filter.go:143`)、SQL `sitemapVisibilityWhere`(`repository/post_sql.go:532`)、Go `visibleToViewer`(`service/post.go:130`)。`VisibleSpaceIDs(0,true)` 含 login 版面，而 `RequiredLevel(login)=1` → 已登录 TL0 用户列表可见、详情 403、`ListByIDs` 过滤掉；`post_visibility_consistency_test.go` 把用户设成 TL1 恰好绕开该格 | 新用户在时间线看得见 login 版帖子，点进去被 403 |
+| C | 高 | ✅**已修** **举报处理不触发 XP 重算，且绕过 PostService.Delete** | `service/report.go:133-165` `UpdateStatus` 只改状态，未注入 `TrustSvc`；`:167-181` `deleteTarget` 直接 `postRepo.Delete`，绕过 `PostService.Delete` 的 `recomputeTrust` 与缓存失效。但 `CountUpheldReports` 按 `status='resolved'` 喂给保级判据 | 判「成立」/「删除目标」后作者 `total_xp`/等级最长 24h 不刷新，列表缓存仍供已删帖子 |
+| D | 中高 | ✅**已修** **`EventModerationDone` 无通知订阅** | `moderation.go:80/98` 发布 `moderation.decided`；`SubscribeNotifications`(`notification.go:378-520`) 只订 7 个事件，不含它。该事件有 webhook 与插件消费者 | 帖子待审被通过/拒绝后作者收不到任何站内通知、SSE 无推送 |
+| E | 中 | ✅**已修** **动议通知读了 `target_id` 后丢弃** | `notification.go:484-521` 的 `EventMotionCreated`/`Resolved` 处理里 `_ = targetID`，只 enqueue 给发起者；注释却写要通知「目标作者」 | 帖子/账号被发起折叠、放逐暗区、移交版主动议时，本人全程不知情 |
+| F | 中 | ✅**已修** **改 XP 分值只失效配置快照，不刷新落库快照** | `invalidateConfig`(`trust_level.go:119-126`) 只 `s.cfg=nil` + 广播 `trust:sync`；5 个配置写入口均无 `RecomputeAll`。`trust:sync` 发布/订阅确实成对，此部分属实 | 管理员改「发帖 +10→+20」后，全员 `total_xp`/等级/排行榜/门控判据仍按旧值，直到每日 ticker |
+| G | 中 | ✅**已修** **`admin:metrics` 权限码从未 seed** | 常量在 `model/permission.go:59`，但 `DefaultPermissions` 无此条目；`iris.go:636` 只遍历 `DefaultPermissions` 建行，`permission_sql.go` 找不到权限行即跳过角色映射 | `/api/v1/metrics` 已无路由，暂不爆发；若照文档恢复该端点会全员 403 |
+| H | 中 | ✅**已修** **`/health` 与 SEO 爬虫面裸写响应，规范未列为例外** | `handler.go:289` `ctx.JSON(results)`；`seo.go` 6 处 `ctx.WriteString`。根 [AGENTS.md](../AGENTS.md) 只把 OAuth2/OIDC 协议端点列为唯一例外 | 统一响应信封的审计口径不闭合（非功能故障） |
+| I | 中 | ✅**已修** **handler 跨层 import repository** | `handler/seo.go:13` import `internal/repository`；根因是 `service/post_iface.go:65` 把 `[]repository.SitemapEntry` 写进 service 接口 | 违反严格单向依赖（编译不受影响） |
+| J | 低 | ✅**已修** **`GateSvc`/`TrustSvc` 的 `StartSyncSubscriber` goroutine 永不被 cancel** | `iris.go:407` 传 `context.Background()` 给 `c.Start`；`runtime.go:45-50` 的两个订阅只返回 error、未纳入 `Runtime.workers`；`Shutdown` 无 parent cancel。对比 `permSvc` 用了可取消 `permSyncCtx` | 优雅关停后 goroutine 泄漏、NATS 订阅不 Unsubscribe |
+| K | 低 | ✅**部分修** **service 死方法**（`IncrPoints` 已删；其余保留待逐个评估） | `AnnouncementService.IncrementView` 无任何调用 → `view_count` 恒 0；另有 `GetSnapshot`/`UpdateLevel`/`Install`/`Uninstall`（已被 `*As` 变体取代）等 | 声称支持的能力无路径可达 |
+| L | 低 | ✅**已修** **SSE `: keepalive` 只覆盖 Pub/Sub 主路径** | `handler/notification.go:250` 的 15s ticker 只在 `kv.Subscribe` 成功分支；降级轮询分支无心跳且 `sse_polling_interval` 无上限钳制 | 管理员把轮询间隔调到 >60s 时空闲流被 nginx 切断 |
+| M | 低 | ⏳**未修** **`external`/评论审核命中 Block 时「已落库却返回错误」**（行为语义变更，需产品决策） | `post.go:610` 已落库，`:632-634` 返回 `AppError("含违规内容")`，导致其后的 `recomputeTrust` / `EventPostCreated` / @提及 / watch 扇出全跳过；`content.go` 同理 | 用户重试会产生重复待审单，且事件链断裂 |
+| N | 低 | ✅**已修** **`POST` 端点 swagger 注解把业务参数声明为 query** | 10 条（`/reports/list`、`/user/list`、`/user/search`、`/notifications/list` 等）annotation 写 `@Param ... query`，handler 实际 `ReadJSON` | 按 openapi 生成的客户端把筛选放 query → 参数丢失（运行时前端正确传 body） |
+| O | 低 | **回归网覆盖不足** | `feedchamber_test.sh` 124 次 `check()`、约 109 个归一化路径；router 有 250 个唯一 (method, 相对路径) | 约 2/3 端点无 API 回归覆盖 |
+| P | 低 | **CI 护栏不校验文档内容** | `scripts/check-agents-docs.mjs` 只查「改代码有没有动 AGENTS.md」与索引死链；`quality.yml` 的 `swag-check` 只查 swagger 是否过期 | 数字/拓扑漂移能长期存活，正是本次批量更新的根因 |
+
+**已验证属实、无需修的部分**（避免误报）：`container.New`→`Start`→`Runtime.Shutdown` 三段与 `wiring.go` 映射完整；`Preflight`/`Enforce` 两段按 stage 幂等；`AutoMigrate` 73 个模型覆盖全部 70 个 `TableName()` 类型、无缺表；`EventBus` 14 个事件常量全部有 Publish 与 Subscribe（差集为空，队列订阅确为 `QueueSubscribe`）；通知 `notified` 集合贯穿「作者 > 提及 > 关注」三条扇出且 `NotifyWatchers` 只遍历 `newRecipients`；`moderation_mode` 四分支 + `CheckExternal` 真实 HTTP/MCP 调用（非占位）；`gate:sync`/`trust:sync` 发布订阅成对；Webhook worker 与插件 Runtime 启停关停均接线；`go build ./...` 与 `go test ./...`（28 包）全绿。
 
 ---
 
@@ -525,7 +555,7 @@ AWS SDK v2 S3、golang-jwt v5（仅 OIDC `id_token` 签名/验签）、google/uu
 5. `internal/handler/handler.go` — `Deps` 加服务字段、`Handler` 加 handler 字段、`New()` 接线
 6. `server/wiring.go` — 把容器里的服务映射进 `handler.Deps`（漏了编译报错）
 7. `internal/router/routes_<域>.go` — 路由注册（保持注册顺序；见 `internal/router/AGENTS.md` 的文件表）
-8. `server/iris.go` — `AutoMigrate` 追加模型；`server/seed.go` — 种子数据（如需）
+8. `server/iris.go` — `AutoMigrate` 追加模型；种子数据按类型分流：**权限码 → `internal/model/permission.go` 的 `DefaultPermissions` + `internal/gateway/permission.go` 的 `initRouteMap`**；角色 → `server/iris.go` 的 `seedRoles`；系统设置 → `model.DefaultSettings`；mock/默认配置/重灌帖子 → `server/seed.go`（2026-11-11 纠错：旧版笼统写「`server/seed.go` — 种子数据」会让人把权限码改到不生效的地方）
 9. `internal/container/container.go` — repo/service 构造与顺序；起后台任务或订阅事件则改 `runtime.go` 的 `Start`（`New` 必须保持无副作用）
 10. 若新增错误语义：`internal/pkg/errors.go` 登记码与中文文案，并同步 `packages/api-client` 的 `ErrorCode`
 11. 若新增权限码：`internal/model/permission.go` 加常量与 `DefaultPermissions` 条目，并在 `internal/gateway/permission.go` 的 `initRouteMap` 登记路径映射（**未映射默认拒绝**）

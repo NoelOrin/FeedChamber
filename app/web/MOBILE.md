@@ -231,7 +231,7 @@ android {
 
 ## CI/CD 自动构建
 
-通过 GitHub Actions 自动构建，详见 [`.github/workflows/MOBILE_CI_README.md`](../.github/workflows/MOBILE_CI_README.md)。
+通过 GitHub Actions 自动构建，详见 [`.github/workflows/MOBILE_CI_README.md`](../../.github/workflows/MOBILE_CI_README.md)。
 
 ### 触发方式
 
