@@ -84,8 +84,8 @@ func (h *favoriteHandler) GetStatus(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        page     query  int  false  "页码"  default(1)
-// @Param        pageSize query  int  false  "每页数量"  default(20)
+// @Param        page     body   int  false  "页码"  default(1)
+// @Param        pageSize body   int  false  "每页数量"  default(20)
 // @Success      200  {object}  pkg.Response{data=[]string}
 // @Failure      401  {object}  pkg.Response
 // @Router       /favorites/list [post]

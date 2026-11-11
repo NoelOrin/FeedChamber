@@ -105,11 +105,10 @@ func (h *followHandler) GetStatus(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        userId   path      string  true   "用户 ID"
-// @Param        page     query     int     false  "页码"  default(1)
-// @Param        pageSize query     int     false  "每页数量"  default(20)
+// @Param        body     body      handler.ListParams  false  "分页参数（page / pageSize）"
 // @Success      200  {object}  pkg.Response{data=object{items=[]model.User,total=int}}
 // @Failure      401  {object}  pkg.Response
-// @Router       /users/{userId}/followers [get]
+// @Router       /users/{userId}/followers [post]
 func (h *followHandler) GetFollowers(ctx iris.Context) {
 	userID := ctx.Params().Get("userId")
 	p, err := readListParams(ctx)
@@ -136,11 +135,10 @@ func (h *followHandler) GetFollowers(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        userId   path      string  true   "用户 ID"
-// @Param        page     query     int     false  "页码"  default(1)
-// @Param        pageSize query     int     false  "每页数量"  default(20)
+// @Param        body     body      handler.ListParams  false  "分页参数（page / pageSize）"
 // @Success      200  {object}  pkg.Response{data=object{items=[]model.User,total=int}}
 // @Failure      401  {object}  pkg.Response
-// @Router       /users/{userId}/following [get]
+// @Router       /users/{userId}/following [post]
 func (h *followHandler) GetFollowing(ctx iris.Context) {
 	userID := ctx.Params().Get("userId")
 	p, err := readListParams(ctx)

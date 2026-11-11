@@ -1712,14 +1712,16 @@ paths:
       parameters:
       - default: 1
         description: 页码
-        in: query
+        in: body
         name: page
-        type: integer
+        schema:
+          type: integer
       - default: 20
         description: 每页数量
-        in: query
+        in: body
         name: pageSize
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -4150,14 +4152,16 @@ paths:
         type: string
       - default: 1
         description: 页码
-        in: query
+        in: body
         name: page
-        type: integer
+        schema:
+          type: integer
       - default: 10
         description: 每页数量
-        in: query
+        in: body
         name: pageSize
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -4682,14 +4686,16 @@ paths:
       parameters:
       - default: 1
         description: 页码
-        in: query
+        in: body
         name: page
-        type: integer
+        schema:
+          type: integer
       - default: 20
         description: 每页数量
-        in: query
+        in: body
         name: pageSize
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -5775,14 +5781,16 @@ paths:
       parameters:
       - default: 1
         description: 页码
-        in: query
+        in: body
         name: page
-        type: integer
+        schema:
+          type: integer
       - default: 20
         description: 每页数量
-        in: query
+        in: body
         name: pageSize
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -6627,14 +6635,16 @@ paths:
       parameters:
       - default: 1
         description: 页码
-        in: query
+        in: body
         name: page
-        type: integer
+        schema:
+          type: integer
       - default: 20
         description: 每页数量
-        in: query
+        in: body
         name: pageSize
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -7208,10 +7218,11 @@ paths:
       description: 获取指定角色的权限码列表
       parameters:
       - description: 角色名称
-        in: query
+        in: body
         name: role
         required: true
-        type: string
+        schema:
+          type: string
       produces:
       - application/json
       responses:
@@ -8763,23 +8774,26 @@ paths:
       description: 分页获取举报列表，可按状态筛选
       parameters:
       - description: 举报状态
-        enum:
-        - pending
-        - resolved
-        - dismissed
-        in: query
+        in: body
         name: status
-        type: string
+        schema:
+          enum:
+          - pending
+          - resolved
+          - dismissed
+          type: string
       - default: 1
         description: 页码
-        in: query
+        in: body
         name: page
-        type: integer
+        schema:
+          type: integer
       - default: 20
         description: 每页数量
-        in: query
+        in: body
         name: pageSize
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -10101,14 +10115,16 @@ paths:
       parameters:
       - default: 1
         description: 页码
-        in: query
+        in: body
         name: page
-        type: integer
+        schema:
+          type: integer
       - default: 20
         description: 每页数量
-        in: query
+        in: body
         name: pageSize
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -10715,14 +10731,16 @@ paths:
       parameters:
       - default: 1
         description: 页码
-        in: query
+        in: body
         name: page
-        type: integer
+        schema:
+          type: integer
       - default: 20
         description: 每页数量
-        in: query
+        in: body
         name: pageSize
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -10827,23 +10845,27 @@ paths:
       description: 根据关键词和角色筛选用户
       parameters:
       - description: 搜索关键词（用户名或邮箱）
-        in: query
+        in: body
         name: q
-        type: string
+        schema:
+          type: string
       - description: 角色筛选
-        in: query
+        in: body
         name: role
-        type: string
+        schema:
+          type: string
       - default: 1
         description: 页码
-        in: query
+        in: body
         name: page
-        type: integer
+        schema:
+          type: integer
       - default: 20
         description: 每页数量
-        in: query
+        in: body
         name: pageSize
-        type: integer
+        schema:
+          type: integer
       produces:
       - application/json
       responses:
@@ -10980,7 +11002,7 @@ paths:
       tags:
       - 关注
   /users/{userId}/followers:
-    get:
+    post:
       consumes:
       - application/json
       description: 分页获取指定用户的粉丝列表
@@ -10990,16 +11012,11 @@ paths:
         name: userId
         required: true
         type: string
-      - default: 1
-        description: 页码
-        in: query
-        name: page
-        type: integer
-      - default: 20
-        description: 每页数量
-        in: query
-        name: pageSize
-        type: integer
+      - description: 分页参数（page / pageSize）
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/handler.ListParams'
       produces:
       - application/json
       responses:
@@ -11029,7 +11046,7 @@ paths:
       tags:
       - 关注
   /users/{userId}/following:
-    get:
+    post:
       consumes:
       - application/json
       description: 分页获取指定用户的关注列表
@@ -11039,16 +11056,11 @@ paths:
         name: userId
         required: true
         type: string
-      - default: 1
-        description: 页码
-        in: query
-        name: page
-        type: integer
-      - default: 20
-        description: 每页数量
-        in: query
-        name: pageSize
-        type: integer
+      - description: 分页参数（page / pageSize）
+        in: body
+        name: body
+        schema:
+          $ref: '#/definitions/handler.ListParams'
       produces:
       - application/json
       responses:

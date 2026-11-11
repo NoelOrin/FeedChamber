@@ -187,8 +187,8 @@ func (h *announcementHandler) Get(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        page     query  int  false  "页码"  default(1)
-// @Param        pageSize query  int  false  "每页数量"  default(20)
+// @Param        page     body   int  false  "页码"  default(1)
+// @Param        pageSize body   int  false  "每页数量"  default(20)
 // @Success      200  {object}  pkg.Response{data=object{list=[]model.Announcement}}
 // @Failure      401  {object}  pkg.Response
 // @Failure      403  {object}  pkg.Response
@@ -212,8 +212,8 @@ func (h *announcementHandler) List(ctx iris.Context) {
 // @Tags         公告
 // @Accept       json
 // @Produce      json
-// @Param        page     query  int  false  "页码"  default(1)
-// @Param        pageSize query  int  false  "每页数量"  default(20)
+// @Param        page     body   int  false  "页码"  default(1)
+// @Param        pageSize body   int  false  "每页数量"  default(20)
 // @Success      200  {object}  pkg.Response{data=object{list=[]model.Announcement}}
 // @Router       /announcements/published [post]
 func (h *announcementHandler) ListPublished(ctx iris.Context) {

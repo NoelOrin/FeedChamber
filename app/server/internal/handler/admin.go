@@ -162,8 +162,8 @@ func (h *adminHandler) Search(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        id       path string true "用户 ID"
-// @Param        page     query int    false "页码" default(1)
-// @Param        pageSize query int    false "每页数量" default(10)
+// @Param        page     body  int    false "页码" default(1)
+// @Param        pageSize body  int    false "每页数量" default(10)
 // @Success      200  {object}  pkg.Response{data=service.UserActivities}
 // @Router       /admin/user/{id}/activities [post]
 func (h *adminHandler) GetUserActivities(ctx iris.Context) {

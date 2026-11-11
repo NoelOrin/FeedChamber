@@ -98,8 +98,8 @@ func (h *userHandler) GetByID(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        page     query  int  false  "页码"  default(1)
-// @Param        pageSize query  int  false  "每页数量"  default(20)
+// @Param        page     body   int  false  "页码"  default(1)
+// @Param        pageSize body   int  false  "每页数量"  default(20)
 // @Success      200  {object}  pkg.Response{data=object{list=[]model.User}}
 // @Failure      401  {object}  pkg.Response
 // @Failure      403  {object}  pkg.Response
@@ -124,10 +124,10 @@ func (h *userHandler) List(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        q        query  string  false  "搜索关键词（用户名或邮箱）"
-// @Param        role     query  string  false  "角色筛选"
-// @Param        page     query  int     false  "页码"  default(1)
-// @Param        pageSize query  int     false  "每页数量"  default(20)
+// @Param        q        body   string  false  "搜索关键词（用户名或邮箱）"
+// @Param        role     body   string  false  "角色筛选"
+// @Param        page     body   int     false  "页码"  default(1)
+// @Param        pageSize body   int     false  "每页数量"  default(20)
 // @Success      200  {object}  pkg.Response{data=object{list=[]model.User}}
 // @Failure      401  {object}  pkg.Response
 // @Failure      403  {object}  pkg.Response

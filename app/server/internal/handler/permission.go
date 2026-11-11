@@ -57,7 +57,7 @@ func (h *permissionHandler) ListPermissions(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        role query     string  true  "角色名称"
+// @Param        role body      string  true  "角色名称"
 // @Success      200  {object}  pkg.Response{data=object{role=string,permissions=[]string}}
 // @Failure      400  {object}  pkg.Response
 // @Failure      401  {object}  pkg.Response

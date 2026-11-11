@@ -130,18 +130,22 @@ const docTemplate = `{
                 "summary": "公告列表",
                 "parameters": [
                     {
-                        "type": "integer",
                         "default": 1,
                         "description": "页码",
                         "name": "page",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 20,
                         "description": "每页数量",
                         "name": "pageSize",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -4409,18 +4413,22 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "integer",
                         "default": 1,
                         "description": "页码",
                         "name": "page",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 10,
                         "description": "每页数量",
                         "name": "pageSize",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -5224,18 +5232,22 @@ const docTemplate = `{
                 "summary": "已发布公告列表",
                 "parameters": [
                     {
-                        "type": "integer",
                         "default": 1,
                         "description": "页码",
                         "name": "page",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 20,
                         "description": "每页数量",
                         "name": "pageSize",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -7072,18 +7084,22 @@ const docTemplate = `{
                 "summary": "用户收藏列表",
                 "parameters": [
                     {
-                        "type": "integer",
                         "default": 1,
                         "description": "页码",
                         "name": "page",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 20,
                         "description": "每页数量",
                         "name": "pageSize",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -8366,18 +8382,22 @@ const docTemplate = `{
                 "summary": "获取通知列表",
                 "parameters": [
                     {
-                        "type": "integer",
                         "default": 1,
                         "description": "页码",
                         "name": "page",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 20,
                         "description": "每页数量",
                         "name": "pageSize",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -9394,11 +9414,13 @@ const docTemplate = `{
                 "summary": "获取角色权限",
                 "parameters": [
                     {
-                        "type": "string",
                         "description": "角色名称",
                         "name": "role",
-                        "in": "query",
-                        "required": true
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {
@@ -11743,29 +11765,35 @@ const docTemplate = `{
                 "summary": "举报列表",
                 "parameters": [
                     {
-                        "enum": [
-                            "pending",
-                            "resolved",
-                            "dismissed"
-                        ],
-                        "type": "string",
                         "description": "举报状态",
                         "name": "status",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "resolved",
+                                "dismissed"
+                            ]
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 1,
                         "description": "页码",
                         "name": "page",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 20,
                         "description": "每页数量",
                         "name": "pageSize",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -14034,18 +14062,22 @@ const docTemplate = `{
                 "summary": "上传列表",
                 "parameters": [
                     {
-                        "type": "integer",
                         "default": 1,
                         "description": "页码",
                         "name": "page",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 20,
                         "description": "每页数量",
                         "name": "pageSize",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -14279,18 +14311,22 @@ const docTemplate = `{
                 "summary": "用户列表",
                 "parameters": [
                     {
-                        "type": "integer",
                         "default": 1,
                         "description": "页码",
                         "name": "page",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 20,
                         "description": "每页数量",
                         "name": "pageSize",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -14466,30 +14502,38 @@ const docTemplate = `{
                 "summary": "搜索用户",
                 "parameters": [
                     {
-                        "type": "string",
                         "description": "搜索关键词（用户名或邮箱）",
                         "name": "q",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     {
-                        "type": "string",
                         "description": "角色筛选",
                         "name": "role",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "string"
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 1,
                         "description": "页码",
                         "name": "page",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     },
                     {
-                        "type": "integer",
                         "default": 20,
                         "description": "每页数量",
                         "name": "pageSize",
-                        "in": "query"
+                        "in": "body",
+                        "schema": {
+                            "type": "integer"
+                        }
                     }
                 ],
                 "responses": {
@@ -15566,7 +15610,7 @@ const docTemplate = `{
             }
         },
         "/users/{userId}/followers": {
-            "get": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -15592,18 +15636,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "页码",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "每页数量",
-                        "name": "pageSize",
-                        "in": "query"
+                        "description": "分页参数（page / pageSize）",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ListParams"
+                        }
                     }
                 ],
                 "responses": {
@@ -15646,7 +15684,7 @@ const docTemplate = `{
             }
         },
         "/users/{userId}/following": {
-            "get": {
+            "post": {
                 "security": [
                     {
                         "BearerAuth": []
@@ -15672,18 +15710,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "integer",
-                        "default": 1,
-                        "description": "页码",
-                        "name": "page",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "每页数量",
-                        "name": "pageSize",
-                        "in": "query"
+                        "description": "分页参数（page / pageSize）",
+                        "name": "body",
+                        "in": "body",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ListParams"
+                        }
                     }
                 ],
                 "responses": {
