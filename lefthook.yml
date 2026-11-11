@@ -31,3 +31,11 @@ pre-push:
         echo "allowed types: feat fix docs style refactor perf test chore build ci revert types wip"
         echo "allowed branches: main develop"
         exit 1
+    # 把这次要推的提交里 biome 能自动修的问题修掉（amend）并自行推送，
+    # 然后中止外层那次 push。**它会 exit 1**，属预期：git 在 pre-push 之前
+    # 就固定了要发送的 ref，amend 之后外层发的仍是旧提交，只能由脚本自己推。
+    # 细节与跳过条件见 scripts/pre-push-biome-autofix.sh 的文件头。
+    # 急用时 FC_SKIP_AUTOFIX=1 git push 可绕过。
+    "biome-autofix":
+      # 必须独立执行：它自己会改 index/历史并发起推送，不能和别的 command 并行。
+      run: bash scripts/pre-push-biome-autofix.sh
