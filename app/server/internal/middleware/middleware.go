@@ -1,10 +1,10 @@
 package middleware
 
 import (
-	"bytes"
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -64,31 +64,63 @@ func Logger() iris.Handler {
 	}
 }
 
-// bodyLimitWriter captures the response so that after the handler runs, the
-// middleware can inspect it and replace a MaxBytesReader error (Iris writes
-// it as HTTP 400 + "http: request body too large") with a proper 413 JSON.
-// It embeds the original iris.ResponseWriter so all interface methods are
-// delegated automatically; only WriteHeader and Write are intercepted.
+// bodyLimitWriter 把「请求体超限」翻译成 413 信封，且 **不缓冲** 正常响应。
+//
+// 之前它无条件把整个响应收集进 bytes.Buffer（为了事后把 Iris 的 400 改写成
+// 413），代价是所有出口——包括 /api/v1/upload/file/{key} 这种字节流——都要在
+// 内存里攒完整份响应才发出。实测：10MB 文件下载首个字节直到 handler 返回后
+// 才到达客户端，且并发下载时内存按文件大小成倍占用。
+//
+// 现在的做法：正常响应直接透传（流式）；只有读取阶段已经判定超限时，才把
+// handler 的错误响应整份换成 413 信封。超限发生在 handler 读 body 的那一刻，
+// 早于它写响应，所以状态码还有机会改写。
 type bodyLimitWriter struct {
 	irisctx.ResponseWriter
-	statusCode int
-	body       bytes.Buffer
-	written    bool
+	probe     *limitExceededReader
+	rewritten bool
 }
 
+// tooLargeBody 是超限时写出的信封。预序列化，避免在 Write 路径里再走 ctx.JSON
+// （那会递归回到本 writer）。
+var tooLargeBody = []byte(`{"code":` + strconv.Itoa(int(pkg.BODY_TOO_LARGE)) +
+	`,"msg":"` + pkg.GetErrMsg(pkg.BODY_TOO_LARGE) + `","data":null}`)
+
+func (w *bodyLimitWriter) needsRewrite() bool {
+	return w.probe.exceeded && !w.rewritten
+}
+
+// WriteHeader 在超限时立即写出 413 与信封。
+//
+// 必须在这里就写 body：handler 通常先 WriteHeader（经 pkg.Fail 的
+// ctx.StatusCode）再写 body。若只在 WriteHeader 改状态码，handler 的错误
+// body 仍会被写下去；若留到 Write 再判断，响应早已提交，补写会失败。
 func (w *bodyLimitWriter) WriteHeader(code int) {
-	if !w.written {
-		w.statusCode = code
-		w.written = true
+	if w.needsRewrite() {
+		w.rewritten = true
+		w.ResponseWriter.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.ResponseWriter.WriteHeader(http.StatusRequestEntityTooLarge)
+		_, _ = w.ResponseWriter.Write(tooLargeBody)
+		return
 	}
+	w.ResponseWriter.WriteHeader(code)
 }
 
 func (w *bodyLimitWriter) Write(b []byte) (int, error) {
-	if !w.written {
-		w.statusCode = http.StatusOK
-		w.written = true
+	if w.needsRewrite() {
+		// handler 未先 WriteHeader 就直接写：这里补状态码与信封。
+		w.rewritten = true
+		w.ResponseWriter.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.ResponseWriter.WriteHeader(http.StatusRequestEntityTooLarge)
+		if _, err := w.ResponseWriter.Write(tooLargeBody); err != nil {
+			return 0, err
+		}
+		return len(b), nil
 	}
-	return w.body.Write(b)
+	if w.rewritten {
+		// 已改写过：丢弃 handler 后续写入（那是参数错误的 body）。
+		return len(b), nil
+	}
+	return w.ResponseWriter.Write(b)
 }
 
 // PathBodyLimit returns middleware that applies per-path body size limits.
@@ -121,66 +153,40 @@ func (l *limitExceededReader) Close() error {
 
 func bodyLimit(defaultLimit int64, overrides map[string]int64) iris.Handler {
 	return func(ctx iris.Context) {
-		// SSE streams write continuously and never return — bodyLimit
-		// buffers the response until the handler finishes, which would
-		// trap SSE data in the buffer forever. Skip entirely.
+		// SSE 流没有请求体，且写完即挂起；与请求体上限无关。
 		if strings.HasSuffix(ctx.Path(), "/stream") {
 			ctx.Next()
 			return
 		}
 
-		maxBytes := defaultLimit
-		if overrides != nil {
-			for prefix, limit := range overrides {
-				if strings.HasPrefix(ctx.Path(), prefix) {
-					maxBytes = limit
-					break
-				}
-			}
-		}
-
-		ctx.Request().Body = http.MaxBytesReader(ctx.ResponseWriter(), ctx.Request().Body, maxBytes)
-
-		// Wrap body to detect MaxBytesError via type assertion instead of
-		// fragile strings.Contains on the response body.
-		bodyWrap := &limitExceededReader{r: ctx.Request().Body}
-		ctx.Request().Body = bodyWrap
-
-		// Replace the response writer with a capture writer so that if
-		// the handler produces a body-too-large error response (HTTP 400),
-		// we can intercept and rewrite it as 413 before it reaches the client.
-		realWriter := ctx.ResponseWriter()
-		cap := &bodyLimitWriter{ResponseWriter: realWriter, statusCode: 0}
-		ctx.ResetResponseWriter(cap)
-
-		ctx.Next()
-
-		// Restore the real response writer.
-		ctx.ResetResponseWriter(realWriter)
-
-		isBodyTooLarge := bodyWrap.exceeded && cap.written &&
-			cap.statusCode == http.StatusBadRequest
-
-		if isBodyTooLarge {
-			// StopWithJSON writes directly to the response writer,
-			// bypassing Iris's cached status code, so the client
-			// receives the correct HTTP 413.
-			ctx.StopWithJSON(iris.StatusRequestEntityTooLarge, iris.Map{
-				"code": int(pkg.BODY_TOO_LARGE),
-				"msg":  pkg.GetErrMsg(pkg.BODY_TOO_LARGE),
-			})
+		// 无请求体的方法不可能超限，直接放行。
+		//
+		// 这不只是省一次包装：/api/v1/upload/file/{key} 是 GET 文件下载出口，
+		// 让它完全不经过任何 ResponseWriter 包装，字节流直接透传到网络。
+		switch ctx.Method() {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+			ctx.Next()
 			return
 		}
 
-		// No body-too-large error: flush the captured response as-is.
-		if cap.written {
-			realWriter.Header().Set("Content-Type", ctx.GetContentType())
-			if cap.statusCode > 0 {
-				realWriter.WriteHeader(cap.statusCode)
-			}
-			if cap.body.Len() > 0 {
-				_, _ = realWriter.Write(cap.body.Bytes())
+		maxBytes := defaultLimit
+		for prefix, limit := range overrides {
+			if strings.HasPrefix(ctx.Path(), prefix) {
+				maxBytes = limit
+				break
 			}
 		}
+
+		probe := &limitExceededReader{
+			r: http.MaxBytesReader(ctx.ResponseWriter(), ctx.Request().Body, maxBytes),
+		}
+		ctx.Request().Body = probe
+
+		realWriter := ctx.ResponseWriter()
+		ctx.ResetResponseWriter(&bodyLimitWriter{ResponseWriter: realWriter, probe: probe})
+
+		ctx.Next()
+
+		ctx.ResetResponseWriter(realWriter)
 	}
 }

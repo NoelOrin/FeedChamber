@@ -282,6 +282,13 @@ func Start(env Env) {
 	app.Configure(iris.WithRemoteAddrHeader("X-Forwarded-For"),
 		iris.WithRemoteAddrHeader("X-Real-IP"))
 
+	// 方法不匹配返回 405 而不是 404：默认行为下 `GET /posts/list`（纯 POST 路由）
+	// 会得到 404「资源不存在」，把「方法用错」误报成「资源不存在」，误导排查方向。
+	app.Configure(iris.WithFireMethodNotAllowed)
+	// 并把 404/405 补成统一信封：Iris 默认给纯文本 "Not Found"，前端按
+	// {code,msg,data} 解析会静默失败（见 middleware/notfound.go 与其中的测试）。
+	middleware.RegisterNotFoundHandlers(app)
+
 	// Trace MUST precede Logger: Iris runs app-level middleware before
 	// per-party ones, so the trace has to exist before the request log is built.
 	app.Use(middleware.CORS())

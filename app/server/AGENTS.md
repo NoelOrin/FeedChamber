@@ -9,7 +9,7 @@
 | main.go | 入口，chdir 到自身目录后调用 cmd.RootCmd.Execute()；含 swag 注解 |
 | cmd/root.go | Cobra 根命令，持久标志 `-e/--env`（子命令：`backup` / `import-discourse` / `recompute-xp`） |
 | server/iris.go | `Start(env)` — 应用启动主流程 |
-| server/seed.go | 种子数据（角色、权限、管理员、设置） |
+| server/seed.go | mock 数据、默认配置、审核配置、重灌帖子（**权限/角色 seed 不在这里**，见下表 `iris.go`） |
 | server/migrate.go | 存量库升级：`migrateTrustData`（等级数值化 / `total_xp` 回填）+ `seedTrustDefaults`（XP 规则 / 等级 / 连续签到阶梯） |
 | db/migrations/*.sql | 手写迁移/清理脚本，**没有自动执行器**（与 AutoMigrate 并存）：由人按需手动跑。每个脚本自带「背景 / 是否可选 / 幂等性 / 兼容性」四段注释，见 `cleanup_space_watches.sql` |
 
@@ -22,12 +22,13 @@
 5. Seed 种子数据（角色/权限/管理员/设置/元标记）；`seedTrustDefaults` / `seedGateDefaults` 只在对应配置表为空时写入
 6. 构造 PermissionService + SettingService + BannedService + SpaceService
 7. 构造 Container → Handler → Router
-8. 注册 Swagger
+8. 注册 Swagger（另在 `iris.New()` 后配置 `iris.WithFireMethodNotAllowed` + `middleware.RegisterNotFoundHandlers(app)`：404/405 统一信封）
 9. 启动 HTTP Server
 
 ## 关键设计
 
-- `seed.go` — 种子数据逻辑：角色、权限、管理员、设置、邮箱模板
+- `seed.go` — mock 数据、默认配置、审核配置、重灌帖子
+- **权限/角色/设置的 seed 落点**（2026-11-11 纠错）：权限码 → `internal/model/permission.go` 的 `DefaultPermissions` + `internal/gateway/permission.go` 的 `initRouteMap`；角色与权限行 → `server/iris.go` 的 `seedRoles` / `seedPermissions`；系统设置 → `model.DefaultSettings`。改权限码时改 `seed.go` 不会生效。
 - `reseedPostsAndContents` 仅在 `env == Dev` 时执行（H-01 门控）
 - 权限 seed 幂等：`alreadySeeded` 元标记 + `roleMappingsEmpty` 双重门控（R-04 修复）
 - 存储 Provider 在启动时通过 `pkg.BuildStorageConfig()` 按 settings 表 → env → 默认构建（H-04 修复）
