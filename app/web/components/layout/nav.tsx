@@ -5,9 +5,9 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 
 import { NotificationBell } from '~/components/layout/notification-bell';
 import { SiteName } from '~/components/layout/site-name';
-import { PublicSlot } from '~/components/slot/slot-host';
 import { ThemeToggle } from '~/components/layout/theme-toggle';
 import { UserInfo } from '~/components/layout/user-info';
+import { PublicSlot } from '~/components/slot/slot-host';
 import { Button } from '~/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle } from '~/components/ui/dialog';
 import { useAuthStore } from '~/lib/auth';
