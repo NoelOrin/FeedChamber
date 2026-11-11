@@ -141,7 +141,7 @@ const docTemplate = `{
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -498,7 +498,7 @@ const docTemplate = `{
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 }
                             }
@@ -822,7 +822,7 @@ const docTemplate = `{
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -4424,7 +4424,7 @@ const docTemplate = `{
                     {
                         "default": 10,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -5243,7 +5243,7 @@ const docTemplate = `{
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -6767,7 +6767,7 @@ const docTemplate = `{
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 },
                                 "startTime": {
@@ -7095,7 +7095,7 @@ const docTemplate = `{
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -7434,7 +7434,7 @@ const docTemplate = `{
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 }
                             }
@@ -8393,7 +8393,7 @@ const docTemplate = `{
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -9772,7 +9772,7 @@ const docTemplate = `{
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 }
                             }
@@ -9928,7 +9928,7 @@ const docTemplate = `{
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 },
                                 "startTime": {
@@ -9996,7 +9996,7 @@ const docTemplate = `{
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 },
                                 "space_id": {
@@ -10039,7 +10039,7 @@ const docTemplate = `{
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 },
                                 "q": {
@@ -11157,7 +11157,7 @@ const docTemplate = `{
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 },
                                 "startTime": {
@@ -11789,7 +11789,7 @@ const docTemplate = `{
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -14073,7 +14073,7 @@ const docTemplate = `{
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -14322,7 +14322,7 @@ const docTemplate = `{
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -14529,7 +14529,7 @@ const docTemplate = `{
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -15636,7 +15636,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "分页参数（page / pageSize）",
+                        "description": "分页参数（page / page_size）",
                         "name": "body",
                         "in": "body",
                         "schema": {
@@ -15710,7 +15710,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "分页参数（page / pageSize）",
+                        "description": "分页参数（page / page_size）",
                         "name": "body",
                         "in": "body",
                         "schema": {
@@ -16022,7 +16022,7 @@ const docTemplate = `{
                 "page": {
                     "type": "integer"
                 },
-                "pageSize": {
+                "page_size": {
                     "type": "integer"
                 }
             }

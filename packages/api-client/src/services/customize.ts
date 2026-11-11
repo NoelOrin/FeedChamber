@@ -158,7 +158,13 @@ export const customizeService = {
 
 	// ── 自定义页 ──────────────────────────────────────────
 	listCustomPages(body: { page?: number; pageSize?: number } = {}) {
-		return postPaginated<CustomPage[]>('/admin/customization/pages/list', body);
+		// 网络字段统一 `page_size`（openspec api-style 钉死的名字）；
+		// 调用方仍用 pageSize 这个 TS 习惯名，在边界转换。
+		const { pageSize, ...rest } = body;
+		return postPaginated<CustomPage[]>('/admin/customization/pages/list', {
+			...rest,
+			...(pageSize === undefined ? {} : { page_size: pageSize }),
+		});
 	},
 	createCustomPage(body: Partial<CustomPage>) {
 		return post<CustomizeWriteResult<{ page: CustomPage }>>('/admin/customization/pages/create', body);

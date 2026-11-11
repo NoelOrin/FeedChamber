@@ -91,7 +91,7 @@ func (h *reportHandler) Get(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        status   body   string  false  "举报状态"  Enums(pending, resolved, dismissed)
 // @Param        page     body   int     false  "页码"     default(1)
-// @Param        pageSize body   int     false  "每页数量"  default(20)
+// @Param        page_size body   int     false  "每页数量"  default(20)
 // @Success      200  {object}  pkg.Response{data=[]model.Report}
 // @Failure      401  {object}  pkg.Response
 // @Failure      403  {object}  pkg.Response

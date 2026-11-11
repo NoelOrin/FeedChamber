@@ -31,7 +31,7 @@ definitions:
     properties:
       page:
         type: integer
-      pageSize:
+      page_size:
         type: integer
     type: object
   handler.ListParams:
@@ -1719,7 +1719,7 @@ paths:
       - default: 20
         description: 每页数量
         in: body
-        name: pageSize
+        name: page_size
         schema:
           type: integer
       produces:
@@ -1769,7 +1769,7 @@ paths:
               type: string
             page:
               type: integer
-            pageSize:
+            page_size:
               type: integer
           type: object
       produces:
@@ -1968,7 +1968,7 @@ paths:
       - default: 20
         description: 每页数量
         in: body
-        name: pageSize
+        name: page_size
         schema:
           type: integer
       - description: 禁言范围
@@ -4159,7 +4159,7 @@ paths:
       - default: 10
         description: 每页数量
         in: body
-        name: pageSize
+        name: page_size
         schema:
           type: integer
       produces:
@@ -4693,7 +4693,7 @@ paths:
       - default: 20
         description: 每页数量
         in: body
-        name: pageSize
+        name: page_size
         schema:
           type: integer
       produces:
@@ -5587,7 +5587,7 @@ paths:
               type: string
             page:
               type: integer
-            pageSize:
+            page_size:
               type: integer
             startTime:
               type: string
@@ -5788,7 +5788,7 @@ paths:
       - default: 20
         description: 每页数量
         in: body
-        name: pageSize
+        name: page_size
         schema:
           type: integer
       produces:
@@ -6021,7 +6021,7 @@ paths:
           properties:
             page:
               type: integer
-            pageSize:
+            page_size:
               type: integer
           type: object
       produces:
@@ -6642,7 +6642,7 @@ paths:
       - default: 20
         description: 每页数量
         in: body
-        name: pageSize
+        name: page_size
         schema:
           type: integer
       produces:
@@ -8162,7 +8162,7 @@ paths:
               type: string
             page:
               type: integer
-            pageSize:
+            page_size:
               type: integer
             startTime:
               type: string
@@ -8373,7 +8373,7 @@ paths:
           properties:
             page:
               type: integer
-            pageSize:
+            page_size:
               type: integer
           type: object
       produces:
@@ -8466,7 +8466,7 @@ paths:
               type: string
             page:
               type: integer
-            pageSize:
+            page_size:
               type: integer
             startTime:
               type: string
@@ -8509,7 +8509,7 @@ paths:
           properties:
             page:
               type: integer
-            pageSize:
+            page_size:
               type: integer
             space_id:
               type: string
@@ -8534,7 +8534,7 @@ paths:
           properties:
             page:
               type: integer
-            pageSize:
+            page_size:
               type: integer
             q:
               type: string
@@ -8791,7 +8791,7 @@ paths:
       - default: 20
         description: 每页数量
         in: body
-        name: pageSize
+        name: page_size
         schema:
           type: integer
       produces:
@@ -10122,7 +10122,7 @@ paths:
       - default: 20
         description: 每页数量
         in: body
-        name: pageSize
+        name: page_size
         schema:
           type: integer
       produces:
@@ -10738,7 +10738,7 @@ paths:
       - default: 20
         description: 每页数量
         in: body
-        name: pageSize
+        name: page_size
         schema:
           type: integer
       produces:
@@ -10863,7 +10863,7 @@ paths:
       - default: 20
         description: 每页数量
         in: body
-        name: pageSize
+        name: page_size
         schema:
           type: integer
       produces:
@@ -11012,7 +11012,7 @@ paths:
         name: userId
         required: true
         type: string
-      - description: 分页参数（page / pageSize）
+      - description: 分页参数（page / page_size）
         in: body
         name: body
         schema:
@@ -11056,7 +11056,7 @@ paths:
         name: userId
         required: true
         type: string
-      - description: 分页参数（page / pageSize）
+      - description: 分页参数（page / page_size）
         in: body
         name: body
         schema:

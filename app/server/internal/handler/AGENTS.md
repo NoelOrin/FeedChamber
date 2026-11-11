@@ -116,5 +116,5 @@ HTTP 接口层，解析请求、调用 service、返回统一 JSON 响应。
 
 - 新增 `history.go` 的 `HistoryHandler`（`List` / `Delete` / `Clear`），`post.go` 增 `RecordView`；`handler.go` 只加 `History` 字段并用 `newHistoryHandler(d.Post)` 接线——**复用 PostService，没有新 service**（因此 `Deps` 不加字段、`server/wiring.go` 无需改）。
 - `viewerCtx(ctx iris.Context)` 是本包共享辅助：`WithViewerID` + `WithViewerRole` 把会话 id 与角色灌进 service ctx（等级/版面可见性据此判定）。浏览记录的访问者只能是 ctx 里的这个人，身份绝不经路径或 body 参数传递（越权写口）。
-- `POST /history/list` **必须容忍空 body**：`ReadJSON` 无 body 返回 `io.EOF`，直接 `Fail(INVALID_PARAMS)` 会把「默认分页的合法请求」打成 400（见上文「列表接口必须容忍空 body」）；分页字段用规范的 `page`/`pageSize`（`pkg.NormalizePagination`），`Delete` 幂等。
+- `POST /history/list` **必须容忍空 body**：`ReadJSON` 无 body 返回 `io.EOF`，直接 `Fail(INVALID_PARAMS)` 会把「默认分页的合法请求」打成 400（见上文「列表接口必须容忍空 body」）；分页字段用规范的 `page`/`page_size`（`pkg.NormalizePagination`），`Delete` 幂等。
 - 新增 `history_test.go`（HTTP 层）。

@@ -48,7 +48,7 @@ func newPostHandler(svc service.PostService) PostHandler {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        body body object{page=int,pageSize=int,authorId=string,status=string,startTime=string,endTime=string} false "筛选参数"
+// @Param        body body object{page=int,page_size=int,authorId=string,status=string,startTime=string,endTime=string} false "筛选参数"
 // @Success      200  {object}  pkg.Response{data=[]model.PostListItem}
 // @Failure      401  {object}  pkg.Response
 // @Router       /posts/list [post]
@@ -303,7 +303,7 @@ func (h *postHandler) Delete(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        body body object{q=string,page=int,pageSize=int} true "搜索参数"
+// @Param        body body object{q=string,page=int,page_size=int} true "搜索参数"
 // @Success      200  {object}  pkg.Response{data=[]model.PostListItem}
 // @Failure      400  {object}  pkg.Response
 // @Failure      401  {object}  pkg.Response
@@ -543,7 +543,7 @@ func (h *postHandler) Unpin(ctx iris.Context) {
 // @Tags         帖子
 // @Accept       json
 // @Produce      json
-// @Param        body body object{space_id=string,page=int,pageSize=int} false "筛选参数"
+// @Param        body body object{space_id=string,page=int,page_size=int} false "筛选参数"
 // @Router       /posts/pinned/list [post]
 func (h *postHandler) ListPinned(ctx iris.Context) {
 	var body struct {

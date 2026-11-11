@@ -78,14 +78,28 @@ func TestHistoryHandler_List_EmptyBodyUsesDefaultPagination(t *testing.T) {
 	require.Equal(t, pkg.PageDefaultSize, svc.listPageSize)
 }
 
+// 网络分页字段是 page / page_size（2026-11-11 全站统一的唯一规范名）。
 func TestHistoryHandler_List_BodyCarriesPageAndPageSize(t *testing.T) {
 	svc := &stubHistoryService{}
 	e := httptest.New(t, historyTestApp(svc))
 
-	e.POST("/api/v1/history/list").WithJSON(iris.Map{"page": 3, "pageSize": 7}).
+	e.POST("/api/v1/history/list").WithJSON(iris.Map{"page": 3, "page_size": 7}).
 		Expect().Status(200)
 	require.Equal(t, 3, svc.listPage)
 	require.Equal(t, 7, svc.listPageSize)
+}
+
+// 旧的驼峰 pageSize 不再被接受：硬切后必须显式钉住，避免有人「顺手兼容」
+// 又把它加回来，让两个名字重新并存。
+func TestHistoryHandler_List_LegacyCamelCaseIgnored(t *testing.T) {
+	svc := &stubHistoryService{}
+	e := httptest.New(t, historyTestApp(svc))
+
+	e.POST("/api/v1/history/list").WithJSON(iris.Map{"page": 2, "pageSize": 7}).
+		Expect().Status(200)
+	require.Equal(t, 2, svc.listPage)
+	require.Equal(t, pkg.PageDefaultSize, svc.listPageSize,
+		"pageSize（驼峰）应被忽略，回退到默认分页")
 }
 
 // 列表响应必须带 total，且字段从 model.PostListItem 里透出续读游标。

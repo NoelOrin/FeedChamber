@@ -32,7 +32,7 @@ func newContentHandler(svc service.ContentService) ContentHandler {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        postId   path      string  true   "帖子 ID"
-// @Param        body     body      object{page=int,pageSize=int,startTime=string,endTime=string} false "筛选参数"
+// @Param        body     body      object{page=int,page_size=int,startTime=string,endTime=string} false "筛选参数"
 // @Success      200  {object}  pkg.Response{data=[]model.Content}
 // @Failure      500  {object}  pkg.Response
 // @Router       /posts/{postId}/contents/list [post]
@@ -57,7 +57,7 @@ func (h *contentHandler) ListByPost(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        body     body      object{page=int,pageSize=int,startTime=string,endTime=string} false "筛选参数"
+// @Param        body     body      object{page=int,page_size=int,startTime=string,endTime=string} false "筛选参数"
 // @Success      200  {object}  pkg.Response{data=[]model.Content}
 // @Failure      500  {object}  pkg.Response
 // @Router       /contents/{contentId}/replies [post]
@@ -82,7 +82,7 @@ func (h *contentHandler) ListReplies(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        body     body      object{page=int,pageSize=int} false "分页参数"
+// @Param        body     body      object{page=int,page_size=int} false "分页参数"
 // @Success      200  {object}  pkg.Response{data=[]model.ContentListItem,total=int}
 // @Failure      500  {object}  pkg.Response
 // @Router       /posts/comments/list [post]

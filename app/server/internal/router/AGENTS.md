@@ -170,8 +170,8 @@
 
 ## 注意事项
 
-- 所有列表接口均为 POST，请求体传 `{ page, pageSize, ...filters }`
-- 所有列表响应格式：`{ code, msg, data, pagination: { currentPage, pageSize, totalItems, totalPages } }`
+- 所有列表接口均为 POST，请求体传 `{ page, page_size, ...filters }`（网络字段名统一下划线，2026-11-11 定案）
+- 所有列表响应格式：`{ code, msg, data, pagination: { currentPage, page_size, totalItems, totalPages } }`
 - `/comments/list` 挂在 `/posts` party 下（admin 全局评论列表），`/comments/{id}/delete` 单独 party
 - Admin search 支持各实体独立分页参数：`users_page/users_page_size`, `posts_page/posts_page_size`, `comments_page/comments_page_size`
 

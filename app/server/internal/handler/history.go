@@ -46,7 +46,7 @@ func viewerCtx(ctx iris.Context) context.Context {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        body body object{page=integer,pageSize=integer} false "分页参数（可空 body）"
+// @Param        body body object{page=integer,page_size=integer} false "分页参数（可空 body）"
 // @Success      200  {object}  pkg.Response{data=[]model.PostListItem}
 // @Failure      401  {object}  pkg.Response
 // @Router       /history/list [post]
@@ -56,7 +56,7 @@ func (h *historyHandler) List(ctx iris.Context) {
 	}
 	var body struct {
 		Page     int `json:"page"`
-		PageSize int `json:"pageSize"`
+		PageSize int `json:"page_size"`
 	}
 	// 空 body 是合法请求（默认分页），不能打成 400：ReadJSON 在无 body 时返回 io.EOF。
 	if err := ctx.ReadJSON(&body); err != nil && !errors.Is(err, io.EOF) {

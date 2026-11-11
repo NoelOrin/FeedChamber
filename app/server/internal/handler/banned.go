@@ -381,7 +381,7 @@ func (h *bannedHandler) enrichBanned(ctx context.Context, bans []model.Banned) [
 // @Produce      json
 // @Security     BearerAuth
 // @Param        page      body     int     false  "页码"      default(1)
-// @Param        pageSize  body     int     false  "每页数量"  default(20)
+// @Param        page_size  body     int     false  "每页数量"  default(20)
 // @Param        scope     body     string  false  "禁言范围"  Enums(global, space)
 // @Param        space_id  body     string  false  "版面ID"    default()
 // @Success      200  {object}  pkg.Response{data=object{items=[]handler.BannedListView,total=int}}

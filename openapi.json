@@ -135,7 +135,7 @@
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -492,7 +492,7 @@
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 }
                             }
@@ -816,7 +816,7 @@
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -4418,7 +4418,7 @@
                     {
                         "default": 10,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -5237,7 +5237,7 @@
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -6761,7 +6761,7 @@
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 },
                                 "startTime": {
@@ -7089,7 +7089,7 @@
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -7428,7 +7428,7 @@
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 }
                             }
@@ -8387,7 +8387,7 @@
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -9766,7 +9766,7 @@
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 }
                             }
@@ -9922,7 +9922,7 @@
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 },
                                 "startTime": {
@@ -9990,7 +9990,7 @@
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 },
                                 "space_id": {
@@ -10033,7 +10033,7 @@
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 },
                                 "q": {
@@ -11151,7 +11151,7 @@
                                 "page": {
                                     "type": "integer"
                                 },
-                                "pageSize": {
+                                "page_size": {
                                     "type": "integer"
                                 },
                                 "startTime": {
@@ -11783,7 +11783,7 @@
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -14067,7 +14067,7 @@
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -14316,7 +14316,7 @@
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -14523,7 +14523,7 @@
                     {
                         "default": 20,
                         "description": "每页数量",
-                        "name": "pageSize",
+                        "name": "page_size",
                         "in": "body",
                         "schema": {
                             "type": "integer"
@@ -15630,7 +15630,7 @@
                         "required": true
                     },
                     {
-                        "description": "分页参数（page / pageSize）",
+                        "description": "分页参数（page / page_size）",
                         "name": "body",
                         "in": "body",
                         "schema": {
@@ -15704,7 +15704,7 @@
                         "required": true
                     },
                     {
-                        "description": "分页参数（page / pageSize）",
+                        "description": "分页参数（page / page_size）",
                         "name": "body",
                         "in": "body",
                         "schema": {
@@ -16016,7 +16016,7 @@
                 "page": {
                     "type": "integer"
                 },
-                "pageSize": {
+                "page_size": {
                     "type": "integer"
                 }
             }

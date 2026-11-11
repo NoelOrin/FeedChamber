@@ -17,7 +17,9 @@
 
 `PUT` / `PATCH` / `DELETE` MUST NOT 用于业务接口；URL MUST NOT 采用 RESTful 的资源层级语义（层级嵌套不改变方法含义）。
 
-`GET` 允许用 query string 承载过滤与分页参数，分页字段名 MUST 仍为 `page` / `pageSize`；`POST` 接口 MUST NOT 用 query string 承载业务参数。
+`GET` 允许用 query string 承载过滤与分页参数，分页字段名 MUST 为 `page` / `page_size`（下划线，**全站唯一规范名**）；`POST` 接口 MUST NOT 用 query string 承载业务参数。
+
+> 2026-11-11 定案：分页字段统一为 `page` / `page_size`。此前 `pageSize`（驼峰）与 `page_size` 并存过——`customize` / `history` / `audit_logs` / `mcp` 四个端点收驼峰、其余收下划线，`admin/audit_logs` 甚至用双字段兼容补丁兜住。现全部硬切为 `page_size`，旧驼峰名不再被接受（`handler/history_test.go` 有「驼峰被忽略」的守卫用例）。`pageSize` 仅可作为前端 TS 局部变量名，MUST NOT 作为网络字段名。
 
 系统 / 协议 / 文件类端点 MUST 使用 `GET`，不受 RPC 风格约束：`/health`；`/sitemap.xml`、`/sitemap-posts.xml`、`/sitemap-spaces.xml`、`/sitemap-tags.xml`、`/robots.txt`、`/latest.rss`；OAuth 2.0 / OIDC 协议端点（`/.well-known/*`、authorize、callback、userinfo）；文件字节读取（`/upload/file/{key}` 流式、`/upload/{id}` 302）；认证流程端点（如 `GET /oauth/{provider}/auth` 返回授权 URL）。
 
@@ -45,7 +47,7 @@
 #### Scenario: 查询参数不得承载过滤条件（POST）
 
 - WHEN 客户端按状态与分页筛选举报列表
-- THEN 系统 MUST 接受 `POST /api/v1/reports/list`，过滤条件与分页（`page`/`pageSize`）通过 request body 传递，而非 query string
+- THEN 系统 MUST 接受 `POST /api/v1/reports/list`，过滤条件与分页（`page`/`page_size`）通过 request body 传递，而非 query string
 
 #### Scenario: GET 允许 query 承载过滤
 

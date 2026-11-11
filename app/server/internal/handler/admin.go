@@ -2,11 +2,12 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
 	"feedchamber/internal/service"
+	"io"
 	"log/slog"
-	"strconv"
 
 	"github.com/kataras/iris/v12"
 	"github.com/sirupsen/logrus"
@@ -163,7 +164,7 @@ func (h *adminHandler) Search(ctx iris.Context) {
 // @Security     BearerAuth
 // @Param        id       path string true "用户 ID"
 // @Param        page     body  int    false "页码" default(1)
-// @Param        pageSize body  int    false "每页数量" default(10)
+// @Param        page_size body  int    false "每页数量" default(10)
 // @Success      200  {object}  pkg.Response{data=service.UserActivities}
 // @Router       /admin/user/{id}/activities [post]
 func (h *adminHandler) GetUserActivities(ctx iris.Context) {
@@ -172,9 +173,17 @@ func (h *adminHandler) GetUserActivities(ctx iris.Context) {
 		pkg.Fail(ctx, pkg.INVALID_PARAMS)
 		return
 	}
-	page, _ := strconv.Atoi(ctx.URLParamDefault("page", "1"))
-	pageSize, _ := strconv.Atoi(ctx.URLParamDefault("pageSize", "10"))
-	page, pageSize = pkg.NormalizePaginationCustom(page, pageSize, 50, 10)
+	// POST 端点：参数走 body（此前从 query 读，违反 api-style「POST 不得用
+	// query 承载业务参数」，且字段名用的是驼峰 pageSize）。空 body 合法。
+	var req struct {
+		Page     int `json:"page"`
+		PageSize int `json:"page_size"`
+	}
+	if err := ctx.ReadJSON(&req); err != nil && !errors.Is(err, io.EOF) {
+		pkg.Fail(ctx, pkg.INVALID_PARAMS)
+		return
+	}
+	page, pageSize := pkg.NormalizePaginationCustom(req.Page, req.PageSize, 50, 10)
 
 	activities, err := h.svc.GetUserActivities(ctx.Request().Context(), userID, page, pageSize)
 	if err != nil {
@@ -307,24 +316,19 @@ func (h *adminHandler) ReconcileCounters(ctx iris.Context) {
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        body body object{page=int,pageSize=int,actor_id=string,action=string} false "查询参数"
+// @Param        body body object{page=int,page_size=int,actor_id=string,action=string} false "查询参数"
 // @Success      200  {object}  pkg.Response{data=pkg.PaginatedData}
 // @Router       /admin/audit_logs/list [post]
 func (h *adminHandler) ListAuditLogs(ctx iris.Context) {
 	var req struct {
-		Page      int    `json:"page"`
-		PageSize  int    `json:"pageSize"`
-		PageSize2 int    `json:"page_size"`
-		ActorID   string `json:"actor_id"`
-		Action    string `json:"action"`
+		Page     int    `json:"page"`
+		PageSize int    `json:"page_size"`
+		ActorID  string `json:"actor_id"`
+		Action   string `json:"action"`
 	}
 	// body 允许为空
 	_ = ctx.ReadJSON(&req)
-	pageSize := req.PageSize
-	if pageSize == 0 {
-		pageSize = req.PageSize2
-	}
-	logs, total, err := h.auditLogSvc.List(ctx.Request().Context(), req.Page, pageSize, req.ActorID, req.Action)
+	logs, total, err := h.auditLogSvc.List(ctx.Request().Context(), req.Page, req.PageSize, req.ActorID, req.Action)
 	if err != nil {
 		pkg.HandleError(ctx, err)
 		return

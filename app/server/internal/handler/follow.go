@@ -105,7 +105,7 @@ func (h *followHandler) GetStatus(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        userId   path      string  true   "用户 ID"
-// @Param        body     body      handler.ListParams  false  "分页参数（page / pageSize）"
+// @Param        body     body      handler.ListParams  false  "分页参数（page / page_size）"
 // @Success      200  {object}  pkg.Response{data=object{items=[]model.User,total=int}}
 // @Failure      401  {object}  pkg.Response
 // @Router       /users/{userId}/followers [post]
@@ -135,7 +135,7 @@ func (h *followHandler) GetFollowers(ctx iris.Context) {
 // @Produce      json
 // @Security     BearerAuth
 // @Param        userId   path      string  true   "用户 ID"
-// @Param        body     body      handler.ListParams  false  "分页参数（page / pageSize）"
+// @Param        body     body      handler.ListParams  false  "分页参数（page / page_size）"
 // @Success      200  {object}  pkg.Response{data=object{items=[]model.User,total=int}}
 // @Failure      401  {object}  pkg.Response
 // @Router       /users/{userId}/following [post]

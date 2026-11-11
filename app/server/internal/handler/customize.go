@@ -65,7 +65,7 @@ type SetThemeTokensRequest struct {
 // ListCustomPagesRequest 是自定义页分页查询的请求体。
 type ListCustomPagesRequest struct {
 	Page     int `json:"page"`
-	PageSize int `json:"pageSize"`
+	PageSize int `json:"page_size"`
 }
 
 // PublishCustomPageRequest 是自定义页发布/取消发布的请求体。

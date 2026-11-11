@@ -125,7 +125,7 @@ packages/shared-utils/    # 跨前端共享工具函数 (时间格式化 / cx() 
   - `/{id}/status` — 状态变更（如举报处理、禁言等）
   - `/{id}/<custom>` — 其他业务动作（如 `/pin`、`/lock`、`/publish`）
   - 只读 `GET` 用资源标识或既有业务名词（`/posts/{id}`、`/checkin/status`），不强制动词后缀。
-- **参数传递**：`POST` 一律走 request body（`application/json`），不得用 query string 承载业务参数；`GET` 允许 query 承载过滤与分页。分页字段固定 `page` / `pageSize`。
+- **参数传递**：`POST` 一律走 request body（`application/json`），不得用 query string 承载业务参数；`GET` 允许 query 承载过滤与分页。分页字段固定 `page` / `page_size`（下划线，全站唯一网络字段名；`pageSize` 只可作前端 TS 局部变量名）。
 - **响应**：统一 `pkg.Success(ctx, data)` 或 `pkg.SuccessPaginated(ctx, data, total)`，固定 `{ "code": 0, "msg": "success", "data": ... }`。
 - **前端 service**：写请求 `method: 'POST'`，URL 必须带显式动词后缀（如 `/spaces/create` 而非 `/spaces/`）；只读查询 MAY `GET`，但必须与后端方法一致。
 
@@ -140,7 +140,7 @@ packages/shared-utils/    # 跨前端共享工具函数 (时间格式化 / cx() 
 - ✅ `POST /spaces/list`（body 可为空对象）
 - ✅ `POST /spaces/create`，body `{ name, description }`
 - ✅ `POST /spaces/{id}/delete`
-- ✅ `POST /reports/list`，body `{ status, page, pageSize }`
+- ✅ `POST /reports/list`，body `{ status, page, page_size }`
 - ✅ `GET /posts/{id}`、`GET /user/{id}/profile`、`GET /checkin/history?year=2026&month=10`（只读查询）
 
 > 规则来源：[openspec/specs/api-style/spec.md](openspec/specs/api-style/spec.md)。历史：2026-06-04 曾要求「一律 POST」，因与 OAuth/OIDC/爬虫/文件端点语义冲突且从未被执行，已于 2026-10-18 经 change `2026-10-18-allow-get-reads` 改为「按副作用选方法」。**2026-11-11 实测 `internal/router` 生产文件有 36 处 `GET`**（旧文档写的「30 处」为 2026-10-27 快照，见 [measured-baseline.md](docs/measured-baseline.md)）。
@@ -232,7 +232,7 @@ func NewUserRepository(store db.Store) UserRepository {
 帖子评论 CRUD，支持 parentId 嵌套。R-06b 方案下 `Update/Delete` 走 service 层所有权检查。`AdminDelete` 供管理员后台直接删除。
 
 ### Reading history / 续读位置 (`model/topic_read.go`, `repository/topic_read*.go`, `service/post.go`, `handler/history.go`, `router/routes_history.go`)
-浏览记录与「上次读到哪条评论」共用 `topic_read_states` 一行（`(user_id, post_id)` 唯一），三个事实分列且**写入方互不重叠**：`last_viewed_at`（被动浏览，两个公开详情出口 `GetDetail` / `GetByID` 共用 `recordBrowse` 钩子自动写）、`last_read_at`（**可空**，只由 `POST /posts/{id}/read` 写）、`last_content_id`（评论级续读游标）。可空是整套语义的支点：`list_view=new`（「没读过」）的谓词是「没有 `last_read_at IS NOT NULL` 的行」而不是「没有行」，`has_new` 也只在读标记非空时比较——否则一次被动浏览就会让帖子从筛选里消失、把全站角标熄灭。新建的第二条写路径 `POST /posts/{id}/view` 用 `checkCursorForPost` 校验 `content.RootID == post.ContentID`（防拿别人帖子的评论 id 盲写）。**四个出口（`RecordView` / `ListHistory` / `DeleteHistory` / `ClearHistory`）的 actor 一律从 ctx 的 `WithViewerID` 取，不接受 userID 参数**；网关四条映射在 `gateway/permission.go` 的 `initRouteMap`（未映射的 protected 路由默认拒绝）。`repository.ListReadByUser` 是第 7 个帖子读取出口，INNER JOIN 后复用 `buildPostListWhere` 的可见性谓词（**在 SQL 里过滤**，Go 里取一页再筛会让 `total` 说谎并泄露受限帖存在性），按 `COALESCE(last_viewed_at, last_read_at) DESC` 排序以兼容升级前只有读标记的存量行。历史列表与详情页共用 `PostListItem.last_content_id` 回读游标；前端 `CommentList` 用 IntersectionObserver 防抖上报、进入时滚动定位并画「上次读到这里」分隔线（只在真实用户输入后才上报，避免首帧回调把服务端游标悄悄回退）。端点：`POST /history/list`、`POST /history/{postId}/delete`（幂等）、`POST /history/clear`、`POST /posts/{id}/view`；分页用规范的 `page`/`pageSize`。规范见 `openspec/changes/2026-11-09-browse-history-read-position/`。
+浏览记录与「上次读到哪条评论」共用 `topic_read_states` 一行（`(user_id, post_id)` 唯一），三个事实分列且**写入方互不重叠**：`last_viewed_at`（被动浏览，两个公开详情出口 `GetDetail` / `GetByID` 共用 `recordBrowse` 钩子自动写）、`last_read_at`（**可空**，只由 `POST /posts/{id}/read` 写）、`last_content_id`（评论级续读游标）。可空是整套语义的支点：`list_view=new`（「没读过」）的谓词是「没有 `last_read_at IS NOT NULL` 的行」而不是「没有行」，`has_new` 也只在读标记非空时比较——否则一次被动浏览就会让帖子从筛选里消失、把全站角标熄灭。新建的第二条写路径 `POST /posts/{id}/view` 用 `checkCursorForPost` 校验 `content.RootID == post.ContentID`（防拿别人帖子的评论 id 盲写）。**四个出口（`RecordView` / `ListHistory` / `DeleteHistory` / `ClearHistory`）的 actor 一律从 ctx 的 `WithViewerID` 取，不接受 userID 参数**；网关四条映射在 `gateway/permission.go` 的 `initRouteMap`（未映射的 protected 路由默认拒绝）。`repository.ListReadByUser` 是第 7 个帖子读取出口，INNER JOIN 后复用 `buildPostListWhere` 的可见性谓词（**在 SQL 里过滤**，Go 里取一页再筛会让 `total` 说谎并泄露受限帖存在性），按 `COALESCE(last_viewed_at, last_read_at) DESC` 排序以兼容升级前只有读标记的存量行。历史列表与详情页共用 `PostListItem.last_content_id` 回读游标；前端 `CommentList` 用 IntersectionObserver 防抖上报、进入时滚动定位并画「上次读到这里」分隔线（只在真实用户输入后才上报，避免首帧回调把服务端游标悄悄回退）。端点：`POST /history/list`、`POST /history/{postId}/delete`（幂等）、`POST /history/clear`、`POST /posts/{id}/view`；分页用规范的 `page`/`page_size`。规范见 `openspec/changes/2026-11-09-browse-history-read-position/`。
 
 ### Tag — 标签 (`model/tag.go`, `handler/tag.go`, `service/tag.go`, `repository/tag.go`)
 标签系统，帖子多对多关联。通过 SetPostTags 按名称批量设置标签（不存在则自动创建）。

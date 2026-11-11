@@ -74,7 +74,7 @@
 - `/comments/list` (perm:comment:delete) — 全局评论列表
 
 ### History (`POST /api/v1/history`)
-- `/list` (perm:favorite:self) — 我的浏览记录，body `{ page, pageSize }`；按最近浏览倒序，只回传访问者当前仍可看见的帖子，含每篇的 `last_content_id` 续读游标
+- `/list` (perm:favorite:self) — 我的浏览记录，body `{ page, page_size }`；按最近浏览倒序，只回传访问者当前仍可看见的帖子，含每篇的 `last_content_id` 续读游标
 - `/{postId}/delete` (perm:favorite:self) — 删除单条（幂等）
 - `/clear` (perm:favorite:self) — 清空本人的全部记录
 

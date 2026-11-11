@@ -230,4 +230,4 @@ email_enabled/elapsed_ms/error/notice）。
 - `checkCursorForPost` 校验 `content.RootID == post.ContentID`（帖子↔评论唯一关联，与 `content.go` 同源）：少了它，拿别人帖子里的评论 id 就能盲写读状态并顺带探测评论存在性。
 - `EnrichWithReadState` 现在回填 `LastContentID`，并在 `LastReadAt == nil` 时**短路** `has_new` 与 `CountUnreadByRoot`——「有行」不再等于「标过已读」，否则一次点开就熄灭全站角标；游标则照常回传（只点开过也要能续读）。
 - `MarkRead` 不再 fallback 写 `post.ContentID` 当游标：主楼不代表任何阅读进度，反会把已有的评论级位置抹回开头；留空即保持原游标。
-- 新增 `history_test.go`。`ListHistory` 分页走 `pkg.Offset(page, pageSize)`，字段是 `page`/`pageSize`。
+- 新增 `history_test.go`。`ListHistory` 分页走 `pkg.Offset(page, pageSize)`（Go 侧变量名用驼峰），**网络字段名是 `page`/`page_size`**。

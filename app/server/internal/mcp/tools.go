@@ -55,7 +55,7 @@ func registerReadTools(r *Registry, d ToolsDeps) {
 			var args struct {
 				Keyword  string `json:"keyword"`
 				Page     int    `json:"page"`
-				PageSize int    `json:"pageSize"`
+				PageSize int    `json:"page_size"`
 			}
 			if err := in.DecodeArgs(&args); err != nil {
 				return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "参数解析失败")
@@ -126,7 +126,7 @@ func registerReadTools(r *Registry, d ToolsDeps) {
 		Handler: func(ctx context.Context, in ToolInput) (any, error) {
 			var args struct {
 				Page     int `json:"page"`
-				PageSize int `json:"pageSize"`
+				PageSize int `json:"page_size"`
 			}
 			if err := in.DecodeArgs(&args); err != nil {
 				return nil, pkg.NewAppError(pkg.INVALID_PARAMS, "参数解析失败")
