@@ -18,6 +18,23 @@ app/admin/layout.tsx          →  <AdminShell>（'use client'）
 
 **页面组件一律 `'use client'`。** 不要给后台页面加 `generateMetadata` 之外的 server 逻辑，也不要引入只在服务端可用的模块。
 
+## 后台文字对比度校正（2026-11-11）
+
+`admin.css` 里有一组**只对后台生效**的 token 覆盖（作用域 `body:has(.admin-surface)`）：
+
+| token | 浅色 | 深色 | 原因 |
+|-------|------|------|------|
+| `--muted-foreground` | `#6f6b68 → #635e59` | `#909097 → #9a9aa1` | 白/灰面上 5.28/4.84，11–13px 小字偏紧 → 6.41/5.88 |
+| `--info` | `#3b82f6 → #1d56cf` | 不变 | 白底 **3.68 不合格**、badge 文字 3.28 → 6.39/5.50 |
+| `--brand-text` | 不变 | `#a859ff → #b878ff` | 深色 `--muted` 面 3.98、badge 主色 4.17 → 5.15/5.40 |
+
+四条取值都保持原色相（同一支中性灰 / 同一个蓝、紫），**主站与前台像素不变**（主站 token 仍是 `packages/tokens/w3c-tokens.json`，改它才影响全站）。
+
+两条容易踩的约束：
+
+- **作用域必须是 `body:has(.admin-surface)`，不能写在 `.admin-surface` 上**。dialog / select / dropdown / popover 全部 portal 到 `<body>`，写在壳层上的变量进不去浮层，后台弹窗会退回旧色、与新值同屏混用。
+- **渲染在壳层之外的页面要自己带 `admin-surface`**：`BootSplash`、`AccessDenied` 已在根节点补上；新增此类整页组件时同样处理，否则它是主站配色。
+
 ## 准入链（三道，顺序不可换）
 
 | 道 | 位置 | 语义 |

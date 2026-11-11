@@ -10,7 +10,7 @@
 
 | 文件 | 职责 |
 |------|------|
-| `admin-root.tsx` | **客户端挂载门**：服务端与首次水合只渲 `BootSplash`，`useEffect` 里 `captureReturnTarget()`（记下无权限时的回跳目标）后置 `mounted=true`。整段 `/admin` 靠它挡在 SSR 之外 |
+| `admin-root.tsx` | **客户端挂载门**：服务端与首次水合只渲 `BootSplash`，`useEffect` 里 `captureReturnTarget()`（记下无权限时的回跳目标）后置 `mounted=true`。整段 `/admin` 靠它挡在 SSR 之外。`BootSplash` 根节点带 `admin-surface`（拿到 `admin.css` 的后台配色，见 [app/admin/AGENTS.md](../../app/admin/AGENTS.md)） |
 | `admin-shell.tsx` | **分区总壳**：准入判定（`useDashboardAccess`）、未登录跳主站登录、无资格原路返回/403、`AccessProvider` 下发权限码、模块级 403（`ModuleForbidden`）。`AdminLayout` 只包这一层 |
 | `layout/admin-shell.tsx` | **视觉壳层**：顶栏 + 侧栏菜单（`menuItems`）、菜单过滤（`requiredPermissionsFor`）、折叠状态持久化（localStorage `menu_open_keys`）、主题/语言切换 |
 | `access/access-context.tsx` | `AccessProvider` + `useCan(anyOf?)` + 原始权限码读取 |

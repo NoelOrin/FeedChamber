@@ -31,7 +31,9 @@ export function AccessDenied({ username, role, detail, onRetry }: Props) {
 	}
 
 	return (
-		<div className="bg-background flex min-h-screen w-full items-center justify-center px-6">
+		// 403 页由分区总壳在**壳层之外**渲染，拿不到视觉壳层的 `.admin-surface`；
+		// 自己带上，才能吃到 admin.css 的后台配色校正（否则这页仍是主站色值）。
+		<div className="admin-surface bg-background flex min-h-screen w-full items-center justify-center px-6">
 			<div className="border-border bg-card w-full max-w-[560px] rounded-lg border px-8 py-10">
 				<div className="flex flex-col items-center gap-3 text-center">
 					<span className="bg-destructive/10 text-destructive flex size-12 items-center justify-center rounded-full">

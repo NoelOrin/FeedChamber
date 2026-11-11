@@ -27,7 +27,9 @@ export function AdminRoot({ children }: { children: ReactNode }) {
 /** 纯 DOM 的启动骨架：刻意不用 antd，避免在服务端引入组件库运行时。 */
 export function BootSplash() {
 	return (
-		<div className="bg-background flex min-h-screen w-full items-center justify-center">
+		// `admin-surface` 让挂载门也吃到 admin.css 的对比度校正——它渲染时
+		// 真实壳层还不存在，否则启动屏会是主站配色、一闪才变。
+		<div className="admin-surface bg-background flex min-h-screen w-full items-center justify-center">
 			<div className="flex flex-col items-center gap-3">
 				<span aria-hidden className="border-border border-t-primary size-8 animate-spin rounded-full border-2" />
 				<span className="text-muted-foreground text-sm">正在加载后台…</span>
