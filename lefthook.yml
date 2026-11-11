@@ -1,9 +1,20 @@
 pre-commit:
   parallel: true
   commands:
+    # biome 自动修复 + 自动暂存：格式与可安全修复的 lint 问题在提交前就修掉，
+    # 且把结果重新 add 回 index，所以进入提交的就是修复后的内容。
+    #
+    # 为什么放在这里而不是 pre-push：pre-commit 阶段提交还没生成，修复是
+    # 「让这次提交变正确」，不涉及改写历史、不需要自己发起推送，也不会出现
+    # 「终端报 push 失败但远端其实成功了」那种误导性输出。
+    # 历史做法（pre-push 里 amend + 自推送）已删除，见 git 历史 e9096a1..b45d11b。
+    #
+    # --write 只做安全修复（格式化、import 排序、useTemplate 等）；改不动的
+    # 规则问题仍会以非零退出码拦下提交，不会被静默放过。
     "lint-staged":
-      glob: "*.{js,ts,jsx,tsx,mjs,cjs,mts}"
-      run: npx biome check --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts,css,json}"
+      run: npx biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
     # 模块代码有改动但对应 AGENTS.md 没更新时提示一句。只提示不阻断
     # （|| true）：本地不该因为文档被卡住，真正的门在 CI 的 docs job。
     "agents-docs-hint":
@@ -31,11 +42,3 @@ pre-push:
         echo "allowed types: feat fix docs style refactor perf test chore build ci revert types wip"
         echo "allowed branches: main develop"
         exit 1
-    # 把这次要推的提交里 biome 能自动修的问题修掉（amend）并自行推送，
-    # 然后中止外层那次 push。**它会 exit 1**，属预期：git 在 pre-push 之前
-    # 就固定了要发送的 ref，amend 之后外层发的仍是旧提交，只能由脚本自己推。
-    # 细节与跳过条件见 scripts/pre-push-biome-autofix.sh 的文件头。
-    # 急用时 FC_SKIP_AUTOFIX=1 git push 可绕过。
-    "biome-autofix":
-      # 必须独立执行：它自己会改 index/历史并发起推送，不能和别的 command 并行。
-      run: bash scripts/pre-push-biome-autofix.sh

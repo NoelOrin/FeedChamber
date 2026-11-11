@@ -95,9 +95,17 @@ pnpm exec lefthook install   # 写入 .git/hooks/{pre-commit,commit-msg,pre-push
 ```
 
 判断是否装过：`git config --get core.hooksPath` 为空、`.git/hooks` 里没有 `pre-commit`，就是没装。
-装好后本地有三道门：`pre-commit` 对暂存文件跑 `biome check`（与 CI 的 Quality / Biome job 同一条命令，漏跑就会把格式错误直接推上去）、`commit-msg` 跑 commitlint、`pre-push` 校验分支名。
+装好后本地有三道门：`pre-commit` 对暂存文件跑 `biome check --write`（与 CI 的 Quality / Biome job 同一套配置）、`commit-msg` 跑 commitlint、`pre-push` 校验分支名。
 
-`lefthook.yml` 的 `pre-push` 会校验当前分支名是否符合 §3 命名，或在放行清单内。
+### pre-commit 会自动修格式并替你暂存
+
+`pre-commit` 的 `lint-staged` 带 `--write` + `stage_fixed: true`：格式化、import 排序、`useTemplate` 这类**安全可修**的问题在提交前就被改好并重新 `git add`，所以进入提交的就是修复后的内容，你不用再手动 amend。
+
+`--write` 只做安全修复。error 级的规则问题（如 `noUnusedImports`，本项目 `biome.json` 显式设为 error）改不动，会以非零退出码**拦下提交**——不会被静默放过，这是它与「只格式化」的根本区别。
+
+> 为什么放在 pre-commit 而不是 pre-push：提交还没生成时修复是「让这次提交变正确」，不碰历史。历史上试过在 pre-push 里 amend + 自推送，受两个 git 硬约束（pre-push 固定的 ref 不含 amend 结果、lefthook 不短路）被迫让终端显示一条假的 `failed to push`，已于 2026-11-11 移除。
+
+> `lefthook.yml` 的 `pre-push` 会校验当前分支名是否符合 §3 命名，或在放行清单内。
 不合规则拒绝 push，并提示正确格式。校验逻辑纯 POSIX，跨平台安全。
 
 ```yaml
