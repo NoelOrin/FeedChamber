@@ -106,6 +106,82 @@ func TestBackoffSequence(t *testing.T) {
 	require.Equal(t, 1*time.Second, backoffDelay(-1))
 }
 
+// TestBuildPluginArgsPinsWatchFlag 钉住 argv 形状：不开 watch 时必须是裸
+// `node <entry>`，开了才是 `node --watch <entry>`。
+//
+// 这两条断言各自防一个方向的回归：丢掉 --watch 让「改了代码不生效」变回原状；
+// 让 --watch 泄漏到默认路径则会让生产环境的所有插件失去崩溃重启（watch 模式下
+// 子进程崩溃后父进程不退出，cmd.Wait() 永不返回，superviseLoop 的退避阶梯整条
+// 失效），而且症状是静默的。
+func TestBuildPluginArgsPinsWatchFlag(t *testing.T) {
+	const entry = "/abs/plugins/p/index.js"
+
+	require.Equal(t, []string{entry}, buildPluginArgs(entry, false),
+		"默认必须是裸 <entry>，不得带 --watch")
+
+	require.Equal(t, []string{"--watch", entry}, buildPluginArgs(entry, true),
+		"--watch 必须排在 entry 之前，否则 node 会把它当成脚本参数")
+}
+
+// TestBuildPluginArgsWatchIsSecondElement 单独钉住 --watch 的位置。
+//
+// 顺序错（如 `node <entry> --watch`）不会报错：node 把 --watch 交给脚本当
+// process.argv，watch 静默失效——这类错误只有逐位断言才抓得住。
+func TestBuildPluginArgsWatchIsSecondElement(t *testing.T) {
+	args := buildPluginArgs("/p/index.js", true)
+	require.Len(t, args, 2)
+	require.Equal(t, "--watch", args[0], "--watch 必须是第一个参数")
+	require.Equal(t, "/p/index.js", args[1], "entry 必须是最后一个参数")
+}
+
+// TestSupervisorWatchReloadsWithoutNewConn 端到端钉住 --watch 的收益：改插件
+// 文件后新代码生效，而**同一条 Conn 仍然可用**——宿主不用重启、不用重连。
+//
+// 把 Watch 改成 false 即红（实测：第二个断言拿到 v1 而非 v2）。这条测试是
+// 「不用自己实现文件监听」这个决策的唯一证据：若哪天换掉 node --watch 改自建
+// watcher，这里会立刻要求新实现同样保住「管道不断」的性质。
+func TestSupervisorWatchReloadsWithoutNewConn(t *testing.T) {
+	requireNode(t)
+	dir := t.TempDir()
+	entry := "index.js"
+	write := func(tag string) {
+		src := `const rl = require('node:readline').createInterface({ input: process.stdin });
+rl.on('line', (l) => {
+  const f = JSON.parse(l);
+  process.stdout.write(JSON.stringify({ id: f.id, result: { tag: '` + tag + `', pid: process.pid } }) + '\n');
+});
+`
+		require.NoError(t, os.WriteFile(filepath.Join(dir, entry), []byte(src), 0o644))
+	}
+	write("v1")
+
+	s := NewSupervisor(SupervisorOptions{PluginDir: dir, Entry: entry, Watch: true})
+	conn, err := s.Start(context.Background())
+	require.NoError(t, err)
+	defer s.Stop()
+
+	call := func() map[string]any {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		raw, err := conn.Call(ctx, "hook.ping", map[string]any{})
+		require.NoError(t, err)
+		var out map[string]any
+		require.NoError(t, json.Unmarshal(raw, &out))
+		return out
+	}
+
+	first := call()
+	require.Equal(t, "v1", first["tag"])
+
+	// 改文件，等 node --watch 重启子进程。
+	write("v2")
+	time.Sleep(1500 * time.Millisecond)
+
+	second := call()
+	require.Equal(t, "v2", second["tag"], "改文件后必须拿到新代码")
+	require.NotEqual(t, first["pid"], second["pid"], "必须是新进程，且同一条 Conn 仍可用")
+}
+
 // TestNewSupervisorDefaults 钉住默认值：MaxRestarts 缺省 5 正好对应五级阶梯，
 // Entry 缺省 index.js 与 ParseManifest 的默认值一致。
 func TestNewSupervisorDefaults(t *testing.T) {

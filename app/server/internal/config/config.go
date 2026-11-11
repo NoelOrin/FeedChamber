@@ -24,6 +24,10 @@ type Config struct {
 	MetricsEnabled bool          // METRICS_ENABLED, default true
 	MetricsPort    int           // METRICS_PORT, default 9091（内部指标端口，不经 nginx 暴露）
 	TracingEnabled bool          // TRACING_ENABLED, default true
+	// PluginWatch 打开插件子进程的 node --watch（改插件文件自动重启，IPC 不断）。
+	// PLUGIN_WATCH, default false：watch 模式下子进程崩溃后父进程不退出，
+	// superviseLoop 的退避重启会失效，因此只该在开发期显式打开。
+	PluginWatch bool
 }
 
 type KVConfig struct {
@@ -64,6 +68,7 @@ func Load() Config {
 		MetricsEnabled: getEnvBool("METRICS_ENABLED", true),
 		MetricsPort:    getEnvInt("METRICS_PORT", 9091),
 		TracingEnabled: getEnvBool("TRACING_ENABLED", true),
+		PluginWatch:    getEnvBool("PLUGIN_WATCH", false),
 	}
 }
 

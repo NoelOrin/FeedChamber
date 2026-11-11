@@ -39,6 +39,9 @@ type HostOptions struct {
 	NodePath string
 	// MaxRestarts 是单插件连续崩溃的最大重启次数，0 用 supervisor 默认值。
 	MaxRestarts int
+	// Watch 打开 node 的 --watch（改插件文件自动重启子进程，IPC 不断）。
+	// 仅供开发期使用，默认 false；代价见 SupervisorOptions.Watch。
+	Watch bool
 	// OnStatus 在插件状态变化时回调，供调用方落库。
 	//
 	// 它在 supervisor 的 goroutine 上同步执行（见 SupervisorOptions.OnCrash），
@@ -107,6 +110,7 @@ func (h *Host) StartPlugin(ctx context.Context, pluginID string, m *Manifest, ca
 		PluginDir:   filepath.Join(h.opts.PluginRoot, pluginID),
 		Entry:       m.Entry,
 		MaxRestarts: h.opts.MaxRestarts,
+		Watch:       h.opts.Watch,
 		OnCrash: func(reason string) {
 			h.reportStatus(pluginID, "crashed", reason)
 		},

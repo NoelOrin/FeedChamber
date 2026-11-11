@@ -14,10 +14,11 @@
 
 ## 插件接线（2026-11-05）
 
-`New` 里两处装配缺一不可，均有 `plugin_wiring_test.go` 断言：
+`New` 里三处装配缺一不可，前两处均有 `plugin_wiring_test.go` 断言：
 
 - `HostOptions.APIDepsFor = newPluginAPIDeps`：漏了它，`Host.StartPlugin` 里的 `RegisterAPIs` 永不执行，9 个 `api.*` 宿主 API 全是空壳。
 - `c.PluginSvc.SetRuntime(hostRuntime{host: c.PluginHost})`：漏了它，后台装/启/停/删只写库、进程永不起停。
+- `HostOptions.Watch = d.Config.PluginWatch`：把 `PLUGIN_WATCH`（`config.Config.PluginWatch`，默认 false）透传给 supervisor，开启后插件子进程以 `node --watch <entry>` 拉起。漏了它这个环境变量就是死的——`Config` 有值但插件永远不热重载，且没有任何测试会红。
 
 `hostRuntime.StartPlugin` 固定用 `context.Background()`：**绝不能把 HTTP 请求 ctx 透给 `exec.CommandContext`**，否则请求结束即杀掉插件进程。适配器只暴露窄动作（如 `PostWriter` 只有 `SetStatus`/`AddTag`），不把整个 service 交给插件；`AddTag` 先读回已有标签再追加，避免 `SetPostTags` 的整组替换语义抹掉其它标签。
 

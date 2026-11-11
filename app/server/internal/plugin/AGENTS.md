@@ -97,7 +97,7 @@ MUST NOT 插进现有审核链中间。
 | `manifest_test.go` | 解析/校验的契约：合法 manifest、未知协议版本、缺 name/version、未知钩子丢弃、未知能力报错、坏 JSON、钩子→事件映射、`entry` 逃逸拒绝 |
 | `ipc.go` | stdio JSON-RPC 编解码：`Frame`/`FrameError`、`Conn`、`NewConn`/`Start`/`Close`、`Call`/`Notify`/`Handle`、读循环与写串行化 |
 | `ipc_test.go` | IPC 契约（外部测试 `package plugin_test`，用 `net.Pipe()` 对接两条 `Conn`）：结果回传、handler 错误透传、ctx 超时、未知方法报错、通知不等待响应、关闭解除在途调用、坏行跳过、写入串行、重复响应不卡死 |
-| `supervisor.go` | `os/exec` 拉起 `node`、`buildPluginEnv` 白名单重建环境、退避重启（1s→2s→4s→8s→16s，`MaxRestarts` 默认 5）、三步关停、`Running()` / **`Conn()`（取当前代）** |
+| `supervisor.go` | `os/exec` 拉起 `node`、`buildPluginEnv` 白名单重建环境、**`buildPluginArgs` 生成 argv（含可选 `--watch`）**、退避重启（1s→2s→4s→8s→16s，`MaxRestarts` 默认 5）、三步关停、`Running()` / **`Conn()`（取当前代）** |
 | `supervisor_test.go` | 内部测试（`package plugin`）：白名单重建/空值跳过/白名单本身无敏感名、退避阶梯、默认值、拉起握手、**子进程 env 端到端**、退避重启与超限停止、**Stop 解开卡死写** |
 | `hooks.go` | **`dispatcher`**（插件注册表 + 钩子分发）：`PluginCaller`、`newDispatcher`、`RegisterPlugin`（收 `*Supervisor`）/`RegisterPluginWithCaller`/`UnregisterPlugin`、`Dispatch`/`dispatchHooks`、`SubscribeEvents`、`Broadcaster`/`TraceBroadcaster` 接缝、`invertHookEvents`、`supervisorCaller` |
 | `hooks_test.go` | 分发契约（内部测试 `package plugin`）：fan-out 全员收到、非订阅者不调用、失败隔离、重复声明去重、摘除、**Dispatch 不阻塞**、**每调用超时**、**不继承调用方取消**、倒排索引、`content.created→comment.created`、**`user.registered` 双发只投一次**（fake + 真 eventbus 两条）、**换代后走新连接**、真实 IPC 往返、并发注册/分发 |
@@ -599,6 +599,9 @@ handler/subscription map，互不污染——`internal/pkg/eventbus/broadcast_te
 | `TestSupervisorStopIsIdempotent` | `Stop` 可重复调用，之后 `Running()` 为 false |
 | `TestSupervisorConnReturnsCurrentGeneration` | **换代语义**：重启后 `Conn()` 指针与上一代不同；旧 Conn 拿到 `ErrClosed`；新 Conn 能完成真实往返（把 `Conn()` 改成永远返回第一代即红） |
 | `TestSupervisorConnNilBeforeStart` | `Conn()` 在 Start 之前与 Stop 之后返回 nil，不 panic |
+| `TestBuildPluginArgsPinsWatchFlag` | argv 形状：默认是裸 `<entry>`，`Watch=true` 才是 `--watch <entry>`（两个方向各防一半） |
+| `TestBuildPluginArgsWatchIsSecondElement` | `--watch` 必须是**第一个**参数。写成 `<entry> --watch` 不报错，node 会把它当脚本参数，watch 静默失效 |
+| `TestSupervisorWatchReloadsWithoutNewConn` | **端到端**：`Watch=true` 时改插件文件后新代码生效，且**同一条 Conn 仍可用**（`Watch=false` 即红）。这是「不自建文件监听」这个决策的唯一证据 |
 | `TestDispatcherDispatchFansOutToAllSubscribers` | 两个插件都收到；IPC 方法名是 `hook.post.created` |
 | `TestDispatcherDispatchIgnoresNonSubscribers` | 未订阅该钩子的插件**不得**被调用（订阅判断按钩子而非「有插件就投」） |
 | `TestDispatcherDispatchFailureDoesNotBlockOthers` | 一个插件返回错误不影响其他插件收到 |

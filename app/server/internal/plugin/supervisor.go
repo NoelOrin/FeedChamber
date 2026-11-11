@@ -56,6 +56,29 @@ func buildPluginEnv(whitelist []string, extra map[string]string) []string {
 	return out
 }
 
+// buildPluginArgs 生成拉起插件子进程的 argv（不含 node 可执行文件本身，
+// 那个由 exec.CommandContext 的第一个参数给出）。
+//
+// 抽成纯函数是为了让「argv 长什么样」能被表驱动测试直接钉住——与
+// buildPluginEnv / backoffDelay 同一理由：这个包里凡是可测的装配点都做成
+// 纯函数，真实 spawn 只留给 node 端到端测试。
+//
+// watch=true 时插入 node 自带的 `--watch`：node 自己监听 entry 及其 import
+// 图，改文件后重启**子进程**，而父进程（我们 spawn 的那个）与它的 stdin/stdout
+// 管道保持不变，IPC 帧因此跨重载连续——这正是宿主侧不必自己实现文件监听的
+// 全部原因，也意味着零新增依赖、零新增 goroutine。
+//
+// 代价（因此 Watch 默认关，只在开发期用 PLUGIN_WATCH 打开）：watch 模式下
+// 子进程崩溃后父进程**不退出**，只打印 "Waiting for file changes"，于是
+// cmd.Wait() 永不返回、superviseLoop 的退避重启阶梯整条失效。插件崩掉后
+// 每个钩子会等满 hookTimeout(5s) 才失败，而不是立刻拿到 ErrClosed。
+func buildPluginArgs(entry string, watch bool) []string {
+	if watch {
+		return []string{"--watch", entry}
+	}
+	return []string{entry}
+}
+
 // backoffDelay 返回第 n 次（从 0 起）重启前的退避时长：1s → 2s → 4s → 8s → 16s。
 //
 // 阶梯封顶在 16s：MaxRestarts 默认 5，正好用完五级；即便有人把 MaxRestarts
@@ -96,6 +119,13 @@ type SupervisorOptions struct {
 	// MaxRestarts 是连续崩溃后的最大重启次数，0 视为默认 5。
 	// 崩溃总次数为 MaxRestarts+1（首发一次 + 每次重启各一次）。
 	MaxRestarts int
+	// Watch 打开 node 自带的 --watch，改插件文件后由 node 自己重启子进程，
+	// 宿主不必重启、IPC 管道不断。仅供开发期使用（PLUGIN_WATCH=true）。
+	//
+	// 默认 false，因为 watch 模式下子进程崩溃后父进程不退出，cmd.Wait() 永不
+	// 返回，superviseLoop 的退避重启阶梯会整条失效——插件崩掉后每个钩子都要
+	// 等满 hookTimeout 才失败，而不是立刻拿到 ErrClosed。详见 buildPluginArgs。
+	Watch bool
 	// OnCrash 在每次崩溃时回调，用于更新落库状态。
 	//
 	// 它在 supervisor 自己的 goroutine 上**同步**执行，且不持有 supervisor 的锁
@@ -245,7 +275,7 @@ func (s *Supervisor) spawnLocked(ctx context.Context) (*exec.Cmd, *Conn, error) 
 	}
 	entry := filepath.Join(dir, s.opts.Entry)
 
-	cmd := exec.CommandContext(ctx, s.opts.NodePath, entry)
+	cmd := exec.CommandContext(ctx, s.opts.NodePath, buildPluginArgs(entry, s.opts.Watch)...)
 	cmd.Dir = dir
 	cmd.Env = buildPluginEnv(envWhitelist, s.opts.ExtraEnv)
 	// stderr 直接继到宿主 stderr，插件日志才能在 docker logs 里看见。

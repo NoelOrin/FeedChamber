@@ -111,9 +111,17 @@ services:
       # （Cloudflare / Traefik / nginx），对外就是 HTTPS。
       # 本地 http 直连调试时用 MASTER_COOKIE_SECURE=false 覆盖。
       MASTER_COOKIE_SECURE: ${MASTER_COOKIE_SECURE:-true}
+      # 插件依赖安装（npm install）走的源。这是**运行时**变量，不是构建期
+      # ARG：InstallDeps 由 Go 二进制在容器内执行，构建期 NPM_REGISTRY 管不到它。
+      # npm 认小写的 npm_config_registry。默认留空 = 用 npm 官方源。
+      npm_config_registry: ${NPM_REGISTRY:-}
     volumes:
       # 上传仍落本地卷（S3 是可选替代，见 STORAGE_TYPE）。
       - feedchamber_uploads:/app/server/uploads
+      # 插件代码根目录。必须挂卷：插件由 InstallAs 在运行时 git clone 进来，
+      # 不挂则容器重建即全部丢失，而库里仍留着 running 状态，重启后
+      # resumePlugins 会去拉起一个空目录。
+      - feedchamber_plugins:/app/server/plugins
     expose: ["8080", "9091"]
     depends_on:
       postgres:
@@ -178,3 +186,6 @@ volumes:
   # NATS JetStream 存储：KV bucket + 事件队列。
   feedchamber_nats:
   feedchamber_uploads:
+  # 插件代码根目录。按本文件「顶层 volumes 必须显式映射」的约束写成 {name:}，
+  # 否则 Dokploy 保存 compose 时会把空值条目丢掉，部署报 undefined volume。
+  feedchamber_plugins: {name: feedchamber_plugins}

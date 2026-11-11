@@ -14,6 +14,7 @@
 | Storage.Endpoint/Region/Bucket/AccessKey/SecretKey | S3_* | "" | S3 配置 |
 | KV.NATSURL | NATS_URL | "" (**必填**) | 外部 NATS 地址，需启用 JetStream；为空则启动失败 |
 | KV.NATSBucket | NATS_BUCKET | "feedchamber_kv" | JetStream KV bucket |
+| PluginWatch | PLUGIN_WATCH | false | 插件子进程用 `node --watch` 拉起，改插件文件自动重启（IPC 不断）。仅开发期：watch 下崩溃不触发 supervisor 的退避重启 |
 
 ## 备注
 

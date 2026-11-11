@@ -428,6 +428,7 @@ Cobra 根命令 + 持久标志 `-e/--env`（默认 `dev`）。**不存在 `dev`/
 | METRICS_ENABLED | true | 是否启用 Prometheus 中间件与指标 listener |
 | METRICS_PORT | 9091 | 指标端口，**仅内部可达**：不在 nginx 上游中，compose 用 `expose` 而非 `ports` |
 | TRACING_ENABLED | true | 是否解析入站 `traceparent` 并回写该头（false 时仍生成 trace 供日志关联） |
+| PLUGIN_WATCH | false | 用 `node --watch` 拉起插件子进程：改插件文件后 node 自己重启子进程，宿主与 IPC 管道不动。**仅开发期**——watch 下子进程崩溃后父进程不退出，`superviseLoop` 的退避重启整条失效 |
 | LOG_LEVEL | info | debug / info / warn / error；同时管辖存量裸 `logrus.X()` 调用 |
 | LOG_FORMAT | json | json / text |
 | LOG_OUTPUT | stderr | stdout / stderr 或文件路径；文件打不开时回退 stderr |

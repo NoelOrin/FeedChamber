@@ -349,6 +349,10 @@ func New(d Deps) *Container {
 	// 它在 supervisor 的重启 goroutine 上同步执行，同步写库会拖慢退避节奏。
 	c.PluginHost = plugin.NewHostWithOptions(plugin.HostOptions{
 		PluginRoot: "./plugins",
+		// PLUGIN_WATCH=true 时用 node --watch 拉起插件：改插件代码后 node 自己
+		// 重启子进程，宿主与 IPC 管道都不用动。默认关——watch 下崩溃不会触发
+		// superviseLoop 的退避重启（父进程不退出），只适合开发期。
+		Watch: d.Config.PluginWatch,
 		// APIDepsFor 把真实 service 适配成宿主 API 的七个接缝。漏了这一项，
 		// StartPlugin 里的 RegisterAPIs 永不执行，9 个 api.* 方法全是空壳。
 		APIDepsFor: func(pluginID string, caps plugin.CapabilitySet) plugin.APIDeps {

@@ -8,7 +8,7 @@
 
 | 文件 | 说明 |
 |------|------|
-| `docker-compose.yml` | 默认档：postgres 16 + nats 2.10(`-js`) + nats-exporter + backend + frontend + nginx；named volumes `feedchamber_pg` / `feedchamber_nats` / `feedchamber_uploads` |
+| `docker-compose.yml` | 默认档：postgres 16 + nats 2.10(`-js`) + nats-exporter + backend + frontend + nginx；named volumes `feedchamber_pg` / `feedchamber_nats` / `feedchamber_uploads` / `feedchamber_plugins` |
 | `nginx/nginx.conf` | 反向代理：`/api/v1/` → backend，`/mcp` → backend（MCP 协议端点，应用根），`/` → web SSR（匿名页 60s 共享缓存），另有 6 条**精确匹配**的爬虫路由 + 1 条 SSE 专用 regex location |
 | `prometheus.yml` + `prometheus/rules/feedchamber.yml` | 抓取配置与告警规则 |
 | `grafana/` | 数据源与仪表盘 provisioning |
@@ -73,6 +73,17 @@ bash scripts/check-metrics-exposure.sh                        # 本地跑护栏
 - **nginx 改路径规则时同步检查 6 条爬虫 location 与 `/swagger/`、`/health`、`/mcp`**。`/mcp` 由后端注册在应用根，少一条 `location = /mcp` 它会落到 `location /` 打到前端并在那里 404——而后台与文档都告诉客户端 POST `<站点>/mcp`。
 - **SSE 路径不能落回 `location /api/v1/`**：`^/api/v1/(notifications|realtime)/stream$` 的 regex location 必须先于前缀匹配生效，且必须带 `proxy_buffering off` 与长 `proxy_read_timeout`。继承默认值（60s）时实测空闲通知流每次 ~61s 被切断，客户端退避重连几次后彻底放弃。
 - 镜像构建上下文是**仓库根**（两个 Dockerfile 的 `COPY` 按仓库根书写），改 Dockerfile 时注意路径。
+- **插件运行时依赖 node/npm/git，且必须是 musl 版**：`app/server/Dockerfile` 的运行时阶段装了
+  `nodejs npm git` 三个包。这不是可选装饰——没有 node 插件进程起不来，没有 git 装不上任何插件，
+  没有 npm 装不上带 `package.json` 的插件。**不要**为了省事把基础镜像换成 `node:22`
+  （Debian/glibc）：后端二进制是 `CGO_ENABLED=1` 编的 musl 版，放进 glibc 镜像执行会直接
+  `not found`（实测）。`node:22-alpine` 能用但镜像大 123MB（完整 ICU 的 node 二进制 120MB vs
+  apk 版 48MB），构建只快约 10s，体积优先时不划算。
+- **`feedchamber_plugins` 卷不可删**：插件代码由 `InstallAs` 在运行时 `git clone` 进
+  `/app/server/plugins`。不挂卷时容器重建会丢掉全部插件代码，而数据库里仍留着 `running`
+  状态，重启后 `resumePlugins` 会去拉起一个空目录。
+- **`npm_config_registry` 是运行时变量**，与构建期的 `NPM_REGISTRY` ARG 不是一回事：插件依赖由
+  后端 `InstallDeps` 在容器内跑 `npm install`，构建期 ARG 影响不到它。改这个值要重新 `up`。
 - 告警阈值是经验值，用 `scripts/calibrate-alert-thresholds.sh` 在真实流量环境校准，不要凭感觉调。
 
 ## 本文件何时更新
