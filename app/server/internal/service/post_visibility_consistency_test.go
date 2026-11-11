@@ -37,6 +37,10 @@ func TestVisibility_AllOutletsAgree(t *testing.T) {
 	}
 	for _, u := range []*model.User{
 		{ID: "u-author", Username: "author", Email: "a@x.com", TrustLevel: 2},
+		// u-low 曾直接设成 TL1，恰好绕开了「已登录但等级 0」这一格——
+		// 而所有新注册用户的 TrustLevel 默认就是 0，正是最容易踩到的那格。
+		// 现在补一个真正的 TL0 已登录用户。
+		{ID: "u-tl0", Username: "tl0", Email: "t@x.com", TrustLevel: 0},
 		{ID: "u-low", Username: "low", Email: "l@x.com", TrustLevel: 1},
 		{ID: "u-high", Username: "high", Email: "h@x.com", TrustLevel: 3},
 	} {
@@ -108,6 +112,37 @@ func TestVisibility_AllOutletsAgree(t *testing.T) {
 	batch, err := svc.ListByIDs(anonymous, []string{"p-public", "p-login", "p-level3", "p-override"})
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"p-public"}, ids(batch))
+
+	// 已登录但等级 0（= 新注册用户的默认状态）：login 版面 MUST 与「已登录即可」
+	// 的语义一致 —— 列表、批量、详情三个出口给出同一答案（2026-11-11 修复前
+	// 列表含、详情 403、批量过滤，三种答案）。
+	tl0 := WithViewerID(context.Background(), "u-tl0")
+	tl0Items, _, err := svc.List(tl0, 1, 50, "", "", "", nil, nil, "", "", "", false, "")
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"p-public", "p-login", "p-child"}, ids(tl0Items),
+		"TL0 已登录用户应能看到 login 版面的帖子")
+
+	tl0Batch, err := svc.ListByIDs(tl0, []string{"p-public", "p-login", "p-child", "p-level3"})
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"p-public", "p-login", "p-child"}, ids(tl0Batch),
+		"批量出口必须与列表出口一致")
+
+	loginDetail, err := postRepo.FindByIDWithDetails(tl0, "p-login")
+	require.NoError(t, err)
+	require.NotNil(t, loginDetail)
+	require.NoError(t, svc.ensurePostVisible(tl0, *loginDetail),
+		"详情出口必须与列表出口一致：login 版面已登录即可读")
+
+	// 未登录用户读 login 版面详情：403 且提示的是「需要登录」而不是「需要等级 1」。
+	loginForGuest, err := postRepo.FindByIDWithDetails(anonymous, "p-login")
+	require.NoError(t, err)
+	require.NotNil(t, loginForGuest)
+	guestErr := svc.ensurePostVisible(anonymous, *loginForGuest)
+	require.Error(t, guestErr)
+	guestAppErr, ok := guestErr.(*pkg.AppError)
+	require.True(t, ok)
+	assert.Equal(t, pkg.FORBIDDEN, guestAppErr.Code)
+	assert.Contains(t, guestAppErr.Message, "需要登录")
 
 	// 等级 1：可读公开 + 已登录可读 login（含继承子版），不可读 level3 与 min_level=2 覆盖帖。
 	lowItems, _, err := svc.List(low, 1, 50, "", "", "", nil, nil, "", "", "", false, "")

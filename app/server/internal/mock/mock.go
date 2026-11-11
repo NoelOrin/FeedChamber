@@ -638,16 +638,6 @@ func (m *UserRepository) CountLikesByUser(_ context.Context, _ string) (int64, e
 func (m *UserRepository) CountLikesReceived(_ context.Context, _ string) (int64, error) {
 	return 0, nil
 }
-func (m *UserRepository) IncrPoints(_ context.Context, id string, delta int) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	u, ok := m.users[id]
-	if !ok {
-		return repository.ErrNotFound
-	}
-	u.TotalXP += delta
-	return nil
-}
 func (m *UserRepository) ListByPoints(_ context.Context, _, _ int) ([]model.User, error) {
 	return nil, nil
 }

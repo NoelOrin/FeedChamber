@@ -125,6 +125,25 @@ func (s *trustService) invalidateConfig(ctx context.Context) {
 	}
 }
 
+// configChanged 在配置写入后调用：失效本地快照、广播其它实例，并异步做一次全量重算。
+//
+// 为什么必须重算：users.total_xp / trust_level / level_metrics 是**落库快照**，
+// 只失效配置缓存不会改它们。此前改「发帖 +10 → +20」后，所有不活跃用户的数值、
+// 等级、排行榜与门控等级判据仍按旧值，直到每日 ticker（最长 24h）才刷新。
+// 全量重算放在 goroutine 里：后台保存配置不该被全站用户的计算量阻塞，失败只记日志
+// （每日 ticker 会兜底）。
+func (s *trustService) configChanged(ctx context.Context) {
+	s.invalidateConfig(ctx)
+	go func() {
+		bg := context.WithoutCancel(ctx)
+		if n, err := s.RecomputeAll(bg); err != nil {
+			logrus.WithError(err).Warn("trust: 配置变更后的全量重算失败（每日 ticker 会兜底）")
+		} else {
+			logrus.Infof("trust: 配置变更，已重算 %d 个用户的 XP/等级", n)
+		}
+	}()
+}
+
 // ── XP 求值 ────────────────────────────────────────────────────────────────
 
 // computeXP 按「自然日 × 指标」截断聚合 XP，再叠加连续签到阶梯与人工调整。
@@ -640,7 +659,7 @@ func (s *trustService) SaveLevel(ctx context.Context, level *model.TrustLevel) e
 	if err := s.trustRepo.UpsertLevel(ctx, level); err != nil {
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	s.invalidateConfig(ctx)
+	s.configChanged(ctx)
 	return nil
 }
 
@@ -658,7 +677,7 @@ func (s *trustService) DeleteLevel(ctx context.Context, level int) error {
 	if err := s.trustRepo.DeleteLevel(ctx, level); err != nil {
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	s.invalidateConfig(ctx)
+	s.configChanged(ctx)
 	return nil
 }
 
@@ -683,7 +702,7 @@ func (s *trustService) SaveXPRule(ctx context.Context, rule *model.XPRule) error
 	if err := s.trustRepo.UpsertXPRule(ctx, rule); err != nil {
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	s.invalidateConfig(ctx)
+	s.configChanged(ctx)
 	return nil
 }
 
@@ -705,7 +724,7 @@ func (s *trustService) SaveStreakBonus(ctx context.Context, bonus *model.XPStrea
 	if err := s.trustRepo.UpsertStreakBonus(ctx, bonus); err != nil {
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	s.invalidateConfig(ctx)
+	s.configChanged(ctx)
 	return nil
 }
 
@@ -713,7 +732,7 @@ func (s *trustService) DeleteStreakBonus(ctx context.Context, days int) error {
 	if err := s.trustRepo.DeleteStreakBonus(ctx, days); err != nil {
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	s.invalidateConfig(ctx)
+	s.configChanged(ctx)
 	return nil
 }
 

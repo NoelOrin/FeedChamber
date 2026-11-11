@@ -99,3 +99,15 @@ type PostListItem struct {
 	CreatedAt    time.Time  `json:"created_at"`
 	UpdatedAt    time.Time  `json:"updated_at"`
 }
+
+// SitemapEntry 是 sitemap / RSS 投影：只够拼一个
+// <url><loc>…</loc><lastmod>…</lastmod></url> 元素。
+//
+// 它原本定义在 repository 包里，导致 service 接口把 repository 类型写进签名，
+// 逼得 handler 反向 import repository（违反严格单向依赖）。放到 model 后
+// handler → model、service → model 都是允许的方向。
+type SitemapEntry struct {
+	ID        string    `gorm:"column:id"`
+	Slug      string    `gorm:"column:slug"`
+	UpdatedAt time.Time `gorm:"column:updated_at"`
+}

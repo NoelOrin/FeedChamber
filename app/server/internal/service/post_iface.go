@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"feedchamber/internal/model"
-	"feedchamber/internal/repository"
 )
 
 type PostService interface {
@@ -62,7 +61,7 @@ type PostService interface {
 	// SitemapEntries returns one page of publicly visible posts for the sitemap.
 	// It deliberately bypasses List(): no viewer filtering, no pagination cap, and
 	// only the three fields a <url> element needs.
-	SitemapEntries(ctx context.Context, page, pageSize int) ([]repository.SitemapEntry, error)
+	SitemapEntries(ctx context.Context, page, pageSize int) ([]model.SitemapEntry, error)
 	// CountSitemapEntries reports how many posts the sitemap would contain.
 	CountSitemapEntries(ctx context.Context) (int, error)
 }

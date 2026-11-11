@@ -121,6 +121,21 @@ func (v SpaceVisibility) RequiredLevel() int {
 	}
 }
 
+// PostVisibleTo 是「单篇/批量读取」与「聚合出口 SQL 谓词」共用的唯一判定。
+//
+// 2026-11-11 修复：此前 Go 侧用 level >= PostRequiredLevel()，而 SQL 侧用
+// VisibleSpaceIDs()（login 版面只要 loggedIn 即放行）。RequiredLevel 把 login
+// 视作 1，于是「已登录但等级 0」的新用户在 login 版面出现
+// 列表可见、详情 403、ListByIDs 又过滤掉的三种答案。
+// 现在两侧统一走 Allows()：login = loggedIn，level = level >= MinLevel，
+// public = 恒真；帖子级 min_level 仍取更高者（它对所有版面都生效）。
+func (idx VisibilityIndex) PostVisibleTo(spaceID string, postMinLevel, viewerLevel int, loggedIn bool) bool {
+	if !idx.Resolve(spaceID).Allows(viewerLevel, loggedIn) {
+		return false
+	}
+	return viewerLevel >= postMinLevel
+}
+
 // PostRequiredLevel 返回某篇帖子对外的门槛：帖子覆盖与版面策略取更高者。
 func (idx VisibilityIndex) PostRequiredLevel(spaceID string, postMinLevel int) int {
 	need := idx.Resolve(spaceID).RequiredLevel()

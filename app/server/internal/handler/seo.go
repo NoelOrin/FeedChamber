@@ -10,7 +10,6 @@ import (
 
 	"feedchamber/internal/model"
 	"feedchamber/internal/pkg"
-	"feedchamber/internal/repository"
 	"feedchamber/internal/service"
 
 	"github.com/kataras/iris/v12"
@@ -360,7 +359,7 @@ func (h *seoHandler) LatestRSS(ctx iris.Context) {
 	_, _ = ctx.WriteString(b.String())
 }
 
-func entryIDs(entries []repository.SitemapEntry) []string {
+func entryIDs(entries []model.SitemapEntry) []string {
 	ids := make([]string, 0, len(entries))
 	for _, e := range entries {
 		ids = append(ids, e.ID)

@@ -481,43 +481,105 @@ func SubscribeNotifications(bus *eventbus.EventBus, notifSvc NotificationService
 	// 与 Report 事件完全分离：动议只通知"发起者"（结果反馈）与"目标作者"
 	// （被表决），复用既有 SSE 通知通道，不新建端点（design D6）。
 
-	bus.Subscribe(eventbus.EventMotionCreated, func(e eventbus.Event) {
-		initiatorID, _ := e.Payload["initiator_id"].(string)
+	// 审核结论通知作者：manual 模式下所有帖子先进待审，async/external 命中也会转待审；
+	// 此前这个事件只喂了 webhook 与插件，作者被通过/拒绝后收不到任何站内提示。
+	bus.Subscribe(eventbus.EventModerationDone, func(e eventbus.Event) {
+		authorID, _ := e.Payload["author_id"].(string)
+		if authorID == "" {
+			return // 目标已被删或解析失败：没有收件人
+		}
+		decision, _ := e.Payload["decision"].(string)
+		title, _ := e.Payload["title"].(string)
+		reason, _ := e.Payload["reason"].(string)
+		targetType, _ := e.Payload["target_type"].(string)
 		targetID, _ := e.Payload["target_id"].(string)
-		motionType, _ := e.Payload["type"].(string)
-		motionID, _ := e.Payload["motion_id"].(string)
-		if initiatorID == "" {
+
+		kind := "帖子"
+		if targetType == "content" {
+			kind = "评论"
+		}
+		var msg string
+		switch decision {
+		case "approved":
+			msg = "你的" + kind + "《" + title + "》已通过审核"
+		case "rejected":
+			msg = "你的" + kind + "《" + title + "》未通过审核"
+			if reason != "" {
+				msg += "：" + reason
+			}
+		default:
 			return
 		}
 		d.enqueue(notifyTask{
 			ctx:         e.Ctx,
-			userID:      initiatorID,
-			notifType:   "motion",
-			content:     "你的" + motionTypeLabel(motionType) + "动议已公示，等待社区表决",
-			referenceID: motionID,
+			userID:      authorID,
+			notifType:   "moderation",
+			content:     msg,
+			referenceID: targetID,
 		})
-		_ = targetID
+	})
+
+	bus.Subscribe(eventbus.EventMotionCreated, func(e eventbus.Event) {
+		initiatorID, _ := e.Payload["initiator_id"].(string)
+		targetAuthorID, _ := e.Payload["target_author_id"].(string)
+		motionType, _ := e.Payload["type"].(string)
+		motionID, _ := e.Payload["motion_id"].(string)
+		label := motionTypeLabel(motionType)
+
+		// 发起者：结果反馈。
+		if initiatorID != "" {
+			d.enqueue(notifyTask{
+				ctx:         e.Ctx,
+				userID:      initiatorID,
+				notifType:   "motion",
+				content:     "你的" + label + "动议已公示，等待社区表决",
+				referenceID: motionID,
+			})
+		}
+		// 目标作者：被表决。此前这里读了 target_id 就丢弃，被折叠/放逐/移交的人
+		// 在公示期与表决结果出来后都毫不知情。自指时（发起者即目标）跳过，避免双发。
+		if targetAuthorID != "" && targetAuthorID != initiatorID {
+			d.enqueue(notifyTask{
+				ctx:         e.Ctx,
+				userID:      targetAuthorID,
+				notifType:   "motion",
+				content:     "有人对你发起了" + label + "动议，已进入公示期",
+				referenceID: motionID,
+			})
+		}
 	})
 
 	bus.Subscribe(eventbus.EventMotionResolved, func(e eventbus.Event) {
 		initiatorID, _ := e.Payload["initiator_id"].(string)
+		targetAuthorID, _ := e.Payload["target_author_id"].(string)
 		motionID, _ := e.Payload["motion_id"].(string)
 		status, _ := e.Payload["status"].(string)
 		motionType, _ := e.Payload["type"].(string)
-		if initiatorID == "" {
-			return
-		}
+		label := motionTypeLabel(motionType)
 		result := "未通过"
 		if status == "passed" {
 			result = "已通过"
 		}
-		d.enqueue(notifyTask{
-			ctx:         e.Ctx,
-			userID:      initiatorID,
-			notifType:   "motion",
-			content:     "你发起的" + motionTypeLabel(motionType) + "动议" + result,
-			referenceID: motionID,
-		})
+
+		if initiatorID != "" {
+			d.enqueue(notifyTask{
+				ctx:         e.Ctx,
+				userID:      initiatorID,
+				notifType:   "motion",
+				content:     "你发起的" + label + "动议" + result,
+				referenceID: motionID,
+			})
+		}
+		// 目标作者必须知道表决结果：通过的折叠/放逐会直接改变他的可见性。
+		if targetAuthorID != "" && targetAuthorID != initiatorID {
+			d.enqueue(notifyTask{
+				ctx:         e.Ctx,
+				userID:      targetAuthorID,
+				notifType:   "motion",
+				content:     "针对你的" + label + "动议" + result,
+				referenceID: motionID,
+			})
+		}
 	})
 
 	d.start(defaultNotifWorker)

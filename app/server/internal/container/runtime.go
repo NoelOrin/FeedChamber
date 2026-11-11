@@ -20,12 +20,20 @@ type Runtime struct {
 	notifDispatcher *service.NotifDispatcher
 	// workers is keyed by name so a shutdown that hangs is attributable in logs.
 	workers map[string]context.CancelFunc
+	// parentCancel 取消传给 Start 的派生 ctx。Gate/Trust 的 StartSyncSubscriber
+	// 只接收 ctx 不返回 cancel，靠 ctx.Done() 退出；此前 Start 收到的是
+	// context.Background()，永不 Done → 关停后这两个订阅 goroutine 泄漏、
+	// NATS 订阅也不 Unsubscribe（2026-11-11 修复）。
+	parentCancel context.CancelFunc
 }
 
 // Start subscribes to the event bus and launches the tickers and worker pools.
 // ctx is the parent for every worker; cancelling it stops all of them at once.
 func (c *Container) Start(ctx context.Context) (*Runtime, error) {
-	r := &Runtime{c: c, workers: map[string]context.CancelFunc{}}
+	// 派生一个可取消的父 ctx：所有 worker 与「只认 ctx.Done() 的订阅」都挂在它下面，
+	// Shutdown 一次 cancel 全部收口。
+	ctx, cancel := context.WithCancel(ctx)
+	r := &Runtime{c: c, workers: map[string]context.CancelFunc{}, parentCancel: cancel}
 
 	// Seed the default badge set. The call is idempotent, but it writes, so a
 	// failure has to reach the operator instead of being discarded in a
@@ -112,6 +120,13 @@ func (r *Runtime) Shutdown() {
 			cancel()
 		}
 		delete(r.workers, name)
+	}
+
+	// 收掉「只认 ctx.Done()」的订阅（Gate/Trust 的 StartSyncSubscriber）与
+	// 所有派生自该 ctx 的资源。
+	if r.parentCancel != nil {
+		r.parentCancel()
+		r.parentCancel = nil
 	}
 
 	r.c.EventBus.Shutdown()

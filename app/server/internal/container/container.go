@@ -332,6 +332,12 @@ func New(d Deps) *Container {
 	c.CheckInSvc = service.NewCheckInService(c.CheckInRepo, c.UserRepo, c.Tx, c.BadgeSvc)
 	c.CheckInSvc.SetTrustService(c.TrustSvc)
 	c.ReportSvc = service.NewReportService(c.ReportRepo, c.PostRepo, c.ContentRepo, c.BannedSvc, c.EventBus)
+	// 举报处置要「删目标走业务链路 + 重算作者 XP」；Post/Content/Trust 都已在上面构造好。
+	if rs, ok := c.ReportSvc.(interface {
+		SetDeleteDeps(service.PostService, service.ContentService, service.TrustService)
+	}); ok {
+		rs.SetDeleteDeps(c.PostSvc, c.ContentSvc, c.TrustSvc)
+	}
 	c.MotionSvc = service.NewMotionService(
 		c.MotionRepo, c.PostRepo, c.ContentRepo, c.UserRepo, c.SpaceRepo,
 		c.ReportSvc, c.PermissionSvc, c.BannedSvc, c.EventBus,

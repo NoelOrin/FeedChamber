@@ -77,7 +77,12 @@ func (s *moderationService) Approve(ctx context.Context, id, reviewerID string) 
 	}
 	s.recomputeAuthor(ctx, m.TargetType, m.TargetID)
 	if s.bus != nil {
-		s.bus.Publish(eventbus.Event{Type: eventbus.EventModerationDone, Payload: map[string]any{"moderation_id": id, "decision": "approved", "target_type": m.TargetType, "target_id": m.TargetID}})
+		authorID, title := s.targetSnapshot(ctx, m.TargetType, m.TargetID)
+		s.bus.Publish(eventbus.Event{Type: eventbus.EventModerationDone, Ctx: ctx, Payload: map[string]any{
+			"moderation_id": id, "decision": "approved",
+			"target_type": m.TargetType, "target_id": m.TargetID,
+			"author_id": authorID, "title": title,
+		}})
 	}
 	return nil
 }
@@ -95,7 +100,12 @@ func (s *moderationService) Reject(ctx context.Context, id, reviewerID, reason s
 	}
 	s.recomputeAuthor(ctx, m.TargetType, m.TargetID)
 	if s.bus != nil {
-		s.bus.Publish(eventbus.Event{Type: eventbus.EventModerationDone, Payload: map[string]any{"moderation_id": id, "decision": "rejected", "target_type": m.TargetType, "target_id": m.TargetID}})
+		authorID, title := s.targetSnapshot(ctx, m.TargetType, m.TargetID)
+		s.bus.Publish(eventbus.Event{Type: eventbus.EventModerationDone, Ctx: ctx, Payload: map[string]any{
+			"moderation_id": id, "decision": "rejected",
+			"target_type": m.TargetType, "target_id": m.TargetID,
+			"author_id": authorID, "title": title, "reason": reason,
+		}})
 	}
 	return nil
 }
@@ -130,6 +140,30 @@ func (s *moderationService) RecordPendingFrom(ctx context.Context, targetType, t
 
 // recomputeAuthor 在审核结论落库后重算内容作者的 XP / 等级：只有 approved 的
 // 内容计 XP，通过或拒绝都会改变聚合结果。
+// targetSnapshot 解析审核目标的作者与标题，供事件 payload 使用。
+// 通知订阅侧不持有 repository，所以作者与标题必须在发布事件时就带出去。
+func (s *moderationService) targetSnapshot(ctx context.Context, targetType, targetID string) (authorID, title string) {
+	switch targetType {
+	case "post":
+		if s.postRepo != nil {
+			if p, err := s.postRepo.FindByID(ctx, targetID); err == nil && p != nil {
+				return p.AuthorID, p.Title
+			}
+		}
+	case "content":
+		if s.contentRepo != nil {
+			if c, err := s.contentRepo.FindByID(ctx, targetID); err == nil && c != nil {
+				title = c.Body
+				if len([]rune(title)) > 40 {
+					title = string([]rune(title)[:40]) + "…"
+				}
+				return c.AuthorID, title
+			}
+		}
+	}
+	return "", ""
+}
+
 func (s *moderationService) recomputeAuthor(ctx context.Context, targetType, targetID string) {
 	if s.trustSvc == nil {
 		return

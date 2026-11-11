@@ -106,8 +106,32 @@ func (s *motionService) Create(ctx context.Context, initiatorID, targetType, tar
 	}
 	s.publish(ctx, eventbus.EventMotionCreated, map[string]any{
 		"motion_id": m.ID, "initiator_id": initiatorID, "target_type": targetType, "target_id": targetID, "type": motionType,
+		"target_author_id": s.targetAuthorID(ctx, targetType, targetID),
 	})
 	return m, nil
+}
+
+// targetAuthorID 解析动议指向对象的作者，供通知扇出使用。
+// 通知订阅侧不持有 repository，作者必须随事件带出——否则被表决的人全程不知情。
+func (s *motionService) targetAuthorID(ctx context.Context, targetType, targetID string) string {
+	switch targetType {
+	case model.MotionTargetPost:
+		if s.postRepo != nil {
+			if p, err := s.postRepo.FindByID(ctx, targetID); err == nil && p != nil {
+				return p.AuthorID
+			}
+		}
+	case model.MotionTargetComment:
+		if s.contentRepo != nil {
+			if c, err := s.contentRepo.FindByID(ctx, targetID); err == nil && c != nil {
+				return c.AuthorID
+			}
+		}
+	case model.MotionTargetUser:
+		// 目标是用户本人：id 就是作者
+		return targetID
+	}
+	return ""
 }
 
 // ── Vote ────────────────────────────────────────────────────────────────────
@@ -238,6 +262,7 @@ func (s *motionService) resolve(ctx context.Context, m *model.Motion, actorID st
 	s.publish(ctx, eventbus.EventMotionResolved, map[string]any{
 		"motion_id": m.ID, "status": status, "type": m.Type, "initiator_id": m.InitiatorID,
 		"target_type": m.TargetType, "target_id": m.TargetID,
+		"target_author_id": s.targetAuthorID(ctx, m.TargetType, m.TargetID),
 	})
 	return m, nil
 }

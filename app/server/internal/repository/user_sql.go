@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"gorm.io/gorm"
 )
 
 // ── SQL implementation ──────────────────────────────────────────────────────
@@ -152,10 +151,6 @@ func (r *sqlUserRepo) CountLikesReceived(ctx context.Context, userID string) (in
 		  AND c.status = 'approved' AND cl.user_id <> c.author_id
 	`, userID).Scan(&count).Error
 	return count, err
-}
-
-func (r *sqlUserRepo) IncrPoints(ctx context.Context, userID string, delta int) error {
-	return r.db.DB().WithContext(ctx).Model(&model.User{}).Where("id = ?", userID).UpdateColumn("total_xp", gorm.Expr("total_xp + ?", delta)).Error
 }
 
 func (r *sqlUserRepo) ListByPoints(ctx context.Context, offset, limit int) ([]model.User, error) {

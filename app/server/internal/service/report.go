@@ -8,6 +8,8 @@ import (
 	"feedchamber/internal/pkg/eventbus"
 	"feedchamber/internal/repository"
 	"time"
+
+	"github.com/sirupsen/logrus"
 )
 
 type reportService struct {
@@ -16,6 +18,22 @@ type reportService struct {
 	contentRepo repository.ContentRepository
 	banSvc      BannedService
 	bus         *eventbus.EventBus
+
+	// postSvc / contentSvc 用于「删除目标」走完整业务链路（重算 XP、失效列表缓存），
+	// 而不是裸删 repository。trustSvc 用于举报处置后的 XP 重算。
+	// 三者都用 setter 注入（与 PostSvc.SetTrustService 同一套破环手法）：
+	// 它们在 container 里比 ReportSvc 先构造，直接塞构造参数会制造循环。
+	postSvc    PostService
+	contentSvc ContentService
+	trustSvc   TrustService
+}
+
+// SetDeleteDeps 注入「删除目标」所需的业务服务与 XP 重算服务。
+// 不注入时退化为裸 repository 删除（仅测试路径会走到）。
+func (s *reportService) SetDeleteDeps(postSvc PostService, contentSvc ContentService, trustSvc TrustService) {
+	s.postSvc = postSvc
+	s.contentSvc = contentSvc
+	s.trustSvc = trustSvc
 }
 
 func NewReportService(repo repository.ReportRepository, postRepo repository.PostRepository, contentRepo repository.ContentRepository, banSvc BannedService, bus *eventbus.EventBus) ReportService {
@@ -161,17 +179,61 @@ func (s *reportService) UpdateStatus(ctx context.Context, id, status, action, ac
 			return pkg.NewAppError(pkg.INVALID_PARAMS, "unknown action")
 		}
 	}
-	return s.repo.UpdateStatus(ctx, id, status, actorID, action, note)
+	if err := s.repo.UpdateStatus(ctx, id, status, actorID, action, note); err != nil {
+		return err
+	}
+	// 举报判「成立」是 LevelMetrics.UpheldReports 的输入（保级判据），
+	// 「删除目标」则改变了内容计数；两者都必须让作者的 XP/等级快照重算，
+	// 否则要等每日 ticker（最长 24h）才反映。
+	if status == "resolved" {
+		s.recomputeTargetAuthor(ctx, r)
+	}
+	return nil
+}
+
+// recomputeTargetAuthor 解析举报目标的作者并重算其 XP。
+// 解析失败只记日志：处置本身已成功，不能因为重算失败而回滚管理员操作。
+func (s *reportService) recomputeTargetAuthor(ctx context.Context, r *model.Report) {
+	if s.trustSvc == nil || r == nil {
+		return
+	}
+	authorID := ""
+	switch r.TargetType {
+	case "post":
+		if p, err := s.postRepo.FindByID(ctx, r.TargetID); err == nil && p != nil {
+			authorID = p.AuthorID
+		}
+	case "comment":
+		if c, err := s.contentRepo.FindByID(ctx, r.TargetID); err == nil && c != nil {
+			authorID = c.AuthorID
+		}
+	}
+	if authorID == "" {
+		return
+	}
+	if _, err := s.trustSvc.Recompute(ctx, authorID); err != nil {
+		logrus.WithError(err).Warnf("report: recompute trust for author %s after resolving %s", authorID, r.ID)
+	}
 }
 
 func (s *reportService) deleteTarget(ctx context.Context, r *model.Report) error {
+	// 优先走业务服务：它会做所有权/权限判定、重算 XP、失效列表缓存，
+	// 并留下修订/审计痕迹。裸删 repository 会让这些全部跳过
+	// （2026-11-11 修复：此前删目标后作者 XP 不回收、列表缓存仍供已删帖）。
 	switch r.TargetType {
 	case "post":
+		if s.postSvc != nil {
+			// 管理员处置：actor 用系统身份，权限判定走 PermPostDelete。
+			return s.postSvc.Delete(ctx, r.TargetID, systemActorID, systemActorRole)
+		}
 		if s.postRepo == nil {
 			return pkg.NewAppError(pkg.INTERNAL_ERROR, "post repository unavailable")
 		}
 		return s.postRepo.Delete(ctx, r.TargetID)
 	case "comment":
+		if s.contentSvc != nil {
+			return s.contentSvc.AdminDelete(ctx, r.TargetID, systemActorRole)
+		}
 		if s.contentRepo == nil {
 			return pkg.NewAppError(pkg.INTERNAL_ERROR, "content repository unavailable")
 		}
@@ -180,6 +242,14 @@ func (s *reportService) deleteTarget(ctx context.Context, r *model.Report) error
 		return pkg.NewAppError(pkg.INVALID_PARAMS, "unsupported target type")
 	}
 }
+
+const (
+	// systemActorID 是系统代操作时写入的 actor 标识（举报处置由管理员触发，
+	// 但删除动作本身以「系统」身份执行，避免冒充某个具体管理员）。
+	systemActorID = ""
+	// systemActorRole 用 admin 角色，使 service 层的「作者 OR 有权限」判定通过。
+	systemActorRole = "admin"
+)
 
 func (s *reportService) lockPostTarget(ctx context.Context, r *model.Report) error {
 	if s.postRepo == nil {

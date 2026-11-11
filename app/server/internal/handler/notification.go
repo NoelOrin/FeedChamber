@@ -42,8 +42,8 @@ func newNotificationHandler(svc service.NotificationService, kv kvstore.Store, s
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        page     query     int  false  "页码"      default(1)
-// @Param        pageSize query     int  false  "每页数量"  default(20)
+// @Param        page     body      int  false  "页码"      default(1)
+// @Param        pageSize body      int  false  "每页数量"  default(20)
 // @Success      200  {object}  pkg.Response{data=object{items=[]model.Notification}}
 // @Failure      401  {object}  pkg.Response
 // @Router       /notifications/list [post]
@@ -269,13 +269,33 @@ func (h *notificationHandler) Stream(ctx iris.Context) {
 	}
 
 	// Fallback: polling interval from settings, default 5s.
+	//
+	// 心跳与轮询解耦：此前降级路径只在 ticker 上写 data 行、从不写 keepalive，
+	// 一旦管理员把 sse_polling_interval 调到 >60s，空闲流就会被 nginx 的
+	// proxy_read_timeout 切断（客户端只能静默重连）。现在两条路径都跑 15s
+	// keepalive，且轮询间隔有上限钳制。
 	pollInterval := pkg.GetSettingInt(ctx.Request().Context(), h.settingSvc, "sse_polling_interval", "", 5)
-	ticker := time.NewTicker(time.Duration(pollInterval) * time.Second)
-	defer ticker.Stop()
+	if pollInterval < 1 {
+		pollInterval = 1
+	}
+	if pollInterval > maxSSEPollSeconds {
+		pollInterval = maxSSEPollSeconds
+	}
+	pollTicker := time.NewTicker(time.Duration(pollInterval) * time.Second)
+	defer pollTicker.Stop()
+	heartbeat := time.NewTicker(15 * time.Second)
+	defer heartbeat.Stop()
+
+	// 先推一次当前值，避免最长一个轮询周期内客户端看不到任何数据。
+	if count, cErr := h.svc.CountUnread(reqCtx, u.ID); cErr == nil {
+		if !writeSSE([]byte(fmt.Sprintf(`{"unread":%d}`, count))) {
+			return
+		}
+	}
 
 	for {
 		select {
-		case <-ticker.C:
+		case <-pollTicker.C:
 			count, cErr := h.svc.CountUnread(reqCtx, u.ID)
 			if cErr != nil {
 				continue
@@ -283,8 +303,17 @@ func (h *notificationHandler) Stream(ctx iris.Context) {
 			if !writeSSE([]byte(fmt.Sprintf(`{"unread":%d}`, count))) {
 				return
 			}
+		case <-heartbeat.C:
+			// 轮询本身也会写字节，但间隔可能被调大；keepalive 兜住中间层读超时。
+			if !writeSSEKeepalive(w, flusher) {
+				return
+			}
 		case <-reqCtx.Done():
 			return
 		}
 	}
 }
+
+// maxSSEPollSeconds 是 sse_polling_interval 的上限：必须小于 nginx 默认的
+// 60s proxy_read_timeout，否则降级流会在两个 tick 之间被静默切断。
+const maxSSEPollSeconds = 30

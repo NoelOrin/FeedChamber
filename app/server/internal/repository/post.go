@@ -16,13 +16,9 @@ type SetPinInput struct {
 	PinnedExpireAt *time.Time
 }
 
-// SitemapEntry is the projection used by the sitemap handler: just enough to
-// build a <url><loc>…</loc><lastmod>…</lastmod></url> element.
-type SitemapEntry struct {
-	ID        string    `gorm:"column:id"`
-	Slug      string    `gorm:"column:slug"`
-	UpdatedAt time.Time `gorm:"column:updated_at"`
-}
+// SitemapEntry 是 model.SitemapEntry 的别名，保留既有引用可用；
+// 权威定义在 model 层（service/handler 只依赖 model，不依赖 repository）。
+type SitemapEntry = model.SitemapEntry
 
 // PostRepository 是帖子数据访问的聚合接口。
 //

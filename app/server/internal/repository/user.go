@@ -21,7 +21,6 @@ type UserRepository interface {
 	CountLikesReceived(ctx context.Context, userID string) (int64, error)
 	Create(ctx context.Context, user *model.User) error
 	Update(ctx context.Context, user *model.User) error
-	IncrPoints(ctx context.Context, userID string, delta int) error
 	ListByPoints(ctx context.Context, offset, limit int) ([]model.User, error)
 	ListByCheckIns(ctx context.Context, offset, limit int) ([]model.User, error)
 	ListByPostCount(ctx context.Context, offset, limit int) ([]model.User, error)

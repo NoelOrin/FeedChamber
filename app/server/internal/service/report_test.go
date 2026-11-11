@@ -115,3 +115,98 @@ func TestReportUpdateStatus_PersistsHandler(t *testing.T) {
 	require.Equal(t, "handled", got.Note)
 	require.NotNil(t, got.HandledAt)
 }
+
+// ── 举报处置的 XP 重算与删除链路（2026-11-11）─────────────────────────
+
+// spyTrustSvc 只记录 Recompute 的调用，用来断言处置后确实重算了作者。
+type spyTrustSvc struct {
+	TrustService // 未实现的方法一律 panic，确保只走被断言的方法
+	recomputed   []string
+}
+
+func (s *spyTrustSvc) Recompute(_ context.Context, userID string) (*UserTrust, error) {
+	s.recomputed = append(s.recomputed, userID)
+	return &UserTrust{}, nil
+}
+
+func TestReportResolve_RecomputesTargetAuthor(t *testing.T) {
+	repo := mock.NewReportRepository()
+	ctx := context.Background()
+
+	require.NoError(t, repo.Create(ctx, &model.Report{
+		ID: "r1", ReporterID: "reporter", TargetType: "post", TargetID: "p1", Status: "pending",
+	}))
+
+	postRepo := mock.NewPostRepository()
+	require.NoError(t, postRepo.Create(ctx, &model.Post{
+		ID: "p1", Title: "t", Slug: "t", AuthorID: "author-1",
+		Status: model.PostStatusApproved,
+	}))
+
+	trust := &spyTrustSvc{}
+	svc := NewReportService(repo, postRepo, nil, nil, nil)
+	svc.(interface {
+		SetDeleteDeps(PostService, ContentService, TrustService)
+	}).SetDeleteDeps(nil, nil, trust)
+
+	require.NoError(t, svc.UpdateStatus(ctx, "r1", "resolved", "none", "admin-1", "ok"))
+
+	assert.Equal(t, []string{"author-1"}, trust.recomputed,
+		"举报判「成立」后必须重算目标作者的 XP（UpheldReports 是保级判据）")
+}
+
+func TestReportResolve_Dismissed_DoesNotRecompute(t *testing.T) {
+	repo := mock.NewReportRepository()
+	ctx := context.Background()
+	require.NoError(t, repo.Create(ctx, &model.Report{
+		ID: "r1", ReporterID: "reporter", TargetType: "post", TargetID: "p1", Status: "pending",
+	}))
+	postRepo := mock.NewPostRepository()
+	require.NoError(t, postRepo.Create(ctx, &model.Post{
+		ID: "p1", Title: "t", Slug: "t", AuthorID: "author-1", Status: model.PostStatusApproved,
+	}))
+
+	trust := &spyTrustSvc{}
+	svc := NewReportService(repo, postRepo, nil, nil, nil)
+	svc.(interface {
+		SetDeleteDeps(PostService, ContentService, TrustService)
+	}).SetDeleteDeps(nil, nil, trust)
+
+	require.NoError(t, svc.UpdateStatus(ctx, "r1", "dismissed", "none", "admin-1", ""))
+	assert.Empty(t, trust.recomputed, "判「不成立」不改变保级判据，不需要重算")
+}
+
+// spyPostSvc 断言删除走的是业务服务而不是裸 repository。
+type spyPostSvc struct {
+	PostService
+	deleted []string
+}
+
+func (s *spyPostSvc) Delete(_ context.Context, id, _, _ string) error {
+	s.deleted = append(s.deleted, id)
+	return nil
+}
+
+func TestReportDeleteTarget_GoesThroughPostService(t *testing.T) {
+	repo := mock.NewReportRepository()
+	ctx := context.Background()
+	require.NoError(t, repo.Create(ctx, &model.Report{
+		ID: "r1", ReporterID: "reporter", TargetType: "post", TargetID: "p1", Status: "pending",
+	}))
+
+	postRepo := mock.NewPostRepository()
+	require.NoError(t, postRepo.Create(ctx, &model.Post{
+		ID: "p1", Title: "t", Slug: "t", AuthorID: "author-1", Status: model.PostStatusApproved,
+	}))
+
+	spy := &spyPostSvc{}
+	svc := NewReportService(repo, postRepo, nil, nil, nil)
+	svc.(interface {
+		SetDeleteDeps(PostService, ContentService, TrustService)
+	}).SetDeleteDeps(spy, nil, nil)
+
+	require.NoError(t, svc.UpdateStatus(ctx, "r1", "resolved", "delete_target", "admin-1", ""))
+
+	assert.Equal(t, []string{"p1"}, spy.deleted,
+		"删除目标 MUST 走 PostService.Delete（重算 XP + 失效缓存），不能裸删 repository")
+}

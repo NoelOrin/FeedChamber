@@ -123,11 +123,13 @@ func (s *postService) applyVisibility(ctx context.Context, filter *repository.Po
 }
 
 // visibleToViewer 是单篇/批量读取的统一判定；details 出口共用它，避免各写一套。
-func visibleToViewer(item model.PostListItem, viewerID string, level int, idx VisibilityIndex) bool {
+// 它委托给 VisibilityIndex.PostVisibleTo，与聚合出口的 SQL 谓词同一套语义
+// （login 版面看登录态，level 版面看等级，帖子 min_level 取更高者）。
+func visibleToViewer(item model.PostListItem, viewerID string, level int, loggedIn bool, idx VisibilityIndex) bool {
 	if item.AuthorID != "" && item.AuthorID == viewerID {
 		return true
 	}
-	return level >= idx.PostRequiredLevel(item.SpaceID, item.MinLevel)
+	return idx.PostVisibleTo(item.SpaceID, item.MinLevel, level, loggedIn)
 }
 
 // routeExiledAuthor 把当前处于软隔离（exile）状态的作者的新帖路由到暗区。
@@ -352,10 +354,10 @@ func (s *postService) ListByIDs(ctx context.Context, ids []string) ([]model.Post
 	if err != nil {
 		return nil, pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	viewerID, level, _ := s.viewerVisibility(ctx)
+	viewerID, level, loggedIn := s.viewerVisibility(ctx)
 	visible := make([]model.PostListItem, 0, len(items))
 	for _, item := range items {
-		if isPublicPostStatus(item.Status) && visibleToViewer(item, viewerID, level, idx) {
+		if isPublicPostStatus(item.Status) && visibleToViewer(item, viewerID, level, loggedIn, idx) {
 			visible = append(visible, item)
 		}
 	}
@@ -446,9 +448,14 @@ func (s *postService) ensurePostVisible(ctx context.Context, item model.PostList
 	if err != nil {
 		return pkg.NewAppError(pkg.INTERNAL_ERROR, err.Error())
 	}
-	viewerID, level, _ := s.viewerVisibility(ctx)
-	if visibleToViewer(item, viewerID, level, idx) {
+	viewerID, level, loggedIn := s.viewerVisibility(ctx)
+	if visibleToViewer(item, viewerID, level, loggedIn, idx) {
 		return nil
+	}
+	// login 版面在「未登录」时的提示不该说「需要等级 1」——那是把登录要求
+	// 说成等级要求，用户会去升级而不是登录。
+	if idx.Resolve(item.SpaceID).Visibility == model.SpaceVisibilityLogin && !loggedIn {
+		return pkg.NewAppError(pkg.FORBIDDEN, "该版面需要登录后查看")
 	}
 	need := idx.PostRequiredLevel(item.SpaceID, item.MinLevel)
 	return pkg.NewAppError(pkg.FORBIDDEN, fmt.Sprintf("需要等级 %d，当前等级 %d", need, level))
@@ -772,7 +779,7 @@ func (s *postService) ListTrash(ctx context.Context, page, pageSize int) ([]mode
 // pkg.PageMaxSize (100) and applies viewer/block filters that a crawler never
 // has. The sitemap needs the whole public corpus in large pages, so it calls the
 // repository's dedicated projection directly.
-func (s *postService) SitemapEntries(ctx context.Context, page, pageSize int) ([]repository.SitemapEntry, error) {
+func (s *postService) SitemapEntries(ctx context.Context, page, pageSize int) ([]model.SitemapEntry, error) {
 	if page < 1 {
 		page = 1
 	}

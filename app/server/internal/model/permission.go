@@ -174,6 +174,12 @@ var DefaultPermissions = []Permission{
 	{Code: PermCustomizeRead, Name: "查看站点自定义", Description: "查看片段、主题 token、导航、首页模块与自定义页"},
 	{Code: PermCustomizeWrite, Name: "编辑站点自定义", Description: "创建和修改片段、主题 token、导航、首页模块与自定义页"},
 	{Code: PermCustomizePublish, Name: "发布站点自定义", Description: "让机器凭证写入的 JS/HTML 类自定义内容直接生效，跳过草稿"},
+	// 2026-11-11：此码此前只存在于常量与 DefaultRolePermissions（admin 被授予），
+	// 却没进 DefaultPermissions —— seedPermissions 只遍历本列表建权限行，
+	// SyncRolePermissions 用 `Where("code=?").First()` 找不到权限行就 continue，
+	// 于是这条角色映射永远建不起来。当前 /api/v1/metrics 路由已删除，
+	// 但它仍是 API Key 白名单与 authz 的引用项，留着就必须可 seed。
+	{Code: PermAdminMetrics, Name: "查看指标", Description: "查看 Prometheus 指标端点"},
 }
 
 // RolePermission 角色-权限关联表

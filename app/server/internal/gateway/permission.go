@@ -236,6 +236,10 @@ func (p *PermissionCheckerMiddleware) initRouteMap() {
 	p.addExact("/api/v1/permission/role", "role:read")
 	p.addExact("/api/v1/permission/sync", "role:manage")
 	p.addExact("/api/v1/permission/space", "role:read")
+	// 这两个是「按版面查权限」，只读且不需要 space_id（有效权限要按用户逐版面算），
+	// 走全局 role:read，与 /permission/space 同档。
+	p.addExact("/api/v1/permission/space/effective", "role:read")
+	p.addExact("/api/v1/permission/space/tree", "role:read")
 	p.addExact("/api/v1/permission/space/sync", "role:manage")
 	p.addExact("/api/v1/permission/space/clear", "role:manage")
 
@@ -273,9 +277,14 @@ func (p *PermissionCheckerMiddleware) initRouteMap() {
 
 	// ── Spaces ────────────────────────────────────────────
 	p.addExact("/api/v1/spaces/create", "space:create")
+	// reorder 一次重排某个父版面下的多个子版面，跨多个 space，用全局权限；
+	// 不能用 spacePattern —— 路径里没有 space_id，父版面 id 在 body 里。
+	p.addExact("/api/v1/spaces/reorder", "space:update")
 	p.addSpacePattern("/api/v1/spaces/{space_id}/update", "space:update")
 	p.addSpacePattern("/api/v1/spaces/{space_id}/delete", "space:delete") // delete 用全局权限
 	p.addSpacePattern("/api/v1/spaces/{space_id}/status", "space:update")
+	// move 改的是 {space_id} 这个版面自己的父级，校 space_id 的权限。
+	p.addSpacePattern("/api/v1/spaces/{space_id}/move", "space:update")
 
 	// ── Admin grouped routes (prefix matches) ────────────
 	p.addPrefix("/api/v1/admin/announcements/", "announcement:manage")
