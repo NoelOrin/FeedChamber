@@ -47,7 +47,46 @@ COPY app/web/ app/web/
 RUN pnpm --filter @feedchamber/tokens --filter @feedchamber/api-client --filter @feedchamber/shared-utils --filter @feedchamber/sse-client build \
  && cd app/web && pnpm build
 
-# ── Stage 2: Production ───────────────────────────────────────────────────
+# ── Stage 2: 运行时依赖（只有生产依赖）──────────────────────────────────────
+#
+# 存在的唯一理由是体积：Stage 1 的 node_modules 是**全量**的（vite / rolldown /
+# esbuild / webpack / typescript / biome / turbo / playwright / jsdom / antd …），
+# 早先直接把 `COPY --from=builder /build/node_modules` 搬进运行镜像，实测解压后
+# 685MB、压缩后 154MB，占整个 web 镜像（解压 1.07GB）的 64%——而真正的产物
+# `dist/` 只有 12MB。
+#
+# 这里用同一份 lockfile 再装一遍 **`--prod`**：解压后 ~287MB，路由实测全通
+# （/timeline /login /spaces /admin /leaderboard /timeline/post?id=1 …）。
+# 构建阶段仍保留全量依赖，两者互不影响，也互不击穿缓存。
+#
+# manifest 清单必须与 Stage 1 完全一致：lockfile 里 workspace importer 的路径
+# 与 package.json 一一对应，少拷一个 manifest 会让 `--frozen-lockfile` 直接失败。
+FROM node:22-alpine AS prod-deps
+
+ARG NPM_REGISTRY=https://registry.npmjs.org
+ENV npm_config_registry=${NPM_REGISTRY}
+
+RUN corepack enable && corepack prepare pnpm@10.26.2 --activate
+
+WORKDIR /build
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY packages/api-client/package.json packages/api-client/
+COPY packages/shared-utils/package.json packages/shared-utils/
+COPY packages/sse-client/package.json packages/sse-client/
+COPY packages/tokens/package.json packages/tokens/
+COPY app/web/package.json app/web/package.json
+
+# 与 Stage 1 共用同一个 store cache（id 相同），命中时这次安装只做硬链接。
+# 不需要源码：--prod 不跑任何 workspace 的 build 脚本。
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
+    pnpm install --prod --frozen-lockfile --prefer-offline --store-dir=/pnpm/store \
+      --filter @feedchamber/web... \
+      --filter @feedchamber/tokens \
+      --filter @feedchamber/api-client \
+      --filter @feedchamber/shared-utils \
+      --filter @feedchamber/sse-client
+
+# ── Stage 3: Production ───────────────────────────────────────────────────
 #
 # 运行时用 Bun，**构建阶段仍是 node:22-alpine + pnpm**（见 Stage 1）：vinext 的
 # 产物是纯 JS，Bun 直接吃 pnpm 的相对 symlink 布局；而构建链路上挂着 pnpm
@@ -68,19 +107,27 @@ FROM oven/bun:1.4.4-alpine
 #
 # pnpm links packages through relative symlinks (app/web/node_modules/vinext ->
 # ../../node_modules/.pnpm/...), so the layout must stay identical: node_modules
-# and packages are copied to their original absolute paths. `vinext` also lives
-# in devDependencies, so a `pnpm install --prod` prune would remove the server
-# binary itself.
+# and packages are copied to their original absolute paths.
 #
-# 拆成多条 COPY 而不是一次 `COPY /build /build`：node_modules（~1GB）几乎不变，
-# 单独成层后永久命中缓存；最后才拷 dist（几 MB），改一行前端代码只重写这一层。
-# 原先单层每次都要重新导出 1GB+，实测导出 20-29s，现在 3s 量级。
+# node_modules 一律来自 Stage 2（生产依赖），**不要**改成 `--from=builder`：
+# 那是全量依赖树，会把 685MB 的构建工具链塞进运行镜像。
+#
+# 拆成多条 COPY 而不是一次 `COPY /build /build`：node_modules 单独成层后能长期
+# 命中缓存；最后才拷 dist（几 MB），改一行前端代码只重写这一层。
+COPY --from=prod-deps /build/node_modules /build/node_modules
+COPY --from=prod-deps /build/packages /build/packages
+COPY --from=prod-deps /build/app/web/node_modules /build/app/web/node_modules
+
+# 产物：根 package.json（vinext 用它判断应用根）、web 的 manifest 与 dist，
+# 以及四个共享包的 dist（@feedchamber/* 的 symlink 指向 packages/，缺了 dist
+# 会让「某个依赖没被 bundle 进去」的场景在运行时才炸）。
 COPY --from=builder /build/package.json /build/package.json
-COPY --from=builder /build/node_modules /build/node_modules
-COPY --from=builder /build/packages /build/packages
 COPY --from=builder /build/app/web/package.json /build/app/web/package.json
-COPY --from=builder /build/app/web/node_modules /build/app/web/node_modules
 COPY --from=builder /build/app/web/dist /build/app/web/dist
+COPY --from=builder /build/packages/api-client/dist /build/packages/api-client/dist
+COPY --from=builder /build/packages/shared-utils/dist /build/packages/shared-utils/dist
+COPY --from=builder /build/packages/sse-client/dist /build/packages/sse-client/dist
+COPY --from=builder /build/packages/tokens/dist /build/packages/tokens/dist
 
 WORKDIR /build/app/web
 

@@ -14,7 +14,8 @@
 - `@feedchamber/api-client` — 唯一请求层（`authFetch` + 401 单飞刷新），SSR cookie 经 `next/headers` 转发
 - `@feedchamber/sse-client` — 实时未读数
 - nuqs — URL 查询参数校验（取代 TanStack 的 `validateSearch`）
-- **容器运行时是 Bun，本地开发仍是 Node**：`Dockerfile` Stage 2 用 `oven/bun:1.4.4-alpine` + `bun node_modules/vinext/dist/cli.js start`，Stage 1 构建仍走 `node:22-alpine` + pnpm（产物是纯 JS，换运行时不碰锁文件）。**不要降到 Bun 1.3.x**：那版 `node:http` 对 HTTP/1.0 请求返回 200 后不关连接，`ab`/`curl --http1.0` 会挂死，1.4.4 已修。
+- **容器运行时是 Bun，本地开发仍是 Node**：`Dockerfile` Stage 3 用 `oven/bun:1.4.4-alpine` + `bun node_modules/vinext/dist/cli.js start`，Stage 1 构建仍走 `node:22-alpine` + pnpm（产物是纯 JS，换运行时不碰锁文件）。**不要降到 Bun 1.3.x**：那版 `node:http` 对 HTTP/1.0 请求返回 200 后不关连接，`ab`/`curl --http1.0` 会挂死，1.4.4 已修。
+- **运行镜像的 `node_modules` 来自 Stage 2 的 `--prod` 安装，不是 Stage 1 的全量树**：Stage 1 装了 vite / rolldown / esbuild / webpack / typescript / biome / turbo / playwright / jsdom / antd 等构建期依赖（解压 685MB），早先直接搬进运行镜像，占整个 web 镜像（解压 1.07GB）的 64%，而 `dist/` 只有 12MB。Stage 2 用同一份 lockfile 只装生产依赖（解压 ~287MB，实测路由全通）。因此 **`vinext` 必须留在 `dependencies`**——它被挪回 `devDependencies` 时 `--prod` 会删掉服务器本体；改 Dockerfile 里任何 `COPY --from=` 的来源前，先确认它指向 `prod-deps` 而不是 `builder`。
 
 ## 目录
 

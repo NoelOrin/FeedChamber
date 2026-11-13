@@ -173,6 +173,9 @@ importers:
       unified:
         specifier: ^11.0.5
         version: 11.0.5
+      vinext:
+        specifier: ^1.1.0
+        version: 1.2.1(@mdx-js/rollup@3.1.1(rollup@4.60.4))(@types/node@25.9.1)(@vitejs/plugin-react@6.1.2(vite@8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(less@4.6.4)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1)))(@vitejs/plugin-rsc@0.5.38(react-dom@19.3.1(react@19.3.1))(react-server-dom-webpack@19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.107.2(esbuild@0.28.0)))(react@19.3.1)(vite@8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(less@4.6.4)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1)))(react-dom@19.3.1(react@19.3.1))(react-server-dom-webpack@19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.107.2(esbuild@0.28.0)))(react@19.3.1)(vite@8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(less@4.6.4)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -213,9 +216,6 @@ importers:
       typescript:
         specifier: ~5.9.3
         version: 5.9.3
-      vinext:
-        specifier: ^1.1.0
-        version: 1.2.1(@mdx-js/rollup@3.1.1(rollup@4.60.4))(@types/node@25.9.1)(@vitejs/plugin-react@6.1.2(vite@8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(less@4.6.4)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1)))(@vitejs/plugin-rsc@0.5.38(react-dom@19.3.1(react@19.3.1))(react-server-dom-webpack@19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.107.2(esbuild@0.28.0)))(react@19.3.1)(vite@8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(less@4.6.4)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1)))(react-dom@19.3.1(react@19.3.1))(react-server-dom-webpack@19.3.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(webpack@5.107.2(esbuild@0.28.0)))(react@19.3.1)(vite@8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(less@4.6.4)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1))
       vite:
         specifier: ^8.3.0
         version: 8.3.4(@types/node@25.9.1)(esbuild@0.28.0)(jiti@2.7.0)(less@4.6.4)(terser@5.48.0)(tsx@4.23.15)(yaml@2.9.1)
