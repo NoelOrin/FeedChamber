@@ -14,8 +14,11 @@
 - `@feedchamber/api-client` — 唯一请求层（`authFetch` + 401 单飞刷新），SSR cookie 经 `next/headers` 转发
 - `@feedchamber/sse-client` — 实时未读数
 - nuqs — URL 查询参数校验（取代 TanStack 的 `validateSearch`）
-- **容器运行时是 Bun，本地开发仍是 Node**：`Dockerfile` Stage 3 用 `oven/bun:1.4.4-alpine` + `bun node_modules/vinext/dist/cli.js start`，Stage 1 构建仍走 `node:22-alpine` + pnpm（产物是纯 JS，换运行时不碰锁文件）。**不要降到 Bun 1.3.x**：那版 `node:http` 对 HTTP/1.0 请求返回 200 后不关连接，`ab`/`curl --http1.0` 会挂死，1.4.4 已修。
-- **运行镜像的 `node_modules` 来自 Stage 2 的 `--prod` 安装，不是 Stage 1 的全量树**：Stage 1 装了 vite / rolldown / esbuild / webpack / typescript / biome / turbo / playwright / jsdom / antd 等构建期依赖（解压 685MB），早先直接搬进运行镜像，占整个 web 镜像（解压 1.07GB）的 64%，而 `dist/` 只有 12MB。Stage 2 用同一份 lockfile 只装生产依赖（解压 ~287MB，实测路由全通）。因此 **`vinext` 必须留在 `dependencies`**——它被挪回 `devDependencies` 时 `--prod` 会删掉服务器本体；改 Dockerfile 里任何 `COPY --from=` 的来源前，先确认它指向 `prod-deps` 而不是 `builder`。
+- **容器运行时是 Bun，本地开发仍是 Node**：`Dockerfile` Stage 4 用 `oven/bun:1.4.4-alpine` + `bun server.mjs`（打包后的启动器），Stage 1 构建仍走 `node:22-alpine` + pnpm（产物是纯 JS，换运行时不碰锁文件）。**不要降到 Bun 1.3.x**：那版 `node:http` 对 HTTP/1.0 请求返回 200 后不关连接，`ab`/`curl --http1.0` 会挂死，1.4.4 已修。
+- **运行镜像里没有 vinext、没有 vite、没有构建工具链**：镜像只含 `dist/`（13.6MB）、打包后的启动器（365KB）和 `node_modules`（8.2MB，**只有 react / react-dom**），`/app` 合计 21.6MB，加 Bun 运行时共 200MB。早先镜像 1.08GB，其中 685MB 是全量构建依赖被直接搬进运行层。
+- **启动器是 `app/web/server.mjs`，不是 `vinext start`**：`vinext start` 启动时会 `import()` vinext 整个 dist 树（服务器 + 构建器 + 配置加载器），因此镜像必须带 vinext 全套依赖。`server.mjs` 只调 `vinext/server/prod-server`（依赖闭合、不碰构建期模块），Stage 2 用 `bun build` 打成 ~350KB 单文件。已验证打包产物与不打包的 prod-server **渲染结果逐字节相同**（除时间戳），路由 / 静态资源 / 404 行为一致。
+- **运行时依赖清单来自产物本身**：`dist/server/vinext-externals.json` 声明了产物在运行时唯一需要外置的包（当前是 `react` + `react-dom`，其余都被 Vite 打进 dist）。Dockerfile 的 Stage 1 末尾读这个文件生成 `runtime-package.json`（版本从已装 node_modules 读，不手抄），Stage 3 用它装运行时依赖。**若将来该文件新增外置包，Stage 3 会自动跟随**；但若 `server.mjs` 里新增了运行时 `require`，仍需同步确认，否则运行期会报 `Cannot find package`。
+- **本 app 不用 ISR / 不用 `next/image`**：这是打包方案成立的前提之一（bun build 会外置 sharp / og 相关模块）。引入 `export const revalidate` 或 `next/image` 前，先重新验证镜像能起来。
 
 ## 目录
 
