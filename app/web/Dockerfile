@@ -87,8 +87,8 @@ RUN bun build ./server.mjs --target=bun --outfile=./server.bundle.mjs
 # react 与 react-dom —— 其余（框架、markdown、tiptap、tanstack、zod …）都已被
 # Vite 打进 dist/。所以运行镜像的 node_modules 只需要这两个包。
 #
-# 这比「带全量生产依赖」再小一个数量级（287MB → ~8MB），也是这一版镜像从
-# 1.08GB 压到 ~150MB 的最后一步。
+# 这比「带全量生产依赖」再小一个数量级（287MB → 8.2MB）。镜像最终 200MB，
+# 其中 178MB 是 oven/bun 基础镜像（bun 二进制 100MB + alpine），换不掉。
 FROM node:22-alpine AS prod-deps
 
 ARG NPM_REGISTRY=https://registry.npmjs.org
