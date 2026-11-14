@@ -6,11 +6,22 @@ export interface SettingItemDef {
 	options?: { label: string; value: string }[];
 }
 
-export type ServiceTabKey = 'site' | 'user' | 'content' | 'oauth' | 'storage';
+export type ServiceTabKey = 'site' | 'user' | 'content' | 'notify' | 'oauth' | 'storage';
+
+/** 分组内的子分组（例如 OAuth 按平台拆块）。子分组的 items 归属父分组，独立折叠/保存。 */
+export interface SettingsSubgroup {
+	name: string;
+	items: SettingItemDef[];
+}
 
 export interface SettingsGroup {
 	name: string;
 	tab: ServiceTabKey;
+	/**
+	 * 分组内的子分组。存在时页面按子分组渲染折叠块，每个子分组各自独立保存；
+	 * 此时父分组的 items 应为空，实际字段都在 subgroups 里。
+	 */
+	subgroups?: SettingsSubgroup[];
 	items: SettingItemDef[];
 	/** 组末附加面板（纯数据驱动，页面按标识渲染组件） */
 	footer?: 'email-test';
@@ -18,14 +29,16 @@ export interface SettingsGroup {
 
 /** 服务设置下的细分 Tab，顺序即展示顺序 */
 export const serviceTabs: { key: ServiceTabKey; label: string }[] = [
-	{ key: 'site', label: '站点 / SEO' },
-	{ key: 'user', label: '用户与认证' },
-	{ key: 'content', label: '内容与通知' },
+	{ key: 'site', label: '站点与 SEO' },
+	{ key: 'user', label: '用户与准入' },
+	{ key: 'content', label: '内容与审核' },
+	{ key: 'notify', label: '通知与邮件' },
 	{ key: 'oauth', label: '第三方登录' },
-	{ key: 'storage', label: '存储设置' },
+	{ key: 'storage', label: '存储' },
 ];
 
 export const settingsGroups: SettingsGroup[] = [
+	// ── Tab: 站点与 SEO ─────────────────────────────────────
 	{
 		name: '站点信息',
 		tab: 'site',
@@ -34,6 +47,24 @@ export const settingsGroups: SettingsGroup[] = [
 			{ key: 'site_description', value: '', description: '网站描述' },
 			{ key: 'site_logo', value: '', description: 'Logo URL' },
 			{ key: 'site_url', value: '', description: '网站 URL' },
+		],
+	},
+	{
+		name: 'SEO 设置',
+		tab: 'site',
+		items: [
+			{ key: 'seo_title', value: '', description: 'SEO 标题（站点默认标题；帖子页以帖子标题为准）' },
+			{ key: 'seo_description', value: '', description: 'SEO 描述（缺省回退「网站描述」）' },
+			{ key: 'seo_keywords', value: '', description: 'SEO 关键词（逗号分隔）' },
+			{ key: 'og_image', value: '', description: '分享图 URL（缺省回退 Logo；用于 og:image 与 Twitter 卡片）' },
+			{ key: 'google_site_verification', value: '', description: 'Google Search Console 验证码' },
+			{ key: 'baidu_site_verification', value: '', description: '百度搜索资源平台验证码' },
+			{
+				key: 'user_profile_indexable',
+				value: 'false',
+				description: '允许搜索引擎索引他人主页（UGC 薄内容，默认关闭）',
+				type: 'boolean',
+			},
 		],
 	},
 	{
@@ -58,24 +89,8 @@ export const settingsGroups: SettingsGroup[] = [
 			},
 		],
 	},
-	{
-		name: 'SEO 设置',
-		tab: 'site',
-		items: [
-			{ key: 'seo_title', value: '', description: 'SEO 标题（站点默认标题；帖子页以帖子标题为准）' },
-			{ key: 'seo_description', value: '', description: 'SEO 描述（缺省回退「网站描述」）' },
-			{ key: 'seo_keywords', value: '', description: 'SEO 关键词（逗号分隔）' },
-			{ key: 'og_image', value: '', description: '分享图 URL（缺省回退 Logo；用于 og:image 与 Twitter 卡片）' },
-			{ key: 'google_site_verification', value: '', description: 'Google Search Console 验证码' },
-			{ key: 'baidu_site_verification', value: '', description: '百度搜索资源平台验证码' },
-			{
-				key: 'user_profile_indexable',
-				value: 'false',
-				description: '允许搜索引擎索引他人主页（UGC 薄内容，默认关闭）',
-				type: 'boolean',
-			},
-		],
-	},
+
+	// ── Tab: 用户与准入 ─────────────────────────────────────
 	{
 		name: '用户与注册',
 		tab: 'user',
@@ -96,6 +111,22 @@ export const settingsGroups: SettingsGroup[] = [
 			},
 		],
 	},
+	{
+		name: '安全与高级认证',
+		tab: 'user',
+		items: [
+			{ key: 'api_key_enabled', value: 'false', description: '启用 API Key 网关', type: 'boolean' },
+			{ key: 'api_key_default_rate_limit', value: '100', description: 'API Key 默认限流（次/窗口）' },
+			{
+				key: 'mfa_totp_enabled',
+				value: 'false',
+				description: '启用 TOTP MFA（阶段 3，当前仅配置预留）',
+				type: 'boolean',
+			},
+		],
+	},
+
+	// ── Tab: 内容与审核 ─────────────────────────────────────
 	{
 		name: '发帖与评论',
 		tab: 'content',
@@ -123,14 +154,6 @@ export const settingsGroups: SettingsGroup[] = [
 		],
 	},
 	{
-		name: 'OAuth2 / OIDC',
-		tab: 'user',
-		items: [
-			{ key: 'oauth_access_token_ttl', value: '86400', description: 'OAuth2 access token 有效期（秒，令牌为 opaque）' },
-			{ key: 'sso_id_token_ttl', value: '3600', description: 'OIDC id_token 有效期（秒）' },
-		],
-	},
-	{
 		name: '上传设置',
 		tab: 'content',
 		items: [
@@ -143,43 +166,11 @@ export const settingsGroups: SettingsGroup[] = [
 			{ key: 'upload_presign_expiry', value: '900', description: '预签名 URL 有效期（秒）' },
 		],
 	},
-	{
-		name: 'SSE / 通知',
-		tab: 'content',
-		items: [
-			{ key: 'sse_polling_interval', value: '5', description: 'SSE 轮询间隔（秒）' },
-			{ key: 'view_count_flush_interval', value: '60', description: '浏览量批量刷入间隔（秒）' },
-		],
-	},
-	{
-		name: 'OAuth 第三方登录',
-		tab: 'oauth',
-		items: [
-			{ key: 'oauth_github_enabled', value: 'false', description: '启用 GitHub 登录', type: 'boolean' },
-			{ key: 'oauth_github_client_id', value: '', description: 'GitHub Client ID' },
-			{ key: 'oauth_github_client_secret', value: '', description: 'GitHub Client Secret', type: 'secret' },
-			{ key: 'oauth_github_callback', value: '', description: 'GitHub 回调 URL' },
-			{ key: 'oauth_google_enabled', value: 'false', description: '启用 Google 登录', type: 'boolean' },
-			{ key: 'oauth_google_client_id', value: '', description: 'Google Client ID' },
-			{ key: 'oauth_google_client_secret', value: '', description: 'Google Client Secret', type: 'secret' },
-			{ key: 'oauth_google_callback', value: '', description: 'Google 回调 URL' },
-			{ key: 'oauth_qq_enabled', value: 'false', description: '启用 QQ 登录', type: 'boolean' },
-			{ key: 'oauth_qq_client_id', value: '', description: 'QQ Client ID' },
-			{ key: 'oauth_qq_client_secret', value: '', description: 'QQ Client Secret', type: 'secret' },
-			{ key: 'oauth_qq_callback', value: '', description: 'QQ 回调 URL' },
-			{ key: 'oauth_wechat_enabled', value: 'false', description: '启用微信登录', type: 'boolean' },
-			{ key: 'oauth_wechat_client_id', value: '', description: '微信 AppID' },
-			{ key: 'oauth_wechat_client_secret', value: '', description: '微信 AppSecret', type: 'secret' },
-			{ key: 'oauth_wechat_callback', value: '', description: '微信回调 URL' },
-			{ key: 'oauth_weibo_enabled', value: 'false', description: '启用微博登录', type: 'boolean' },
-			{ key: 'oauth_weibo_client_id', value: '', description: '微博 App Key' },
-			{ key: 'oauth_weibo_client_secret', value: '', description: '微博 App Secret', type: 'secret' },
-			{ key: 'oauth_weibo_callback', value: '', description: '微博回调 URL' },
-		],
-	},
+
+	// ── Tab: 通知与邮件 ─────────────────────────────────────
 	{
 		name: '邮件服务',
-		tab: 'user',
+		tab: 'notify',
 		items: [
 			{ key: 'email_enabled', value: 'false', description: '启用邮件发送', type: 'boolean' },
 			{
@@ -212,19 +203,77 @@ export const settingsGroups: SettingsGroup[] = [
 		footer: 'email-test',
 	},
 	{
-		name: '安全与高级认证',
-		tab: 'user',
+		name: 'SSE / 通知',
+		tab: 'notify',
 		items: [
-			{ key: 'api_key_enabled', value: 'false', description: '启用 API Key 网关', type: 'boolean' },
-			{ key: 'api_key_default_rate_limit', value: '100', description: 'API Key 默认限流（次/窗口）' },
+			{ key: 'sse_polling_interval', value: '5', description: 'SSE 轮询间隔（秒）' },
+			{ key: 'view_count_flush_interval', value: '60', description: '浏览量批量刷入间隔（秒）' },
+		],
+	},
+
+	// ── Tab: 第三方登录 ─────────────────────────────────────
+	{
+		name: 'OAuth 第三方登录',
+		tab: 'oauth',
+		items: [],
+		subgroups: [
 			{
-				key: 'mfa_totp_enabled',
-				value: 'false',
-				description: '启用 TOTP MFA（阶段 3，当前仅配置预留）',
-				type: 'boolean',
+				name: 'GitHub',
+				items: [
+					{ key: 'oauth_github_enabled', value: 'false', description: '启用 GitHub 登录', type: 'boolean' },
+					{ key: 'oauth_github_client_id', value: '', description: 'GitHub Client ID' },
+					{ key: 'oauth_github_client_secret', value: '', description: 'GitHub Client Secret', type: 'secret' },
+					{ key: 'oauth_github_callback', value: '', description: 'GitHub 回调 URL' },
+				],
+			},
+			{
+				name: 'Google',
+				items: [
+					{ key: 'oauth_google_enabled', value: 'false', description: '启用 Google 登录', type: 'boolean' },
+					{ key: 'oauth_google_client_id', value: '', description: 'Google Client ID' },
+					{ key: 'oauth_google_client_secret', value: '', description: 'Google Client Secret', type: 'secret' },
+					{ key: 'oauth_google_callback', value: '', description: 'Google 回调 URL' },
+				],
+			},
+			{
+				name: 'QQ',
+				items: [
+					{ key: 'oauth_qq_enabled', value: 'false', description: '启用 QQ 登录', type: 'boolean' },
+					{ key: 'oauth_qq_client_id', value: '', description: 'QQ Client ID' },
+					{ key: 'oauth_qq_client_secret', value: '', description: 'QQ Client Secret', type: 'secret' },
+					{ key: 'oauth_qq_callback', value: '', description: 'QQ 回调 URL' },
+				],
+			},
+			{
+				name: '微信',
+				items: [
+					{ key: 'oauth_wechat_enabled', value: 'false', description: '启用微信登录', type: 'boolean' },
+					{ key: 'oauth_wechat_client_id', value: '', description: '微信 AppID' },
+					{ key: 'oauth_wechat_client_secret', value: '', description: '微信 AppSecret', type: 'secret' },
+					{ key: 'oauth_wechat_callback', value: '', description: '微信回调 URL' },
+				],
+			},
+			{
+				name: '微博',
+				items: [
+					{ key: 'oauth_weibo_enabled', value: 'false', description: '启用微博登录', type: 'boolean' },
+					{ key: 'oauth_weibo_client_id', value: '', description: '微博 App Key' },
+					{ key: 'oauth_weibo_client_secret', value: '', description: '微博 App Secret', type: 'secret' },
+					{ key: 'oauth_weibo_callback', value: '', description: '微博回调 URL' },
+				],
 			},
 		],
 	},
+	{
+		name: 'OAuth2 / OIDC',
+		tab: 'oauth',
+		items: [
+			{ key: 'oauth_access_token_ttl', value: '86400', description: 'OAuth2 access token 有效期（秒，令牌为 opaque）' },
+			{ key: 'sso_id_token_ttl', value: '3600', description: 'OIDC id_token 有效期（秒）' },
+		],
+	},
+
+	// ── Tab: 存储 ───────────────────────────────────────────
 	{
 		name: '存储设置 (S3)',
 		tab: 'storage',
