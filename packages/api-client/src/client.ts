@@ -1,5 +1,5 @@
 import { getAdapter } from './adapter';
-import { clearAuthTokens, redirectToLogin, tryRefreshToken } from './auth';
+import { clearAuthTokens, isAuthenticated, redirectToLogin, tryRefreshToken } from './auth';
 import { ApiError, AuthError, HttpError, NetworkError } from './errors';
 import type { ApiResponse, PaginatedResponse } from './types';
 
@@ -93,8 +93,16 @@ async function authFetch(path: string, options: RequestInit): Promise<Response> 
 			}
 		}
 		if (res.status === 401) {
+			/*
+			 * 只有「已登录但会话已过期」才整页跳登录。匿名访客收到 401 属于正常
+			 * （公开页上挂的 /user/profile、通知数等接口本就会 401），此时不能把
+			 * 用户踢出公开页面——否则 post_auth_required=false 的 timeline/详情页
+			 * 一进来就被硬跳 /login（登录墙分层的核心承诺被这一行推翻）。
+			 * 匿名 401 只清空本地态并抛 AuthError，由调用方自行降级为「未登录」。
+			 */
+			const wasAuthed = isAuthenticated();
 			clearAuthTokens();
-			redirectToLogin();
+			if (wasAuthed) redirectToLogin();
 			throw new AuthError();
 		}
 	}

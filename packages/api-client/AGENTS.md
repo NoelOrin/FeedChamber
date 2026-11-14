@@ -6,7 +6,7 @@ Web 和 Dashboard 共同依赖，封装所有后端 API 调用。
 
 | 文件 | 说明 |
 |------|------|
-| client.ts | `authFetch` 封装：自动 Bearer token、401 自动刷新重试、默认超时 3s |
+| client.ts | `authFetch` 封装：自动 Bearer token、401 自动刷新重试、默认超时 3s。**401 只在「已登录但会话过期」（`master_auth=1` 且刷新失败）时才整页跳 `/login`**；匿名访客的 401（公开页上挂的 profile / 通知数等接口本就会 401）只清本地态并抛 `AuthError`，不跳转——否则 `post_auth_required=false` 的公开内容页一进来就被硬跳登录墙 |
 | types.ts | 所有 API 响应类型定义（`User`, `PostListItem`, `ContentListItem`, `AdminStats`, `SearchResults`, `EntitySearchResult<T>` 等） |
 | constants.ts | 类型化常量（`ErrorCode`, `PermissionCode`, `SettingKey`, `ModerationMode`, `RoleName`, `PostStatus`, `STATUS_FILTER_ALL`, `API_BASE_URL`）。`ModerationMode`（`off` / `async` / `external` / `manual`）与后端 `model.ModerationMode*` 一一对应，**默认 `async`** |
 | services/auth.ts | 认证 API |
